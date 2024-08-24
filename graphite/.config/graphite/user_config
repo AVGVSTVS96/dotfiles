@@ -1,0 +1,26 @@
+{
+  "authToken": "WrzrRgKWlmnfGRq0ZwCzKmKp8TR0Vzjs7qfioK6bNaQ4j7vhsTEg7a6FnkuF",
+  "gtiConfigs": [
+    {
+      "key": "gti.install-uuid",
+      "value": "a7aa2d85-f14e-4d2f-98e6-a21c7e47bc0a"
+    },
+    {
+      "key": "gti.changedFilesDisplayType",
+      "value": "\"short\""
+    },
+    {
+      "key": "gti.branch-display-choice",
+      "value": "\"branch-name\""
+    },
+    {
+      "key": "gti.is-onboarded",
+      "value": "true"
+    }
+  ],
+  "submitIncludeCommitMessages": true,
+  "excludeTemplatesWithCommitMessages": false,
+  "branchDate": false,
+  "restackCommitterDateIsAuthorDate": true,
+  "tips": true
+}
