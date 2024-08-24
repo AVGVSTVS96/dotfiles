@@ -1,23 +1,23 @@
-export PATH=/Users/bassimshahidy/.nvm/versions/node/v21.6.1/bin:$PATH
-
+# ---------
+# -- NPM --
+# ---------
 export PATH="./node_modules/.bin:$PATH"
 
-# If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:/usr/local/bin:$PATH
+
+# ---------------------
+# -- VSCode Insiders --
+# ---------------------
 export PATH="$PATH:/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin"
 
+
 # ----------------
-#
 # --- Homebrew ---
-#
 # ----------------
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
 
 # -----------------
-#
 # --- oh-my-zsh ---
-#
 # -----------------
 export ZSH="$HOME/.oh-my-zsh"
 
@@ -28,48 +28,36 @@ source $ZSH/oh-my-zsh.sh
 
 
 # ------------------
-#
 # --- oh-my-posh ---
-#
 # ------------------
 # eval "$(oh-my-posh init zsh --config ~/Documents/GitHub/dotfiles/Mac/jblab_2021.omp.json)"
 eval "$(oh-my-posh init zsh --config $(brew --prefix oh-my-posh)/themes/tokyonight_storm.omp.json)"
 
-# -----------
-#
-# --- bun ---
-#
-# -----------
-# -- bun completions --
-[ -s "/Users/bassimshahidy/.bun/_bun" ] && source "/Users/bassimshahidy/.bun/_bun"
-
-
-# ---------------------
-#
-# --- console-ninja ---
-#
-# ---------------------
-PATH=~/.console-ninja/.bin:$PATH
-
 
 # -----------
-#
 # --- bat ---
-#
 # -----------
 #  Install theme:
 #   curl -O https://raw.githubusercontent.com/folke/tokyonight.nvim/main/extras/sublime/tokyonight_night.tmTheme
-#   bat chache --build
+#   bat cache --build
 export BAT_THEME=tokyonight_night
 
+
+# -------------
+# -- lazygit --
+# -------------
+export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml"
+
+
 # -----------
-#
 # --- NVM ---
-#
 # -----------
+export PATH=/Users/bassimshahidy/.nvm/versions/node/v21.6.1/bin:$PATH
+
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
 
 # -----------
 #
@@ -132,17 +120,13 @@ _fzf_comprun() {
 
 
 # ---------------
-#
 # --- thefuck ---
-#
 # ---------------
 eval $(thefuck --alias)
 
 
 # ----------------------------
-#
 # ---- Zoxide (better cd) ----
-#
 # ----------------------------
 eval "$(zoxide init zsh)"
 
@@ -187,10 +171,15 @@ alias lspe="fzf --preview '$show_file_or_dir_preview'"
 alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
 
 
+# -----------
+# --- bun ---
+# -----------
+# bun completions
+[ -s "/Users/bassimshahidy/.bun/_bun" ] && source "/Users/bassimshahidy/.bun/_bun"
+
+
 # ------------
-#
 # --- pnpm ---
-#
 # ------------
 export PNPM_HOME="/Users/bassimshahidy/Library/pnpm"
 case ":$PATH:" in
@@ -200,13 +189,13 @@ esac
 
 source ~/completion-for-pnpm.zsh
 
+
 # -------------------------------------
-#
 # -- zsh plugins installed with brew --
-#
 # -------------------------------------
 source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
 
 # -------------------------------------------
 #
@@ -223,14 +212,6 @@ export VISUAL='code'
 # else
 #   export EDITOR='mvim'
 # fi
-
-# Uncomment one of the following lines to change the auto-update behavior
-# zstyle ':omz:update' mode disabled  # disable automatic updates
-# zstyle ':omz:update' mode auto      # update automatically without asking
-# zstyle ':omz:update' mode reminder  # just remind me to update when it's time
-
-# Uncomment the following line to change how often to auto-update (in days).
-# zstyle ':omz:update' frequency 13
 
 # Uncomment the following line if pasting URLs and other text is messed up.
 # DISABLE_MAGIC_FUNCTIONS="true"
