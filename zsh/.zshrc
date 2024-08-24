@@ -160,8 +160,12 @@ alias szrc="source ~/.zshrc"
 alias exz="exec zsh"
 
 # -- git aliases --
-alias gc="git commit -a"
-alias gca="git commit -a --amend --no-edit"
+alias g="git"
+alias gc="git commit"
+alias gca="git commit -a"
+alias gcam="git commit -a --amend --no-edit"
+alias gf="git fetch"
+alias gpl="git pull"
 alias gp="git push"
 alias gpf="git push --force-with-lease origin"
 
