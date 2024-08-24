@@ -169,7 +169,11 @@ alias gpf="git push --force-with-lease origin"
 alias cd="z"
 
 # -- eza for ls --
+alias ll="eza --long --all --git --icons=always --color=always --no-user"
 alias ls="eza --long --all --color=always --git --icons=always --no-filesize --no-user --no-permissions --no-time"
+alias lt="eza --long --all --git --icons=always --color=always --no-user --tree --level=1"
+alias lt2="eza --long --all --git --icons=always --color=always --no-user --tree --level=2"
+alias lt3="eza --long --all --git --icons=always --color=always --no-user --tree --level=3"
 alias lst="eza --tree --all --level=1 --icons=always"
 alias lst2="eza --tree --all --level=2 --git-ignore --icons=always"
 alias lst3="eza --tree --all --level=3 --git-ignore --icons=always"
