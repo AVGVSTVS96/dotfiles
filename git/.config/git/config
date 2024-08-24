@@ -1,0 +1,43 @@
+[filter "lfs"]
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+
+[user]
+	name = AVGVSTVS96
+	email = 122117267+AVGVSTVS96@users.noreply.github.com
+
+[core]
+  editor = code-insiders --wait
+  pager = delta
+
+[rerere]
+  enabled = true
+
+[alias]
+  c = commit
+  ca = commit -a
+  cam = commit -a --amend --no-edit
+  f = fetch
+  pl = pull
+  p = push
+  pf = push --force-with-lease origin
+  update-last-commit = !git commit -a --amend --no-edit && git push --force-with-lease origin
+  yolo = !git commit -m "$(curl -s https://whatthecommit.com/index.txt)"
+
+[interactive]
+  diffFilter = delta --color-only
+
+[delta]
+  navigate = true    # use n and N to move between diff sections
+  line-numbers = true
+  hyperlinks = true
+  hyperlinks-file-link-format = "vscode-insiders://file/{path}:{line}"
+  side-by-side = false
+
+[merge]
+  conflictstyle = diff3
+
+[diff]
+  colorMoved = default
