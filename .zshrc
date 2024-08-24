@@ -6,6 +6,13 @@ export PATH="./node_modules/.bin:$PATH"
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
 export PATH="$PATH:/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin"
 
+# ----------------
+#
+# --- Homebrew ---
+#
+# ----------------
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
 
 # -----------------
 #
