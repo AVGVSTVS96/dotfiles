@@ -22,7 +22,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 export ZSH="$HOME/.oh-my-zsh"
 
 # -- omz plugins --
-plugins=(git zsh-autosuggestions zsh-syntax-highlighting)
+plugins=(git)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -191,12 +191,18 @@ case ":$PATH:" in
 esac
 
 source ~/completion-for-pnpm.zsh
-# pnpm end
 
+# -------------------------------------
+#
+# -- zsh plugins installed with brew --
+#
+# -------------------------------------
+source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # -------------------------------------------
 #
-# -- oh-my-zsh user configuration and misc --
+# -- misc oh-my-zsh user configuration --
 #
 # -------------------------------------------
 
