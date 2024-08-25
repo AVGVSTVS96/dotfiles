@@ -156,12 +156,16 @@ alias gpl="git pull"
 alias gp="git push"
 alias gpf="git push --force-with-lease origin"
 
+alias conv-commit="zsh ~/commit.sh"
+
 # -- zoxide instead of cd --
 alias cd="z"
 
 # -- eza for ls --
+alias l="eza --tree --all --git --icons=always --level=1"
+alias ls="eza --tree --git --icons=always --level=1"
+alias lsl="eza --tree --long --git --icons=always --level=1"
 alias ll="eza --long --all --git --icons=always --color=always --no-user"
-alias ls="eza --long --all --color=always --git --icons=always --no-filesize --no-user --no-permissions --no-time"
 alias lt="eza --long --all --git --icons=always --color=always --no-user --tree --level=1"
 alias lt2="eza --long --all --git --icons=always --color=always --no-user --tree --level=2"
 alias lt3="eza --long --all --git --icons=always --color=always --no-user --tree --level=3"
