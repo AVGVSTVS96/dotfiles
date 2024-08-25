@@ -8,6 +8,15 @@
 	name = AVGVSTVS96
 	email = 122117267+AVGVSTVS96@users.noreply.github.com
 
+[include]
+  path = ~/.config/git/local.config
+
+[gpg]
+	format = ssh
+
+[commit]
+	gpgsign = true
+
 [core]
   editor = code-insiders --wait
   pager = delta
