@@ -1,12 +1,12 @@
-# ---------
-# -- NPM --
-# ---------
+# -----------
+# --- NPM ---
+# -----------
 export PATH="./node_modules/.bin:$PATH"
 
 
-# ---------------------
-# -- VSCode Insiders --
-# ---------------------
+# -----------------------
+# --- VSCode Insiders ---
+# -----------------------
 export PATH="$PATH:/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin"
 
 
@@ -43,9 +43,9 @@ eval "$(oh-my-posh init zsh --config $(brew --prefix oh-my-posh)/themes/tokyonig
 export BAT_THEME=tokyonight_night
 
 
-# -------------
-# -- lazygit --
-# -------------
+# ---------------
+# --- lazygit ---
+# ---------------
 export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml"
 
 
@@ -117,6 +117,9 @@ _fzf_comprun() {
     *)            fzf --preview "bat -n --color=always --line-range :500 {}" "$@" ;;
   esac
 }
+# ---------------
+# --- end fzf ---
+# ---------------
 
 
 # ---------------
@@ -125,9 +128,9 @@ _fzf_comprun() {
 eval $(thefuck --alias)
 
 
-# ----------------------------
-# ---- Zoxide (better cd) ----
-# ----------------------------
+# --------------------------
+# --- Zoxide (better cd) ---
+# --------------------------
 eval "$(zoxide init zsh)"
 
 
@@ -169,6 +172,9 @@ alias lst3="eza --tree --all --level=3 --git-ignore --icons=always"
 # -- eza with fzf bat preview --
 alias lspe="fzf --preview '$show_file_or_dir_preview'"
 alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
+# -------------------
+# --- end aliases ---
+# -------------------
 
 
 # -----------
@@ -188,24 +194,53 @@ case ":$PATH:" in
 esac
 
 source ~/completion-for-pnpm.zsh
+# ----------------
+# --- end pnpm ---
+# ----------------
 
 
-# -------------------------------------
-# -- zsh plugins installed with brew --
-# -------------------------------------
+# ----------------------------
+# --- graphite completions ---
+#-----------------------------
+# yargs command completion script
+#
+# Installation: gt completion >> ~/.zshrc
+#    or gt completion >> ~/.zprofile on OSX.
+#
+_gt_yargs_completions()
+{
+  local reply
+  local si=$IFS
+  IFS=$'
+' reply=($(COMP_CWORD="$((CURRENT-1))" COMP_LINE="$BUFFER" COMP_POINT="$CURSOR" gt --get-yargs-completions "${words[@]}"))
+  IFS=$si
+  _describe 'values' reply
+}
+compdef _gt_yargs_completions gt
+#---------------------------------
+# --- end graphite completions ---
+# --------------------------------
+
+
+# ---------------------------------------
+# --- zsh plugins installed with brew ---
+# ---------------------------------------
 source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 
-# -------------------------------------------
-#
-# -- misc oh-my-zsh user configuration --
-#
-# -------------------------------------------
-
+# ------------
+# --- misc ---
+# ------------
 export EDITOR='nvim'
 export VISUAL='code'
 
+
+# -----------------------------------------
+#
+# --- misc oh-my-zsh user configuration ---
+#
+# -----------------------------------------
 # Preferred editor for local and remote sessions
 # if [[ -n $SSH_CONNECTION ]]; then
 #   export EDITOR='vim'
