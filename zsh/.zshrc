@@ -148,6 +148,8 @@ alias exz="exec zsh"
 
 # -- git aliases --
 alias g="git"
+alias gs="git status"
+alias gss="git status -s"
 alias gc="git commit"
 alias gca="git commit -a"
 alias gcam="git commit -a --amend --no-edit"
