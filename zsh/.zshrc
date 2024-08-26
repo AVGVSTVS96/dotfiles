@@ -157,23 +157,31 @@ alias gp="git push"
 alias gpf="git push --force-with-lease origin"
 
 alias conv-commit="zsh ~/commit.sh"
+alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
+
+# -- lazygit aliases --
+alias lg="lazygit"
 
 # -- zoxide instead of cd --
 alias cd="z"
 
-# -- eza for ls --
-alias l="eza --tree --all --git --icons=always --level=1"
-alias ls="eza --tree --git --icons=always --level=1"
-alias lsl="eza --tree --long --git --icons=always --level=1"
-alias ll="eza --long --all --git --icons=always --color=always --no-user"
-alias lt="eza --long --all --git --icons=always --color=always --no-user --tree --level=1"
-alias lt2="eza --long --all --git --icons=always --color=always --no-user --tree --level=2"
-alias lt3="eza --long --all --git --icons=always --color=always --no-user --tree --level=3"
-alias lst="eza --tree --all --level=1 --icons=always"
-alias lst2="eza --tree --all --level=2 --git-ignore --icons=always"
-alias lst3="eza --tree --all --level=3 --git-ignore --icons=always"
+eza='eza --git --icons=always --color=always'
+long='--long --no-user'
+cleaned='--no-permissions --no-filesize --no-time'
 
-# -- eza with fzf bat preview --
+# -- eza for ls --
+alias   l="$eza $long $cleaned"
+alias  la="$eza $long $cleaned --all"
+alias  ls="l"
+alias lsa="la"
+alias lsl="$eza $long"
+alias  ll="$eza $long -all"
+alias  lt="$eza $long -all --tree --level=2"
+alias lt2="$eza $long -all --tree --level=3"
+alias lt3="$eza $long -all --tree --level=4"
+alias ltg="$eza $long --tree --git-ignore"
+
+# -- fzf with bat and eza previews --
 alias lspe="fzf --preview '$show_file_or_dir_preview'"
 alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
 # -------------------
