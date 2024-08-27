@@ -21,9 +21,15 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 # -----------------
 export ZSH="$HOME/.oh-my-zsh"
 
-# -- omz plugins --
+# -------------------
+# --- zsh plugins ---
+# -------------------
 plugins=(git)
 
+source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# load oh-my-zsh
 source $ZSH/oh-my-zsh.sh
 
 
@@ -236,11 +242,6 @@ compdef _gt_yargs_completions gt
 # --------------------------------
 
 
-# ---------------------------------------
-# --- zsh plugins installed with brew ---
-# ---------------------------------------
-source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 
 # ------------
