@@ -1,2 +1,11 @@
-user_config
+# Graphite config
+**/graphite/user_config
+
+# Github config
+**/gh/hosts.yml
+
+# Github SSH path in local.config
 local.*
+
+# LazyVim lock file
+**/nvim/lazy-lock.json
