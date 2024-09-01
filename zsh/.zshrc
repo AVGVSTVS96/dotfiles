@@ -1,3 +1,17 @@
+# ----------------
+# --- Check OS ---
+# ----------------
+OS_TYPE="$(uname)"
+darwin=false
+linux=false
+
+# Set variables based on OS type
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+  darwin=true
+elif [[ "$OS_TYPE" == "Linux" ]]; then
+  linux=true
+fi
+
 # -----------
 # --- NPM ---
 # -----------
@@ -13,7 +27,11 @@ export PATH="$PATH:/Applications/Visual Studio Code - Insiders.app/Contents/Reso
 # ----------------
 # --- Homebrew ---
 # ----------------
-eval "$(/opt/homebrew/bin/brew shellenv)"
+$darwin && eval "$(/opt/homebrew/bin/brew shellenv)"
+$linux && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+
+# Add brew's zsh completions to fpath
+FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 
 
 # -----------------
@@ -58,7 +76,7 @@ export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml"
 # -----------
 # --- NVM ---
 # -----------
-export PATH=/Users/bassimshahidy/.nvm/versions/node/v21.6.1/bin:$PATH
+# export PATH=$HOME/.nvm/versions/node/v21.6.1/bin:$PATH
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
@@ -170,6 +188,9 @@ alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)
 # -- lazygit aliases --
 alias lg="lazygit"
 
+# -- yazi aliases --
+alias yz="yazi"
+
 # -- zoxide instead of cd --
 alias cd="z"
 
@@ -201,13 +222,13 @@ alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$s
 # --- bun ---
 # -----------
 # bun completions
-[ -s "/Users/bassimshahidy/.bun/_bun" ] && source "/Users/bassimshahidy/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 
 # ------------
 # --- pnpm ---
 # ------------
-export PNPM_HOME="/Users/bassimshahidy/Library/pnpm"
+export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
@@ -240,7 +261,6 @@ compdef _gt_yargs_completions gt
 #---------------------------------
 # --- end graphite completions ---
 # --------------------------------
-
 
 
 
