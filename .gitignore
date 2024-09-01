@@ -8,4 +8,4 @@
 local.*
 
 # LazyVim lock file
-**/nvim/lazy-lock.json
+lazy-lock.json
