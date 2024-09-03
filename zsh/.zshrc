@@ -112,10 +112,7 @@ _fzf_compgen_dir() {
 # --------------------
 # -- fzf-git script --
 # --------------------
-# add script:
-#   cd ~
-#   git clone https://github.com/junegunn/fzf-git.sh.git
-source ~/fzf-git.sh/fzf-git.sh
+source ~/fzf-git.sh
 
 # ------------------
 # -- fzf previews --
@@ -169,6 +166,7 @@ eval "$(zoxide init zsh)"
 alias zrc="nvim ~/.zshrc"
 alias szrc="source ~/.zshrc"
 alias exz="exec zsh"
+alias cl="clear"
 
 # -- git aliases --
 alias g="git"
@@ -184,6 +182,7 @@ alias gpf="git push --force-with-lease origin"
 
 alias conv-commit="zsh ~/commit.sh"
 alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
+alias update-last-commit="git commit -a --amend --no-edit && git push --force-with-lease origin"
 
 # -- lazygit aliases --
 alias lg="lazygit"
