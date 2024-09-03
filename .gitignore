@@ -9,3 +9,6 @@ local.*
 
 # LazyVim lock file
 nvim/.config/nvim/lazy-lock.json
+
+# macOS
+.DS_Store
