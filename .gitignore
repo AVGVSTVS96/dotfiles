@@ -12,3 +12,5 @@ nvim/.config/nvim/lazy-lock.json
 
 # macOS
 .DS_Store
+zed/.config/zed/**
+!zed/.config/zed/settings.json

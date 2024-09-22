@@ -9,7 +9,7 @@ config.color_scheme = "Tokyo Night"
 config.default_cursor_style = "SteadyUnderline"
 
 config.enable_tab_bar = false
-config.window_decorations = "RESIZE"
+config.window_decorations = "RESIZE | TITLE"
 config.window_background_opacity = 0.9
 config.macos_window_background_blur = 30
 

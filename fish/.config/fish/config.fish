@@ -22,6 +22,7 @@ abbr exz "exec zsh"
 abbr frc "nvim ~/.config/fish/config.fish"
 abbr sfrc "source ~/.config/fish/config.fish"
 abbr exf "exec fish"
+abbr cl clear
 
 # -- git aliases --
 abbr g git
@@ -67,3 +68,6 @@ abbr ltg "$eza $long --tree --git-ignore"
 # -- fzf with bat and eza previews --
 abbr lspe "fzf --preview '$show_file_or_dir_preview'"
 abbr lsp "fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
+
+# -- fastfetch --
+fastfetch

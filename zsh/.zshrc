@@ -12,6 +12,10 @@ elif [[ "$OS_TYPE" == "Linux" ]]; then
   linux=true
 fi
 
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+
 # -----------
 # --- NPM ---
 # -----------
@@ -54,7 +58,6 @@ source $ZSH/oh-my-zsh.sh
 # ------------------
 # --- oh-my-posh ---
 # ------------------
-# eval "$(oh-my-posh init zsh --config ~/Documents/GitHub/dotfiles/Mac/jblab_2021.omp.json)"
 eval "$(oh-my-posh init zsh --config $(brew --prefix oh-my-posh)/themes/tokyonight_storm.omp.json)"
 
 
@@ -269,7 +272,8 @@ compdef _gt_yargs_completions gt
 export EDITOR='nvim'
 export VISUAL='code'
 
-
+# -- fastfetch --
+fastfetch
 # -----------------------------------------
 #
 # --- misc oh-my-zsh user configuration ---
