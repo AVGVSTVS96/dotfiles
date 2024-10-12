@@ -14,3 +14,5 @@ nvim/.config/nvim/lazy-lock.json
 .DS_Store
 zed/.config/zed/**
 !zed/.config/zed/settings.json
+!fish/.config/fish/config.fish
+fish/**

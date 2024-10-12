@@ -5,10 +5,12 @@ eval (/opt/homebrew/bin/brew shellenv)
 oh-my-posh init fish --config $(brew --prefix oh-my-posh)/themes/tokyonight_storm.omp.json | source
 
 # fzf
-eval "$(fzf --fish)"
+#eval "$(fzf --fish)"
+fzf --fish | source
+
 
 # Use bat for files, eza for directories
-set show_file_or_dir_preview 'if [ -d {} ]; then eza --tree --all --level=3 --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi'
+#set show_file_or_dir_preview 'if [ -d {} ]; then eza --tree --all --level=3 --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi'
 
 # -- zoxide instead of cd --
 zoxide init fish | source
@@ -56,8 +58,8 @@ set cleaned '--no-permissions --no-filesize --no-time'
 # -- eza for ls --
 abbr l "$eza $long $cleaned"
 abbr la "$eza $long $cleaned --all"
-abbr ls l
-abbr lsa la
+abbr ls "$eza $long $cleaned"
+abbr lsa "$eza $long $cleaned --all"
 abbr lsl "$eza $long"
 abbr ll "$eza $long -all"
 abbr lt "$eza $long -all --tree --level=2"
@@ -66,8 +68,8 @@ abbr lt3 "$eza $long -all --tree --level=4"
 abbr ltg "$eza $long --tree --git-ignore"
 
 # -- fzf with bat and eza previews --
-abbr lspe "fzf --preview '$show_file_or_dir_preview'"
-abbr lsp "fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
+#abbr lspe "fzf --preview '$show_file_or_dir_preview'"
+#abbr lsp "fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
 
 # -- fastfetch --
-fastfetch
+#fastfetch
