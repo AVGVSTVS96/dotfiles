@@ -1,4 +1,3 @@
--- WhichKey
 return {
   {
     "folke/which-key.nvim",
@@ -7,6 +6,7 @@ return {
         {
           mode = { "n", "v" },
           { "<leader>a", group = "avante", icon = { icon = "󱙺", color = "green" } },
+          { "<leader>n", desc = "Notification History", icon = { icon = "󰈸", color = "orange" } },
         },
       },
     },

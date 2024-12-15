@@ -15,3 +15,13 @@ vim.api.nvim_create_autocmd({ "FileType" }, {
     vim.b.autoformat = false
   end,
 })
+
+function OpenSnacksDashboard()
+  vim.cmd("enew")
+  require("snacks").dashboard()
+end
+
+-- Open the dashboard when running :Dashboard
+vim.api.nvim_create_user_command("Dashboard", function()
+  OpenSnacksDashboard()
+end, {})
