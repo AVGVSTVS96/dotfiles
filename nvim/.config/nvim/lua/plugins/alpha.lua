@@ -1,5 +1,6 @@
 return {
   "goolord/alpha-nvim",
+  enabled = false,
   event = "BufWinEnter",
   config = function()
     local alpha = require("alpha")

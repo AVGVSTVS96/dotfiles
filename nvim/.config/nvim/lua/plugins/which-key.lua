@@ -3,7 +3,12 @@ return {
   {
     "folke/which-key.nvim",
     opts = {
-      preset = "helix",
+      spec = {
+        {
+          mode = { "n", "v" },
+          { "<leader>a", group = "avante", icon = { icon = "󱙺", color = "green" } },
+        },
+      },
     },
   },
 }
