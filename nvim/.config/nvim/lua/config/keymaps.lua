@@ -30,4 +30,4 @@ map("v", "<C-y>", '"+y', { noremap = true, silent = true, desc = "Yank to system
 map("n", "<leader>bs", ":BufferLinePick<CR>", { silent = true, desc = "Quick Pick Buffers" })
 
 -- Map Telescope buffers
-map("n", "<leader>bt", ":Telescope buffers<CR>", { silent = true, desc = "Telescope Buffers" })
+map("n", "<leader>bt", ":FzfLua buffers<CR>", { silent = true, desc = "Browse Buffers" })
