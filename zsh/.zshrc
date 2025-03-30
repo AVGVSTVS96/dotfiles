@@ -270,7 +270,7 @@ compdef _gt_yargs_completions gt
 # --- misc ---
 # ------------
 export EDITOR='nvim'
-export VISUAL='code'
+export VISUAL='nvim'
 
 # -- fastfetch --
 fastfetch
