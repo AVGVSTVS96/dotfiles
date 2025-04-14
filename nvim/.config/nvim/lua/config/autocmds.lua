@@ -4,24 +4,24 @@
 
 -- vim.api.nvim_create_autocmd({ "InsertLeave", "TextChanged" }, {
 --   pattern = { "*" },
---   command = "silent! wall",
+--   callback = function()
+--     if vim.bo.filetype ~= "lua" then
+--       vim.cmd("silent! wall")
+--     end
+--   end,
 --   nested = true,
 -- })
 
--- Disable autoformat for nix files
-vim.api.nvim_create_autocmd({ "FileType" }, {
-  pattern = { "nix" },
-  callback = function()
-    vim.b.autoformat = false
-  end,
-})
+-- Disable autoformat for all files
+-- vim.api.nvim_create_autocmd({ "FileType" }, {
+--   pattern = { "*" },
+--   callback = function()
+--     vim.b.autoformat = false
+--   end,
+-- })
 
-function OpenSnacksDashboard()
+-- Create command to open dashboard
+vim.api.nvim_create_user_command("Dashboard", function()
   vim.cmd("enew")
   require("snacks").dashboard()
-end
-
--- Open the dashboard when running :Dashboard
-vim.api.nvim_create_user_command("Dashboard", function()
-  OpenSnacksDashboard()
 end, {})

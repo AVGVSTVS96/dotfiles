@@ -1,11 +1,17 @@
 {
   "extras": [
     "lazyvim.plugins.extras.coding.mini-surround",
+    "lazyvim.plugins.extras.formatting.biome",
+    "lazyvim.plugins.extras.lang.astro",
     "lazyvim.plugins.extras.lang.json",
-    "lazyvim.plugins.extras.lang.nix"
+    "lazyvim.plugins.extras.lang.markdown",
+    "lazyvim.plugins.extras.lang.nix",
+    "lazyvim.plugins.extras.lang.tailwind",
+    "lazyvim.plugins.extras.vscode"
   ],
+  "install_version": 7,
   "news": {
     "NEWS.md": "10960"
   },
-  "version": 7
+  "version": 8
 }

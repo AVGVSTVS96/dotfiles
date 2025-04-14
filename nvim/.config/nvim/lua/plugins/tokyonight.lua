@@ -1,7 +1,7 @@
 return {
   "folke/tokyonight.nvim",
   opts = {
-    transparent = true,
+    transparent = not vim.g.neovide,
     styles = {
       sidebars = "transparent",
       floats = "transparent",
