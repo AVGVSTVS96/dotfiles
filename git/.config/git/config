@@ -18,7 +18,7 @@
 	gpgsign = true
 
 [core]
-  editor = code-insiders --wait
+  editor = nvim
   pager = delta
   autocrlf = input
 
