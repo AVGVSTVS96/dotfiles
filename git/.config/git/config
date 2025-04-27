@@ -51,3 +51,10 @@
 
 [diff]
   colorMoved = default
+
+[url "git@github.com:avgvstvs96/"]
+	insteadOf = av:
+
+[url "git@gitlab.com:"]
+	insteadOf = gh:
+
