@@ -173,8 +173,9 @@ alias cl="clear"
 
 # -- git aliases --
 alias g="git"
-alias gs="git status"
-alias gss="git status -s"
+alias ga="git add -A"
+alias gs="git status -s"
+alias gsl="git status"
 alias gc="git commit"
 alias gca="git commit -a"
 alias gcam="git commit -a --amend --no-edit"
@@ -182,6 +183,8 @@ alias gf="git fetch"
 alias gpl="git pull"
 alias gp="git push"
 alias gpf="git push --force-with-lease origin"
+alias gcl="git clone"
+alias gd="git diff"
 
 alias conv-commit="zsh ~/commit.sh"
 alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
@@ -215,10 +218,35 @@ alias ltg="$eza $long --tree --git-ignore"
 # -- fzf with bat and eza previews --
 alias lspe="fzf --preview '$show_file_or_dir_preview'"
 alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
+
 # -------------------
 # --- end aliases ---
 # -------------------
 
+# -----------------
+# --- Functions ---
+# -----------------
+#
+# -- add brewfile creation commands to brew --
+brew() {
+  if [[ $1 == brewfile || $1 == dump ]]; then
+    shift
+    local current_dir="$PWD"
+    cd /Users/bassimshahidy/dotfiles/brew
+    command brew bundle dump --formula --cask --tap --mas --force "$@"
+    cd "$current_dir"
+  else
+    command brew "$@"
+  fi
+}
+
+# -- brewfile creation function --
+brewfile() {
+  local current_dir="$PWD"
+  cd /Users/bassimshahidy/dotfiles/brew
+  brew bundle dump --formula --cask --tap --mas --force "$@"
+  cd "$current_dir"
+}
 
 # -----------
 # --- bun ---
