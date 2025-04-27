@@ -183,13 +183,14 @@ alias gf="git fetch"
 alias gpl="git pull"
 alias gp="git push"
 alias gpf="git push --force-with-lease origin"
-alias gcl="git clone"
+# alias gcl="git clone"
 alias gd="git diff"
-
 alias conv-commit="zsh ~/commit.sh"
 alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
 alias update-last-commit="git commit -a --amend --no-edit && git push --force-with-lease origin"
 
+unalias gcb
+unalias gcl
 # -- lazygit aliases --
 alias lg="lazygit"
 
@@ -227,7 +228,7 @@ alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$s
 # --- Functions ---
 # -----------------
 #
-# -- add brewfile creation commands to brew --
+# -- add brefile creation commands to brew --
 brew() {
   if [[ $1 == brewfile || $1 == dump ]]; then
     shift
@@ -247,6 +248,45 @@ brewfile() {
   brew bundle dump --formula --cask --tap --mas --force "$@"
   cd "$current_dir"
 }
+
+# -- git commit browser with fzf --
+gcb() {
+  git log --graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr" "$@" |
+    fzf --ansi --no-sort --reverse --tiebreak=index --bind=ctrl-s:toggle-sort \
+    --bind "ctrl-m:execute:
+      (grep -o '[a-f0-9]\{7\}' | head -1 |
+        xargs -I % sh -c 'git show --color=always % | less -R') << 'FZF-EOF'
+              {}
+              FZF-EOF"
+            }
+
+# -- git diff browser with fzf --
+gdb() {
+  local preview
+  preview="git diff $@ --color=always -- {}"
+  git diff "$@" --name-only | \
+    fzf -m --ansi --preview "$preview"
+}
+
+# -- clone and cd into a git repo --
+gcl() {
+  git clone "$1" && cd "$(basename "$1" .git)"
+}
+
+# -- create a new directory and cd into it --
+mk() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# -- find and kill process by name --
+fkill() {
+  local pid
+  pid=$(ps -ef | sed 1d | fzf -m | awk '{print $2}')
+  if [ "x$pid" != "x" ]; then
+    echo $pid | xargs kill -${1:-9}
+  fi
+}
+
 
 # -----------
 # --- bun ---
