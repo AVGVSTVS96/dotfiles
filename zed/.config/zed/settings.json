@@ -7,10 +7,26 @@
 // custom settings, run the `open default settings` command
 // from the command palette or from `Zed` application menu.
 {
+  "features": {
+    "edit_prediction_provider": "supermaven"
+  },
+  "agent": {
+    "always_allow_tool_actions": true,
+    "model_parameters": [],
+    "default_model": {
+      "provider": "anthropic",
+      "model": "claude-3-7-sonnet-latest"
+    },
+    "version": "2"
+  },
   "theme": "Tokyo Night",
-  "ui_font_size": 15,
-  "buffer_font_size": 14,
+  "ui_font_size": 13.5,
+  "buffer_font_size": 12.5,
   "ui_font_family": "MesloLGS NF",
   "buffer_font_family": "MesloLGS NF",
-  "languages": { "Astro": {} }
+  "languages": { "Astro": {} },
+  "vim": {
+    "cursor_shape": { "visual": "hollow" }
+  },
+  "vim_mode": true
 }
