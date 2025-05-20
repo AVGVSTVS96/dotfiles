@@ -172,10 +172,12 @@ alias exz="exec zsh"
 alias cl="clear"
 
 # -- git aliases --
+alias aga="add_git_alias"
 alias g="git"
 alias ga="git add -A"
-alias gs="git status -s"
-alias gsl="git status"
+alias gs="git status"
+alias gss="git status -s"
+alias gsm="git switch main"
 alias gc="git commit"
 alias gca="git commit -a"
 alias gcam="git commit -a --amend --no-edit"
@@ -183,11 +185,12 @@ alias gf="git fetch"
 alias gpl="git pull"
 alias gp="git push"
 alias gpf="git push --force-with-lease origin"
-# alias gcl="git clone"
 alias gd="git diff"
+alias bsy="git branch -vv | grep ': gone]' | awk '{print }' | xargs -n 1 git branch -D"
 alias conv-commit="zsh ~/commit.sh"
 alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
 alias update-last-commit="git commit -a --amend --no-edit && git push --force-with-lease origin"
+alias prc="gh pr create"
 
 unalias gcb
 unalias gcl
@@ -228,7 +231,20 @@ alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$s
 # --- Functions ---
 # -----------------
 #
-# -- add brefile creation commands to brew --
+# ── helper to add git aliases in the correct location ──
+add_git_alias(){
+  local name=$1 cmd=$2 file="$HOME/dotfiles/zsh/.zshrc"
+
+  sd \
+    '(# -- git aliases --\n(?:alias .+\n)+)' \
+    "\${1}alias ${name}=\"${cmd}\"\n" \
+    "$file"
+
+  echo "✔️  Added git alias ${name}"
+  source "$HOME/.zshrc" || true
+}
+
+# -- add brewfile creation commands to brew --
 brew() {
   if [[ $1 == brewfile || $1 == dump ]]; then
     shift
