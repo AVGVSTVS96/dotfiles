@@ -22,6 +22,7 @@ opt.linebreak = true
 
 -- LazyVim
 g.snacks_animate = true
+g.lazyvim_picker = "snacks"
 
 -- MacOS
 if jit.os == "OSX" then
