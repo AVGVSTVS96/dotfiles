@@ -29,5 +29,7 @@ map("v", "<C-y>", '"+y', { noremap = true, silent = true, desc = "Yank to system
 -- Map bufferline tab picker
 map("n", "<leader>bs", ":BufferLinePick<CR>", { silent = true, desc = "Quick Pick Buffers" })
 
--- Map Telescope buffers
-map("n", "<leader>bt", ":FzfLua buffers<CR>", { silent = true, desc = "Browse Buffers" })
+-- Map Snacks buffers
+map("n", "<leader>bt", function()
+  Snacks.picker.buffers()
+end, { silent = true, desc = "Browse Buffers" })
