@@ -10,6 +10,11 @@ return {
     },
   },
   opts = {
+    zen = {
+      toggles = {
+        dim = false,
+      },
+    },
     picker = {
       sources = {
         explorer = {
