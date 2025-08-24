@@ -16,3 +16,5 @@ zed/.config/zed/**
 !zed/.config/zed/settings.json
 !fish/.config/fish/config.fish
 fish/**
+gh/.config/gh/hosts.yml
+.crush

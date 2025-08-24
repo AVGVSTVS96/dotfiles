@@ -4,6 +4,18 @@ local config = wezterm.config_builder()
 -- local bar = wezterm.plugin.require("https://github.com/adriankarlen/bar.wezterm")
 local tabline = wezterm.plugin.require("https://github.com/michaelbrusegard/tabline.wez")
 
+config.keys = {
+  { -- key binding for new lines in claude code cli
+    key = 'Enter',
+    mods = 'SHIFT',
+    action = wezterm.action_callback(function(window, pane)
+      window:perform_action(wezterm.action.SendString('\\'), pane)
+      wezterm.sleep_ms(10) -- delay so claude code can process and delete the backslash
+      window:perform_action(wezterm.action.SendKey({ key = 'Enter' }), pane)
+    end),
+  },
+}
+
 config.font = wezterm.font_with_fallback({ "MonaspiceKr Nerd Font", "Monaspace Krypton" })
 config.font_size = 13
 config.color_scheme = "Tokyo Night"
