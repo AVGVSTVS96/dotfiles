@@ -20,11 +20,25 @@ opt.listchars = "eol:↲,tab:|->,lead:·,space: ,extends:→,precedes:←,nbsp:�
 opt.breakindent = true
 opt.linebreak = true
 
+-- Disable swap files
+opt.swapfile = false
+
 -- LazyVim
 g.snacks_animate = true
 g.lazyvim_picker = "snacks"
+
+-- Visual
+o.winborder = "rounded"
 
 -- MacOS
 if jit.os == "OSX" then
   o.mousescroll = "ver:1"
 end
+
+-- Prefer nearest subproject first, then fall back to lsp -> monorepo git -> cwd
+vim.g.root_spec = {
+  { "package.json", "tsconfig.json", "biome.json", "eslint.config.*" },
+  "lsp",
+  ".git",
+  "cwd",
+}

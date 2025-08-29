@@ -3,10 +3,8 @@ return {
   keys = {
     {
       "<leader><space>",
-      function()
-        Snacks.picker.smart()
-      end,
-      desc = "Smart Find Files",
+      LazyVim.pick("files", { root = true }),
+      desc = "Find Files (Root Dir)",
     },
   },
   opts = {

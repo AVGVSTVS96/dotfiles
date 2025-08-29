@@ -17,6 +17,45 @@ return {
 
       opts.options.theme = tokyonight_custom
 
+      -- Get LazyVim utils
+      local LazyVim = require("lazyvim.util")
+      local icons = require("lazyvim.config").icons
+
+      -- Move root_dir to section b to prevent truncation
+      opts.sections.lualine_b = {
+        {
+          "branch",
+          fmt = function(name)
+            if name == "gitbutler/workspace" then
+              return "gitbutler"
+            end
+            return name
+          end,
+          color = function()
+            if vim.b.gitsigns_head == "gitbutler/workspace" then
+              return { fg = colors.green }
+            end
+            return nil
+          end,
+        },
+        LazyVim.lualine.root_dir(),
+      }
+
+      -- Override section c without root_dir
+      opts.sections.lualine_c = {
+        {
+          "diagnostics",
+          symbols = {
+            error = icons.diagnostics.Error,
+            warn = icons.diagnostics.Warn,
+            info = icons.diagnostics.Info,
+            hint = icons.diagnostics.Hint,
+          },
+        },
+        { "filetype", icon_only = true, separator = "", padding = { left = 1, right = 0 } },
+        { LazyVim.lualine.pretty_path() },
+      }
+
       return opts
     end,
   },
