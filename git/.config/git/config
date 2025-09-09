@@ -55,6 +55,9 @@
 [url "git@github.com:avgvstvs96/"]
 	insteadOf = av:
 
-[url "git@gitlab.com:"]
+[url "git@github.com:assistant-ui/"]
+	insteadOf = aui:
+
+[url "git@github.com:"]
 	insteadOf = gh:
 
