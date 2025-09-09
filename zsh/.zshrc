@@ -64,8 +64,7 @@ source $ZSH/oh-my-zsh.sh
 # ------------------
 # --- oh-my-posh ---
 # ------------------
-eval "$(oh-my-posh init zsh --config $(brew --prefix oh-my-posh)/themes/tokyonight_storm.omp.json)"
-
+eval "$(oh-my-posh init zsh --config ~/.config/oh-my-posh/tokyonight_storm-customized.omp.json)"
 
 # -----------
 # --- bat ---
