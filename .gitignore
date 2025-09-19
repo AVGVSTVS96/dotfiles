@@ -18,3 +18,4 @@ zed/.config/zed/**
 fish/**
 gh/.config/gh/hosts.yml
 .crush
+tmux/.config/tmux/plugins
