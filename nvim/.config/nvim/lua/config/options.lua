@@ -24,7 +24,7 @@ opt.linebreak = true
 opt.swapfile = false
 
 -- LazyVim
-g.snacks_animate = true
+g.snacks_animate = false
 g.lazyvim_picker = "snacks"
 
 -- Visual

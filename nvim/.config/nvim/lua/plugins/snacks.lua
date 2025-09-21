@@ -15,6 +15,13 @@ return {
     },
     picker = {
       sources = {
+        files = {
+          hidden = true,
+          ignored = false,
+          frecency = true,
+          history_bonus = true,
+          cwd_bonus = true,
+        },
         explorer = {
           hidden = true,
           ignored = true,
@@ -27,6 +34,8 @@ return {
       },
       matcher = {
         frecency = true,
+        hidden = true,
+        ignored = true,
         history_bonus = true,
         cwd_bonus = true,
       },

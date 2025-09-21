@@ -1,9 +1,9 @@
 return {
   {
     -- Highlight colors with tailwind, oklch, and LSP support
-    "eero-lehtinen/oklch-color-picker.nvim",
-    event = "LazyFile",
-    opts = {},
+    -- "eero-lehtinen/oklch-color-picker.nvim",
+    -- event = "LazyFile",
+    -- opts = {},
   },
   {
     "folke/tokyonight.nvim",

@@ -8,6 +8,12 @@ local cmd = vim.cmd
 -- Make some commands case insensitive
 cmd("cabbrev W w")
 cmd("cabbrev Q q")
+cmd("cabbrev Qa qa")
+cmd("cabbrev Wa wa")
+cmd("cabbrev Wq wq")
+cmd("cabbrev QA qa")
+cmd("cabbrev WA wa")
+cmd("cabbrev WQ wq")
 
 -- Map Page Up and Down to behave like Ctrl-D and Ctrl-U
 map("n", "<PageDown>", "<C-d>", { noremap = true, silent = true })
@@ -41,4 +47,3 @@ map("n", "<C-g>", "1<C-g>:let @+ = expand('%:p')<CR>", {
   silent = true,
   desc = "Show file info & copy abs path",
 })
-
