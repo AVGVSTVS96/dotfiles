@@ -160,7 +160,9 @@ eval $(thefuck --alias)
 # --------------------------
 # --- Zoxide (better cd) ---
 # --------------------------
-eval "$(zoxide init zsh)"
+if [[ "$CLAUDECODE" != "1" ]]; then
+    eval "$(zoxide init --cmd cd zsh)"
+fi
 
 
 # ---------------
@@ -208,7 +210,7 @@ alias lg="lazygit"
 alias yz="yazi"
 
 # -- zoxide instead of cd --
-alias cd="z"
+# alias cd="z"
 
 eza='eza --git --icons=always --color=always'
 long='--long --no-user'
@@ -383,7 +385,8 @@ export EDITOR='nvim'
 export VISUAL='nvim'
 
 # -- fastfetch --
-fastfetch
+# fastfetch
+
 # -----------------------------------------
 #
 # --- misc oh-my-zsh user configuration ---
@@ -403,3 +406,7 @@ fastfetch
 
 
 . "$HOME/.local/share/../bin/env"
+
+# Added by CodeRabbit CLI installer
+export PATH="/Users/bassimshahidy/.local/bin:$PATH"
+export CLAUDE_BASH_NO_LOGIN=1
