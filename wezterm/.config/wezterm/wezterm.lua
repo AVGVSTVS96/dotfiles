@@ -5,15 +5,15 @@ local config = wezterm.config_builder()
 local tabline = wezterm.plugin.require("https://github.com/michaelbrusegard/tabline.wez")
 
 config.keys = {
-  { -- key binding for new lines in claude code cli
-    key = 'Enter',
-    mods = 'SHIFT',
-    action = wezterm.action_callback(function(window, pane)
-      window:perform_action(wezterm.action.SendString('\\'), pane)
-      wezterm.sleep_ms(10) -- delay so claude code can process and delete the backslash
-      window:perform_action(wezterm.action.SendKey({ key = 'Enter' }), pane)
-    end),
-  },
+	{ -- key binding for new lines in claude code cli
+		key = "Enter",
+		mods = "SHIFT",
+		action = wezterm.action_callback(function(window, pane)
+			window:perform_action(wezterm.action.SendString("\\"), pane)
+			wezterm.sleep_ms(10) -- delay so claude code can process and delete the backslash
+			window:perform_action(wezterm.action.SendKey({ key = "Enter" }), pane)
+		end),
+	},
 }
 
 config.font = wezterm.font_with_fallback({ "MonaspiceKr Nerd Font", "Monaspace Krypton" })
@@ -46,11 +46,11 @@ tabline.setup({
 		theme = "tokyonight_moon",
 		section_separators = {
 			left = "",
-			right = "", -- Removed all separators to reduce padding
+			-- right = "", -- Removed all separators to reduce padding
 		},
 		component_separators = {
 			left = "",
-			right = "", -- Removed internal separators
+			-- right = "", -- Removed internal separators
 		},
 		tab_separators = {
 			left = "",
@@ -58,7 +58,8 @@ tabline.setup({
 		},
 	},
 	sections = {
-		tabline_a = { "hostname", padding = 1 },
+		-- tabline_a = { "hostname", padding = 1 },
+		tabline_a = { "" },
 		tabline_b = { "" },
 		tabline_c = { "" },
 		tab_active = {
@@ -72,15 +73,15 @@ tabline.setup({
 			{ "index", padding = 1 },
 			{ "process", padding = 1 },
 		},
-		tabline_x = {
-			{ "ram", padding = 1 },
-			{ "cpu", padding = 1 },
-		},
-		tabline_y = {
-			{ "datetime", padding = 1 },
-			{ "battery", padding = 1 },
-		},
-		tabline_z = { "" },
+		-- tabline_x = {
+		-- 	{ "ram", padding = 1 },
+		-- 	{ "cpu", padding = 1 },
+		-- },
+		-- tabline_y = {
+		-- 	{ "datetime", padding = 1 },
+		-- 	{ "battery", padding = 1 },
+		-- },
+		-- tabline_z = { "" },
 	},
 	extensions = {},
 })
