@@ -18,6 +18,7 @@ case "$PWD" in
 esac
 
 # Detect monorepo by pnpm or workspaces
+# TODO: pnpm-workspace.yml doesn't necessissitate monorepo, check for packages field
 is_mono=0
 if [ -f "$repo_root/pnpm-workspace.yaml" ] || [ -f "$repo_root/pnpm-workspace.yml" ]; then
   is_mono=1
