@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Get all bound keys in prefix table
+bound=$(tmux list-keys -T prefix | awk '{print $4}' | sort -u)
+
+echo "=== TMUX UNBOUND KEYS (PREFIX TABLE) ==="
+echo ""
+
+# Lowercase letters
+echo "Lowercase letters:"
+for l in {a..z}; do
+  echo "$bound" | grep -q "^$l\$" || printf "$l "
+done
+echo -e "\n"
+
+# Uppercase letters
+echo "Uppercase letters:"
+for l in {A..Z}; do
+  echo "$bound" | grep -q "^$l\$" || printf "$l "
+done
+echo -e "\n"
+
+# Ctrl + letters
+echo "Ctrl + letters:"
+for l in {a..z}; do
+  echo "$bound" | grep -q "^C-$l\$" || printf "C-$l "
+done
+echo -e "\n"
+
+# Regular symbols
+echo "Regular symbols:"
+for char in '!' '@' '#' '$' '%' '^' '&' '*' '(' ')' '-' '_' '=' '+' '[' ']' '{' '}' '\\' '|' ';' ':' "'" '"' ',' '.' '<' '>' '/' '?'; do
+  escaped=$(printf '%s\n' "$char" | sed 's/[[\.*^$]/\\&/g')
+  if ! echo "$bound" | grep -q "^${escaped}\$"; then
+    printf "%s " "$char"
+  fi
+done
+echo -e "\n"
+
+# Ctrl + symbols
+echo "Ctrl + symbols:"
+for char in '\\' '|' '[' ']' '^' '_' '@'; do
+  key="C-$char"
+  if ! echo "$bound" | grep -q "^${key}\$" 2>/dev/null; then
+    printf "$key "
+  fi
+done
+echo ""
