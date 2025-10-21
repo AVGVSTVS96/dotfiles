@@ -273,17 +273,17 @@ add_git_alias(){
 }
 
 # -- add brewfile creation commands to brew --
-brew() {
-  if [[ $1 == brewfile || $1 == dump ]]; then
-    shift
-    local current_dir="$PWD"
-    cd /Users/bassimshahidy/dotfiles/brew
-    command brew bundle dump --formula --cask --tap --mas --force "$@"
-    cd "$current_dir"
-  else
-    command brew "$@"
-  fi
-}
+# brew() {
+#   if [[ $1 == brewfile || $1 == dump || $1 == sync ]]; then
+#     shift
+#     local current_dir="$PWD"
+#     cd /Users/bassimshahidy/dotfiles/brew
+#     command brew bundle dump --formula --cask --tap --mas --force "$@"
+#     cd "$current_dir"
+#   else
+#     command brew "$@"
+#   fi
+# }
 
 # -- brewfile creation function --
 brewfile() {
@@ -388,21 +388,10 @@ export VISUAL='nvim'
 # fastfetch
 
 # -----------------------------------------
-#
 # --- misc oh-my-zsh user configuration ---
-#
 # -----------------------------------------
-# Preferred editor for local and remote sessions
-# if [[ -n $SSH_CONNECTION ]]; then
-#   export EDITOR='vim'
-# else
-#   export EDITOR='mvim'
-# fi
-
 # Uncomment the following line if pasting URLs and other text is messed up.
 # DISABLE_MAGIC_FUNCTIONS="true"
-
-# ZSH_CUSTOM=/path/to/new-custom-folder
 
 
 . "$HOME/.local/share/../bin/env"
