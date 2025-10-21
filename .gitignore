@@ -1,17 +1,15 @@
-# Graphite config
+# Graphite config (token stored in secrets.env, generated on restore)
 **/graphite/user_config
 
 # Github config
 **/gh/hosts.yml
-
-# Github SSH path in local.config
-local.*
 
 # LazyVim lock file
 nvim/.config/nvim/lazy-lock.json
 
 # macOS
 .DS_Store
+
 zed/.config/zed/**
 !zed/.config/zed/settings.json
 !fish/.config/fish/config.fish
@@ -19,3 +17,23 @@ fish/**
 gh/.config/gh/hosts.yml
 .crush
 tmux/.config/tmux/plugins
+
+# Age encryption keys
+**/.config/sops/age/
+**/sops/age/
+
+# Decrypted secrets
+**/secrets.env.dec
+*.dec.env
+
+# Unencrypted SSH keys (only encrypted versions should be committed)
+ssh/.ssh/id_ed25519
+ssh/.ssh/id_ed25519.dec
+ssh/.ssh/*_rsa
+ssh/.ssh/*_rsa.pub
+
+# Private SSH hosts (machine-specific)
+ssh/.ssh/config.local
+
+# Compiled binaries (source code is in src/)
+scripts/.local/bin/kbtrack

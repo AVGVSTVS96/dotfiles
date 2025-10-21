@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Install script for kbtrack - NuPhy Air75 V3 Battery Tracker
+# Compiles Swift source and installs to .local/bin
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC_FILE="$SCRIPT_DIR/src/kbtrack.swift"
+BIN_DIR="$SCRIPT_DIR/.local/bin"
+BIN_FILE="$BIN_DIR/kbtrack"
+
+echo "🔧 Installing kbtrack..."
+
+# Check if Swift compiler is available
+if ! command -v swiftc &> /dev/null; then
+    echo "❌ Error: Swift compiler not found"
+    echo "   Install Xcode Command Line Tools: xcode-select --install"
+    exit 1
+fi
+
+# Check if source file exists
+if [ ! -f "$SRC_FILE" ]; then
+    echo "❌ Error: Source file not found: $SRC_FILE"
+    exit 1
+fi
+
+# Create bin directory if it doesn't exist
+mkdir -p "$BIN_DIR"
+
+echo "📝 Compiling kbtrack.swift..."
+swiftc "$SRC_FILE" \
+    -o "$BIN_FILE" \
+    -framework CoreBluetooth \
+    -framework Foundation
+
+# Make executable
+chmod +x "$BIN_FILE"
+
+echo "✅ kbtrack installed successfully!"
+echo "   Location: $BIN_FILE"
+echo ""
+echo "📦 Next steps:"
+echo "   1. Run: cd ~/dotfiles && stow scripts"
+echo "   2. Load LaunchAgent: launchctl load ~/Library/LaunchAgents/com.user.kbtrack.plist"
+echo "   3. Check status: kbtrack status"
