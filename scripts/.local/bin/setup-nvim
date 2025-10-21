@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Setup Neovim config by cloning directly into .config/nvim
+# Usage: setup-nvim
+
+set -e
+
+TARGET="$HOME/.config/nvim"
+
+echo "🔧 Setting up Neovim configuration..."
+
+# Check if target already exists
+if [ -e "$TARGET" ]; then
+  echo "⚠️  $TARGET already exists"
+  read -p "Remove it and clone fresh? (y/N): " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    rm -rf "$TARGET"
+    echo "✓ Removed existing config"
+  else
+    echo "❌ Aborted. Please remove $TARGET manually if you want to proceed."
+    exit 1
+  fi
+fi
+
+# Clone neovim-config directly as nvim
+echo "📦 Cloning neovim-config to ~/.config/nvim..."
+gh repo clone avgvstvs96/neovim-config "$TARGET"
+
+echo ""
+echo "✅ Neovim config installed!"
+echo "   Location: $TARGET"
+echo ""
+echo "🚀 Launch with: nvim"
