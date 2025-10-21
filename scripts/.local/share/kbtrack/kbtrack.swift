@@ -6,7 +6,7 @@ import CoreBluetooth
 let KEYBOARD_ADDRESS = "FC:00:72:C2:AC:AF"
 let BATTERY_SERVICE_UUID = CBUUID(string: "180F")
 let BATTERY_LEVEL_UUID = CBUUID(string: "2A19")
-let START_THRESHOLD = 85
+let START_THRESHOLD = 80
 let STOP_THRESHOLD = 5
 let TOLERANCE_PERCENT = 5
 let CONNECTION_TIMEOUT: TimeInterval = 10.0
@@ -52,11 +52,28 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     
     private var continuation: CheckedContinuation<(batteryPercent: Int, isConnected: Bool), Error>?
     private var timeoutTask: Task<Void, Never>?
+    private let lock = NSLock()
     private var isCompleted: Bool = false
     
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
+    }
+    
+    private func completeOnce(with result: (batteryPercent: Int, isConnected: Bool)) {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        guard !isCompleted, let cont = continuation else {
+            return
+        }
+        
+        isCompleted = true
+        continuation = nil
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        
+        cont.resume(returning: result)
     }
     
     func readBattery() async throws -> (batteryPercent: Int, isConnected: Bool) {
@@ -69,12 +86,18 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
             // Start timeout
             timeoutTask = Task {
                 try? await Task.sleep(nanoseconds: UInt64(CONNECTION_TIMEOUT * 1_000_000_000))
-                if !self.isCompleted && self.continuation != nil {
-                    log("Connection timeout")
-                    self.isCompleted = true
-                    self.continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-                    self.continuation = nil
+                
+                // Check if already completed before trying to complete
+                self.lock.lock()
+                let shouldComplete = !self.isCompleted
+                self.lock.unlock()
+                
+                if shouldComplete {
+                    log("Connection timeout reached")
+                    self.completeOnce(with: (batteryPercent: 0, isConnected: false))
                     self.cleanup()
+                } else {
+                    log("Timeout fired but already completed")
                 }
             }
         }
@@ -83,9 +106,7 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard central.state == .poweredOn else {
             log("Bluetooth not powered on: \(central.state.rawValue)")
-            isCompleted = true
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
             return
         }
         
@@ -110,9 +131,7 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
             }
         } else {
             log("NuPhy keyboard not connected (found \(peripherals.count) other devices)")
-            isCompleted = true
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
         }
     }
     
@@ -123,27 +142,21 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         log("Failed to connect: \(error?.localizedDescription ?? "unknown")")
-        isCompleted = true
-        continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-        continuation = nil
+        completeOnce(with: (batteryPercent: 0, isConnected: false))
         cleanup()
     }
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
             log("Error discovering services: \(error)")
-            isCompleted = true
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
             cleanup()
             return
         }
         
         guard let service = peripheral.services?.first(where: { $0.uuid == BATTERY_SERVICE_UUID }) else {
             log("Battery service not found")
-            isCompleted = true
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
             cleanup()
             return
         }
@@ -154,18 +167,14 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         if let error = error {
             log("Error discovering characteristics: \(error)")
-            isCompleted = true
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
             cleanup()
             return
         }
         
         guard let characteristic = service.characteristics?.first(where: { $0.uuid == BATTERY_LEVEL_UUID }) else {
             log("Battery characteristic not found")
-            isCompleted = true
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
             cleanup()
             return
         }
@@ -175,50 +184,28 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        log("didUpdateValueFor called, isCompleted: \(isCompleted)")
-        
-        // Check if already completed by timeout
-        guard !isCompleted else {
-            log("Already completed by timeout, ignoring battery read")
-            return
-        }
-        
-        // Mark as completed and cancel timeout
-        isCompleted = true
-        timeoutTask?.cancel()
-        timeoutTask = nil
-        
-        guard continuation != nil else {
-            log("Continuation is nil, ignoring battery read")
-            cleanup()
-            return
-        }
+        log("didUpdateValueFor called")
         
         if let error = error {
             log("Error reading value: \(error)")
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
             cleanup()
             return
         }
         
         guard let data = characteristic.value, !data.isEmpty else {
             log("No battery data")
-            continuation?.resume(returning: (batteryPercent: 0, isConnected: false))
-            continuation = nil
+            completeOnce(with: (batteryPercent: 0, isConnected: false))
             cleanup()
             return
         }
         
         let batteryLevel = Int(data[0])
-        log("Battery level: \(batteryLevel)%, resuming continuation")
+        log("Battery level: \(batteryLevel)%")
         
-        continuation?.resume(returning: (batteryPercent: batteryLevel, isConnected: true))
-        continuation = nil
-        
-        // Immediate cleanup
+        completeOnce(with: (batteryPercent: batteryLevel, isConnected: true))
         cleanup()
-        log("Continuation resumed and cleanup completed")
+        log("Battery read completed")
     }
     
     private func cleanup() {
