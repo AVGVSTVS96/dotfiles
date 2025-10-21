@@ -13,7 +13,7 @@ repo="$(basename "$repo_root")"
 # Path relative to repo root ("" at root)
 case "$PWD" in
   "$repo_root") rel="";;
-  "$repo_root"/*) rel="${PWD#$repo_root/}";;
+  "$repo_root"/*) rel="${PWD#"$repo_root"/}";;
   *) rel="";;
 esac
 

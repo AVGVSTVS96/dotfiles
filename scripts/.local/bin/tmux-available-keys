@@ -9,27 +9,28 @@ echo ""
 # Lowercase letters
 echo "Lowercase letters:"
 for l in {a..z}; do
-  echo "$bound" | grep -q "^$l\$" || printf "$l "
+  echo "$bound" | grep -q "^$l\$" || printf '%s ' "$l"
 done
 echo -e "\n"
 
 # Uppercase letters
 echo "Uppercase letters:"
 for l in {A..Z}; do
-  echo "$bound" | grep -q "^$l\$" || printf "$l "
+  echo "$bound" | grep -q "^$l\$" || printf '%s ' "$l"
 done
 echo -e "\n"
 
 # Ctrl + letters
 echo "Ctrl + letters:"
 for l in {a..z}; do
-  echo "$bound" | grep -q "^C-$l\$" || printf "C-$l "
+  echo "$bound" | grep -q "^C-$l\$" || printf 'C-%s ' "$l"
 done
 echo -e "\n"
 
 # Regular symbols
 echo "Regular symbols:"
-for char in '!' '@' '#' '$' '%' '^' '&' '*' '(' ')' '-' '_' '=' '+' '[' ']' '{' '}' '\\' '|' ';' ':' "'" '"' ',' '.' '<' '>' '/' '?'; do
+bs="\\"
+for char in '!' '@' '#' '$' '%' '^' '&' '*' '(' ')' '-' '_' '=' '+' '[' ']' '{' '}' "$bs" '|' ';' ':' "'" '"' ',' '.' '<' '>' '/' '?'; do
   escaped=$(printf '%s\n' "$char" | sed 's/[[\.*^$]/\\&/g')
   if ! echo "$bound" | grep -q "^${escaped}\$"; then
     printf "%s " "$char"
@@ -39,10 +40,11 @@ echo -e "\n"
 
 # Ctrl + symbols
 echo "Ctrl + symbols:"
-for char in '\\' '|' '[' ']' '^' '_' '@'; do
+bs="\\"
+for char in "$bs" '|' '[' ']' '^' '_' '@'; do
   key="C-$char"
   if ! echo "$bound" | grep -q "^${key}\$" 2>/dev/null; then
-    printf "$key "
+    printf '%s ' "$key"
   fi
 done
 echo ""
