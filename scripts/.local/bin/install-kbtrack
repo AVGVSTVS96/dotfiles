@@ -4,9 +4,10 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_FILE="$SCRIPT_DIR/src/kbtrack.swift"
-BIN_DIR="$SCRIPT_DIR/.local/bin"
+# Use XDG directory structure
+HOME_DIR="${HOME}"
+SRC_FILE="$HOME_DIR/.local/share/kbtrack/kbtrack.swift"
+BIN_DIR="$HOME_DIR/.local/bin"
 BIN_FILE="$BIN_DIR/kbtrack"
 
 echo "🔧 Installing kbtrack..."
@@ -39,7 +40,7 @@ chmod +x "$BIN_FILE"
 echo "✅ kbtrack installed successfully!"
 echo "   Location: $BIN_FILE"
 echo ""
-echo "📦 Next steps:"
-echo "   1. Run: cd ~/dotfiles && stow scripts"
+echo "📦 To complete setup:"
+echo "   1. If not already stowed: cd ~/dotfiles && stow scripts"
 echo "   2. Load LaunchAgent: launchctl load ~/Library/LaunchAgents/com.user.kbtrack.plist"
 echo "   3. Check status: kbtrack status"
