@@ -1,0 +1,12 @@
+creation_rules:
+  # Environment variables and API keys
+  - path_regex: zsh/secrets\.env$
+    age: age1pu9eskg36npprtn74vwe8hd0m4spyxck6hgfx93u8nxhr2pagagsmwv7d2
+  
+  # SSH private keys
+  - path_regex: ssh/\.ssh/id_ed25519\.encrypted$
+    age: age1pu9eskg36npprtn74vwe8hd0m4spyxck6hgfx93u8nxhr2pagagsmwv7d2
+  
+  # Files with locked_ prefix
+  - path_regex: locked_.*
+    age: age1pu9eskg36npprtn74vwe8hd0m4spyxck6hgfx93u8nxhr2pagagsmwv7d2

@@ -7,9 +7,7 @@
 [user]
 	name = AVGVSTVS96
 	email = 122117267+AVGVSTVS96@users.noreply.github.com
-
-[include]
-  path = ~/.config/git/local.config
+	signingkey = ~/.ssh/id_ed25519
 
 [gpg]
 	format = ssh
