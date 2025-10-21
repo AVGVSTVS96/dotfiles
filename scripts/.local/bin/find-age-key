@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Auto-discover age encryption key from USB drives or iCloud
+# Usage: find-age-key
+
+set -e
+
+TARGET_DIR=~/.config/sops/age
+TARGET_FILE="$TARGET_DIR/key.txt"
+
+echo "🔍 Searching for age encryption key..."
+
+# Array to store found keys
+declare -a found_keys=()
+
+# Search USB drives
+for volume in /Volumes/*; do
+  [ -d "$volume" ] || continue
+  
+  # Look for common key filenames
+  for keyfile in "$volume/age-key.txt" "$volume/.age-key" "$volume/key.txt"; do
+    if [ -f "$keyfile" ] && grep -q "^AGE-SECRET-KEY-" "$keyfile" 2>/dev/null; then
+      found_keys+=("$keyfile")
+    fi
+  done
+done
+
+# Search iCloud (standard Mac location)
+icloud_base="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
+if [ -d "$icloud_base" ]; then
+  for pattern in "Secret*" "Backup*" ".secret*"; do
+    while IFS= read -r -d '' keyfile; do
+      if grep -q "^AGE-SECRET-KEY-" "$keyfile" 2>/dev/null; then
+        found_keys+=("$keyfile")
+      fi
+    done < <(find "$icloud_base" -type f \( -name "age-key.txt" -o -name ".age-key" -o -name "key.txt" \) -path "*/$pattern/*" -print0 2>/dev/null)
+  done
+fi
+
+# Search iCloud shortcut if it exists
+if [ -L ~/icloud ] || [ -d ~/icloud ]; then
+  for pattern in "Secret*" "Backup*" "Documents"; do
+    while IFS= read -r -d '' keyfile; do
+      if grep -q "^AGE-SECRET-KEY-" "$keyfile" 2>/dev/null; then
+        # Avoid duplicates
+        duplicate=false
+        for existing in "${found_keys[@]}"; do
+          if [ "$(readlink -f "$keyfile" 2>/dev/null || echo "$keyfile")" = "$(readlink -f "$existing" 2>/dev/null || echo "$existing")" ]; then
+            duplicate=true
+            break
+          fi
+        done
+        [ "$duplicate" = false ] && found_keys+=("$keyfile")
+      fi
+    done < <(find ~/icloud -type f \( -name "age-key.txt" -o -name ".age-key" -o -name "key.txt" \) -path "*/$pattern/*" -print0 2>/dev/null)
+  done
+fi
+
+# Check results
+if [ ${#found_keys[@]} -eq 0 ]; then
+  echo "❌ No age keys found"
+  echo ""
+  echo "Searched locations:"
+  echo "  • USB drives: /Volumes/*/age-key.txt"
+  echo "  • iCloud: ~/Library/Mobile Documents/com~apple~CloudDocs/Secret*/age-key.txt"
+  echo "  • iCloud shortcut: ~/icloud/Documents/Secret*/age-key.txt"
+  echo ""
+  echo "Please manually copy your age key to: $TARGET_FILE"
+  exit 1
+fi
+
+# If key already exists, ask user
+if [ -f "$TARGET_FILE" ]; then
+  echo "⚠️  Age key already exists at $TARGET_FILE"
+  read -p "Replace it? (y/N): " -n 1 -r
+  echo
+  [[ ! $REPLY =~ ^[Yy]$ ]] && exit 0
+fi
+
+# Select key if multiple found
+selected_key=""
+if [ ${#found_keys[@]} -eq 1 ]; then
+  selected_key="${found_keys[0]}"
+  echo "✓ Found key: $selected_key"
+  read -p "Use this key? (Y/n): " -n 1 -r
+  echo
+  [[ $REPLY =~ ^[Nn]$ ]] && exit 0
+else
+  echo "Found ${#found_keys[@]} age keys:"
+  echo ""
+  for i in "${!found_keys[@]}"; do
+    echo "  $((i+1))) ${found_keys[$i]}"
+  done
+  echo ""
+  read -r -p "Select key (1-${#found_keys[@]}): " selection
+  
+  if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le ${#found_keys[@]} ]; then
+    selected_key="${found_keys[$((selection-1))]}"
+  else
+    echo "❌ Invalid selection"
+    exit 1
+  fi
+fi
+
+# Copy key to target location
+mkdir -p "$TARGET_DIR"
+cp "$selected_key" "$TARGET_FILE"
+chmod 600 "$TARGET_FILE"
+
+echo ""
+echo "✅ Age key installed successfully!"
+echo "   Source: $selected_key"
+echo "   Target: $TARGET_FILE"
+echo ""
+echo "You can now run: restore-secrets"
