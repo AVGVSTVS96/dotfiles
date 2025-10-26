@@ -1,0 +1,258 @@
+#!/usr/bin/env bash
+
+# macOS Cache Cleaner
+# Automated script to safely clean system caches and temporary files
+# Author: Generated for Gabriel
+# Version: 1.0
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+LOG_FILE="$HOME/.cache-cleaner.log"
+DRY_RUN=false
+VERBOSE=false
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --dry-run)
+    DRY_RUN=true
+    shift
+    ;;
+  --verbose | -v)
+    VERBOSE=true
+    shift
+    ;;
+  --help | -h)
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  --dry-run    Show what would be deleted without actually deleting"
+    echo "  --verbose    Show detailed output"
+    echo "  --help       Show this help message"
+    exit 0
+    ;;
+  *)
+    echo "Unknown option $1"
+    exit 1
+    ;;
+  esac
+done
+
+# Logging function
+log() {
+  echo -e "$1" | tee -a "$LOG_FILE"
+}
+
+# Function to get directory size safely
+get_size() {
+  if [ -d "$1" ]; then
+    du -sh "$1" 2>/dev/null | cut -f1 || echo "0B"
+  else
+    echo "0B"
+  fi
+}
+
+# Function to safely remove directory/file
+safe_remove() {
+  local path="$1"
+  local description="$2"
+
+  if [ ! -e "$path" ]; then
+    return 0
+  fi
+
+  local size=$(get_size "$path")
+
+  if [ "$DRY_RUN" = true ]; then
+    log "${YELLOW}[DRY RUN]${NC} Would remove $description: $path ($size)"
+  else
+    if [ "$VERBOSE" = true ]; then
+      log "${BLUE}[INFO]${NC} Removing $description: $path ($size)"
+    fi
+    rm -rf "$path" 2>/dev/null || {
+      log "${YELLOW}[WARN]${NC} Could not remove $path (permission denied or in use)"
+    }
+  fi
+}
+
+# Function to clean browser caches
+clean_browser_caches() {
+  log "${GREEN}[BROWSER]${NC} Cleaning browser caches..."
+
+  # Brave Browser
+  safe_remove "$HOME/Library/Caches/BraveSoftware" "Brave browser cache"
+  safe_remove "$HOME/Library/Caches/com.brave.Browser" "Brave browser system cache"
+
+  # Chrome
+  safe_remove "$HOME/Library/Caches/com.google.Chrome" "Chrome browser cache"
+  safe_remove "$HOME/Library/Caches/com.google.GoogleUpdater" "Google Updater cache"
+
+  # Safari (user-accessible parts only)
+  safe_remove "$HOME/Library/Caches/com.apple.WebKit.Networking" "WebKit networking cache"
+
+  # Firefox
+  safe_remove "$HOME/Library/Caches/Firefox" "Firefox cache"
+
+  # Clean browser profile caches
+  find "$HOME/Library/Application Support/BraveSoftware" -name "Cache" -o -name "Code Cache" -o -name "GPUCache" 2>/dev/null | while read -r cache_dir; do
+    safe_remove "$cache_dir" "Browser profile cache"
+  done || true
+}
+
+# Function to clean development tools
+clean_development_caches() {
+  log "${GREEN}[DEV TOOLS]${NC} Cleaning development caches..."
+
+  # Node.js and package managers
+  safe_remove "$HOME/Library/Caches/pnpm" "pnpm cache"
+  safe_remove "$HOME/.npm/_cacache" "npm cache"
+  safe_remove "$HOME/.yarn/cache" "Yarn cache"
+  safe_remove "$HOME/Library/Caches/Yarn" "Yarn system cache"
+
+  # Python/pip
+  safe_remove "$HOME/Library/Caches/pip" "pip cache"
+  safe_remove "$HOME/.conda" "Conda configuration"
+  safe_remove "$HOME/.continuum" "Anaconda remnants"
+
+  # TypeScript
+  safe_remove "$HOME/Library/Caches/typescript" "TypeScript cache"
+
+  # Electron apps
+  safe_remove "$HOME/Library/Caches/electron" "Electron cache"
+  safe_remove "$HOME/Library/Caches/ms-playwright" "Playwright browser cache"
+
+  # Other dev tools
+  safe_remove "$HOME/.gradle/caches" "Gradle cache"
+  safe_remove "$HOME/Library/Caches/composer" "Composer cache"
+  safe_remove "$HOME/Library/Caches/node-gyp" "Node.js gyp cache"
+  safe_remove "$HOME/Library/Caches/js-v8flags" "JavaScript V8 flags cache"
+}
+
+# Function to clean application caches
+clean_application_caches() {
+  log "${GREEN}[APPS]${NC} Cleaning application caches..."
+
+  # Communication apps
+  safe_remove "$HOME/Library/Caches/com.tinyspeck.slackmacgap" "Slack cache"
+  safe_remove "$HOME/Library/Caches/us.zoom.xos" "Zoom cache"
+  safe_remove "$HOME/Library/Caches/us.zoom.updater" "Zoom updater cache"
+
+  # Creative/Productivity apps
+  safe_remove "$HOME/Library/Caches/com.adobe.acc.AdobeCreativeCloud" "Adobe Creative Cloud cache"
+  safe_remove "$HOME/Library/Caches/com.adobe.AdobeCRDaemon" "Adobe daemon cache"
+  safe_remove "$HOME/Library/Application Support/Adobe" "Adobe application support"
+
+  # Git clients
+  safe_remove "$HOME/Library/Caches/com.axosoft.gitkraken" "GitKraken cache"
+  safe_remove "$HOME/Library/Caches/com.github.GitHubClient" "GitHub Desktop cache"
+
+  # System utilities
+  safe_remove "$HOME/Library/Caches/com.apple.helpd" "Apple Help cache"
+  safe_remove "$HOME/Library/Caches/SentryCrash" "Crash report cache"
+  safe_remove "$HOME/Library/Caches/TemporaryItems" "Temporary items cache"
+}
+
+# Function to clean system caches
+clean_system_caches() {
+  log "${GREEN}[SYSTEM]${NC} Cleaning system caches..."
+
+  # Clean temp directories (files older than 1 day)
+  find /tmp -type f -atime +1 2>/dev/null | while read -r temp_file; do
+    safe_remove "$temp_file" "old temp file"
+  done || true
+
+  # Clean user logs older than 7 days
+  find "$HOME/Library/Logs" -name "*.log" -mtime +7 2>/dev/null | while read -r log_file; do
+    safe_remove "$log_file" "old log file"
+  done || true
+
+  # Clean Downloads of old installer files
+  find "$HOME/Downloads" -name "*.dmg" -o -name "*.pkg" -mtime +30 2>/dev/null | while read -r installer; do
+    safe_remove "$installer" "old installer file"
+  done || true
+
+  # System memory purge (if not dry run)
+  if [ "$DRY_RUN" = false ]; then
+    log "${BLUE}[INFO]${NC} Purging system memory cache..."
+    sudo purge 2>/dev/null || log "${YELLOW}[WARN]${NC} Could not purge system memory (requires sudo)"
+  fi
+}
+
+# Function to clean leftover app data
+clean_leftover_data() {
+  log "${GREEN}[LEFTOVERS]${NC} Cleaning leftover application data..."
+
+  # Common leftover directories
+  local leftover_patterns=(
+    "*wondershare*"
+    "*bytecoin*"
+    "*SubDrFone*"
+    "*android*"
+    "*anaconda*"
+    "*miniconda*"
+  )
+
+  for pattern in "${leftover_patterns[@]}"; do
+    find "$HOME/Library/Application Support" -name "$pattern" -maxdepth 1 2>/dev/null | while read -r leftover; do
+      safe_remove "$leftover" "leftover application data"
+    done || true
+
+    find "$HOME/Library/Preferences" -name "$pattern.plist" 2>/dev/null | while read -r pref; do
+      safe_remove "$pref" "leftover preference file"
+    done || true
+  done
+
+  # Clean saved application states for uninstalled apps
+  find "$HOME/Library/Saved Application State" -name "*.savedState" -mtime +30 2>/dev/null | while read -r state; do
+    safe_remove "$state" "old saved application state"
+  done || true
+}
+
+# Main cleanup function
+main() {
+  local start_time=$(date)
+  local start_space=$(df -h / | tail -1 | awk '{print $4}')
+
+  log "================================="
+  log "${GREEN}macOS Cache Cleaner${NC}"
+  log "Started: $start_time"
+  log "Available space before: $start_space"
+  if [ "$DRY_RUN" = true ]; then
+    log "${YELLOW}Running in DRY RUN mode${NC}"
+  fi
+  log "================================="
+
+  # Check if we're running with appropriate permissions
+  if [ ! -w "$HOME/Library/Caches" ]; then
+    log "${RED}[ERROR]${NC} Cannot write to caches directory. Please check permissions."
+    exit 1
+  fi
+
+  # Run cleanup functions
+  clean_browser_caches
+  clean_development_caches
+  clean_application_caches
+  clean_system_caches
+  clean_leftover_data
+
+  # Report results
+  local end_time=$(date)
+  local end_space=$(df -h / | tail -1 | awk '{print $4}')
+
+  log "================================="
+  log "${GREEN}Cleanup completed!${NC}"
+  log "Finished: $end_time"
+  log "Available space after: $end_space"
+  log "Log saved to: $LOG_FILE"
+  log "================================="
+}
+
+# Run main function
+main "$@"
