@@ -1,170 +1,150 @@
 #!/usr/bin/env swift
 import Foundation
 import CoreBluetooth
+import IOBluetooth
 
-// MARK: - Shared formatters
+// MARK: - Configuration
+let KEYBOARD_ADDRESS = "FC:00:72:C2:AC:AF"
+let KEYBOARD_NAME = "NuPhy Air75 V3-1"
+let BATTERY_SERVICE_UUID = CBUUID(string: "180F")
+let BATTERY_LEVEL_UUID = CBUUID(string: "2A19")
+let START_THRESHOLD = 85
+let STOP_THRESHOLD = 5
+let OFFLINE_DROP_TOLERANCE_PERCENT = 5
+let CHARGE_TOLERANCE_PERCENT = 7
+let CONNECTION_TIMEOUT: TimeInterval = 10.0
+let POLL_INTERVAL_SECONDS = 60
+let MAX_SAMPLE_INTERVAL_SECONDS = Int.max
+let ACCRUAL_CONFIDENCE_THRESHOLD = 0.5
+let FAILURE_CONFIDENCE_GRACE = 5
+let DEFAULT_WATCH_INTERVAL: TimeInterval = 15
+let SAMPLE_CONFIDENCE_THRESHOLD = 0.5
+
 let isoFormatter: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return formatter
 }()
 
-// MARK: - Paths
 let dataDir = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("Library/Application Support/kbtrack")
-let currentFile = dataDir.appendingPathComponent("current.json")
-let sessionsFile = dataDir.appendingPathComponent("sessions.json")
+let sessionFile = dataDir.appendingPathComponent("session.json")
+let historyFile = dataDir.appendingPathComponent("sessions.json")
 let logFile = dataDir.appendingPathComponent("daemon.log")
+let legacyCurrentFile = dataDir.appendingPathComponent("current.json")
 let samplesFile = dataDir.appendingPathComponent("samples.jsonl")
 
-// MARK: - Lock helpers
-extension NSLock {
-    @discardableResult
-    func withLock<T>(_ body: () -> T) -> T {
-        lock()
-        defer { unlock() }
-        return body()
-    }
-}
-
-// MARK: - Configuration
-struct TrackerConfig {
-    let keyboardAddress: String
-    let keyboardNameHints: [String]
-    let startThreshold: Int
-    let stopThreshold: Int
-    let tolerancePercent: Int
-    let connectionTimeout: TimeInterval
-    let failureGraceCycles: Int
-    let smoothingWindow: Int
-    let samplesRetention: Int
-    let verboseSampleCount: Int
-
-    static func loadFromEnvironment() -> TrackerConfig {
-        let env = ProcessInfo.processInfo.environment
-        let address = env["KBTRACK_KEYBOARD_ADDRESS"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "FC:00:72:C2:AC:AF"
-        let hintsRaw = env["KBTRACK_KEYBOARD_HINTS"] ?? "NuPhy,Air75"
-        let hints = hintsRaw
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        return TrackerConfig(
-            keyboardAddress: address,
-            keyboardNameHints: hints.isEmpty ? ["NuPhy", "Air75"] : hints,
-            startThreshold: envInt(env, name: "KBTRACK_START_THRESHOLD", defaultValue: 80),
-            stopThreshold: envInt(env, name: "KBTRACK_STOP_THRESHOLD", defaultValue: 5),
-            tolerancePercent: envInt(env, name: "KBTRACK_TOLERANCE_PERCENT", defaultValue: 5),
-            connectionTimeout: envDouble(env, name: "KBTRACK_CONNECTION_TIMEOUT", defaultValue: 10.0),
-            failureGraceCycles: envInt(env, name: "KBTRACK_FAILURE_GRACE_CYCLES", defaultValue: 10),
-            smoothingWindow: envInt(env, name: "KBTRACK_SMOOTHING_WINDOW", defaultValue: 120),
-            samplesRetention: envInt(env, name: "KBTRACK_SAMPLES_RETENTION", defaultValue: 5000),
-            verboseSampleCount: envInt(env, name: "KBTRACK_VERBOSE_SAMPLE_COUNT", defaultValue: 10)
-        )
-    }
-
-    func overriding(_ overrides: ConfigOverrides) -> TrackerConfig {
-        TrackerConfig(
-            keyboardAddress: keyboardAddress,
-            keyboardNameHints: keyboardNameHints,
-            startThreshold: overrides.startThreshold ?? startThreshold,
-            stopThreshold: overrides.stopThreshold ?? stopThreshold,
-            tolerancePercent: overrides.tolerancePercent ?? tolerancePercent,
-            connectionTimeout: overrides.connectionTimeout ?? connectionTimeout,
-            failureGraceCycles: overrides.failureGraceCycles ?? failureGraceCycles,
-            smoothingWindow: overrides.smoothingWindow ?? smoothingWindow,
-            samplesRetention: overrides.samplesRetention ?? samplesRetention,
-            verboseSampleCount: overrides.verboseSampleCount ?? verboseSampleCount
-        )
-    }
-}
-
-struct ConfigOverrides {
-    var startThreshold: Int?
-    var stopThreshold: Int?
-    var tolerancePercent: Int?
-    var connectionTimeout: TimeInterval?
-    var failureGraceCycles: Int?
-    var smoothingWindow: Int?
-    var samplesRetention: Int?
-    var verboseSampleCount: Int?
-}
-
-private func envInt(_ env: [String: String], name: String, defaultValue: Int) -> Int {
-    guard let raw = env[name]?.trimmingCharacters(in: .whitespacesAndNewlines), let value = Int(raw) else {
-        return defaultValue
-    }
-    return value
-}
-
-private func envDouble(_ env: [String: String], name: String, defaultValue: TimeInterval) -> TimeInterval {
-    guard let raw = env[name]?.trimmingCharacters(in: .whitespacesAndNewlines), let value = Double(raw) else {
-        return defaultValue
-    }
-    return value
-}
-
-let baseConfig = TrackerConfig.loadFromEnvironment()
-
-// MARK: - Bluetooth UUIDs
-let batteryServiceUUID = CBUUID(string: "180F")
-let batteryLevelUUID = CBUUID(string: "2A19")
-
 // MARK: - Data Models
-struct SessionState: Codable {
-    var status: String
+enum TrackingStatus: String, Codable {
+    case idle
+    case tracking
+    case paused
+    case blocked
+}
+
+struct LiveSession: Codable {
+    var status: TrackingStatus
     var keyboardAddress: String
-    var batteryStart: Int
-    var batteryPrevious: Int
-    var batteryCurrent: Int
-    var connected: Bool
-    var accumulatedSeconds: Int
     var startedAt: String
-    var consecutiveFailures: Int
+    var batteryStart: Int
+    var lastBattery: Int
+    var lowestBattery: Int
+    var accumulatedSeconds: Int
+    var samples: Int
+    var pendingChargeGain: Int
+    var consecutiveIncreaseSamples: Int
     var lastSampleAt: String?
-    var lastValidSampleAt: String?
+    var lastConnectedAt: String?
+    var isConnected: Bool
+    var consecutiveUnavailableSamples: Int
+    var lastIssue: SessionIssue?
 
-    enum CodingKeys: String, CodingKey {
-        case status
-        case keyboardAddress
-        case batteryStart
-        case batteryPrevious
-        case batteryCurrent
-        case connected
-        case accumulatedSeconds
-        case startedAt
-        case consecutiveFailures
-        case lastSampleAt
-        case lastValidSampleAt
-    }
-
-    init(status: String, keyboardAddress: String, batteryStart: Int, batteryPrevious: Int, batteryCurrent: Int, connected: Bool, accumulatedSeconds: Int, startedAt: String, consecutiveFailures: Int = 0, lastSampleAt: String? = nil, lastValidSampleAt: String? = nil) {
+    init(status: TrackingStatus,
+         keyboardAddress: String,
+         startedAt: String,
+         batteryStart: Int,
+         lastBattery: Int,
+         lowestBattery: Int,
+         accumulatedSeconds: Int,
+         samples: Int,
+         pendingChargeGain: Int,
+         consecutiveIncreaseSamples: Int,
+         lastSampleAt: String?,
+         lastConnectedAt: String?,
+         isConnected: Bool,
+         consecutiveUnavailableSamples: Int = 0,
+         lastIssue: SessionIssue? = nil) {
         self.status = status
         self.keyboardAddress = keyboardAddress
-        self.batteryStart = batteryStart
-        self.batteryPrevious = batteryPrevious
-        self.batteryCurrent = batteryCurrent
-        self.connected = connected
-        self.accumulatedSeconds = accumulatedSeconds
         self.startedAt = startedAt
-        self.consecutiveFailures = consecutiveFailures
+        self.batteryStart = batteryStart
+        self.lastBattery = lastBattery
+        self.lowestBattery = lowestBattery
+        self.accumulatedSeconds = accumulatedSeconds
+        self.samples = samples
+        self.pendingChargeGain = pendingChargeGain
+        self.consecutiveIncreaseSamples = consecutiveIncreaseSamples
         self.lastSampleAt = lastSampleAt
-        self.lastValidSampleAt = lastValidSampleAt
+        self.lastConnectedAt = lastConnectedAt
+        self.isConnected = isConnected
+        self.consecutiveUnavailableSamples = consecutiveUnavailableSamples
+        self.lastIssue = lastIssue
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case status
+        case keyboardAddress
+        case startedAt
+        case batteryStart
+        case lastBattery
+        case lowestBattery
+        case accumulatedSeconds
+        case samples
+        case pendingChargeGain
+        case consecutiveIncreaseSamples
+        case lastSampleAt
+        case lastConnectedAt
+        case isConnected
+        case consecutiveUnavailableSamples
+        case lastIssue
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        status = try container.decode(String.self, forKey: .status)
-        keyboardAddress = try container.decodeIfPresent(String.self, forKey: .keyboardAddress) ?? ""
-        batteryStart = try container.decode(Int.self, forKey: .batteryStart)
-        batteryPrevious = try container.decode(Int.self, forKey: .batteryPrevious)
-        batteryCurrent = try container.decode(Int.self, forKey: .batteryCurrent)
-        connected = try container.decode(Bool.self, forKey: .connected)
-        accumulatedSeconds = try container.decode(Int.self, forKey: .accumulatedSeconds)
+        status = try container.decode(TrackingStatus.self, forKey: .status)
+        keyboardAddress = try container.decode(String.self, forKey: .keyboardAddress)
         startedAt = try container.decode(String.self, forKey: .startedAt)
-        consecutiveFailures = try container.decodeIfPresent(Int.self, forKey: .consecutiveFailures) ?? 0
+        batteryStart = try container.decode(Int.self, forKey: .batteryStart)
+        lastBattery = try container.decode(Int.self, forKey: .lastBattery)
+        lowestBattery = try container.decode(Int.self, forKey: .lowestBattery)
+        accumulatedSeconds = try container.decode(Int.self, forKey: .accumulatedSeconds)
+        samples = try container.decode(Int.self, forKey: .samples)
+        pendingChargeGain = try container.decode(Int.self, forKey: .pendingChargeGain)
+        consecutiveIncreaseSamples = try container.decode(Int.self, forKey: .consecutiveIncreaseSamples)
         lastSampleAt = try container.decodeIfPresent(String.self, forKey: .lastSampleAt)
-        lastValidSampleAt = try container.decodeIfPresent(String.self, forKey: .lastValidSampleAt)
+        lastConnectedAt = try container.decodeIfPresent(String.self, forKey: .lastConnectedAt)
+        isConnected = try container.decodeIfPresent(Bool.self, forKey: .isConnected) ?? false
+        consecutiveUnavailableSamples = try container.decodeIfPresent(Int.self, forKey: .consecutiveUnavailableSamples) ?? 0
+        lastIssue = try container.decodeIfPresent(SessionIssue.self, forKey: .lastIssue)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(status, forKey: .status)
+        try container.encode(keyboardAddress, forKey: .keyboardAddress)
+        try container.encode(startedAt, forKey: .startedAt)
+        try container.encode(batteryStart, forKey: .batteryStart)
+        try container.encode(lastBattery, forKey: .lastBattery)
+        try container.encode(lowestBattery, forKey: .lowestBattery)
+        try container.encode(accumulatedSeconds, forKey: .accumulatedSeconds)
+        try container.encode(samples, forKey: .samples)
+        try container.encode(pendingChargeGain, forKey: .pendingChargeGain)
+        try container.encode(consecutiveIncreaseSamples, forKey: .consecutiveIncreaseSamples)
+        try container.encodeIfPresent(lastSampleAt, forKey: .lastSampleAt)
+        try container.encodeIfPresent(lastConnectedAt, forKey: .lastConnectedAt)
+        try container.encode(isConnected, forKey: .isConnected)
+        try container.encode(consecutiveUnavailableSamples, forKey: .consecutiveUnavailableSamples)
+        try container.encodeIfPresent(lastIssue, forKey: .lastIssue)
     }
 }
 
@@ -177,152 +157,204 @@ struct CompletedSession: Codable {
     let batteryEnd: Int
     let totalSeconds: Int
     let formatted: String
+    let samples: Int?
+    let lowestBattery: Int?
 }
 
 struct SessionsHistory: Codable {
     var sessions: [CompletedSession]
 }
 
-struct Sample: Codable {
-    let timestamp: String
-    let battery: Int
-    let connected: Bool
-    let valid: Bool
+enum SessionIssue: String, Codable {
+    case bluetoothUnauthorized
+    case bluetoothPoweredOff
+    case bluetoothUnavailable
+    case connectionTimeout
+    case peripheralNotFound
+    case unknown
+}
+
+private struct LegacySessionState: Codable {
+    var status: String
+    var keyboardAddress: String
+    var batteryStart: Int
+    var batteryPrevious: Int
+    var batteryCurrent: Int
+    var connected: Bool
+    var accumulatedSeconds: Int
+    var startedAt: String
+    var lowestBattery: Int?
+    var pendingChargeGain: Int?
 }
 
 // MARK: - Bluetooth Manager
+enum MeasurementFailure: String {
+    case peripheralNotFound
+    case bluetoothUnauthorized
+    case bluetoothPoweredOff
+    case timeout
+    case bluetoothUnavailable
+    case unknown
+
+    var sessionIssue: SessionIssue {
+        switch self {
+        case .peripheralNotFound:
+            return .peripheralNotFound
+        case .bluetoothUnauthorized:
+            return .bluetoothUnauthorized
+        case .bluetoothPoweredOff:
+            return .bluetoothPoweredOff
+        case .timeout:
+            return .connectionTimeout
+        case .bluetoothUnavailable:
+            return .bluetoothUnavailable
+        case .unknown:
+            return .unknown
+        }
+    }
+}
+
+enum MeasurementResult {
+    case success(batteryPercent: Int)
+    case failure(MeasurementFailure)
+}
+
+enum ConnectivitySource: String, Codable {
+    case coreBluetooth
+    case ioBluetooth
+    case systemProfiler
+}
+
+struct ConnectivityAssessment {
+    let isConnected: Bool
+    let confidence: Double
+    let sources: [ConnectivitySource]
+    let issue: SessionIssue?
+}
+
+struct ConnectivityProbe {
+    let batteryPercent: Int?
+    let assessment: ConnectivityAssessment
+    let failure: MeasurementFailure?
+}
+
+struct SampleRecord: Codable {
+    let timestamp: String
+    let battery: Int?
+    let connected: Bool
+    let confidence: Double
+    let deltaSeconds: Int
+    let sources: [ConnectivitySource]
+    let issue: SessionIssue?
+    let status: TrackingStatus
+}
+
 class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
     private var centralManager: CBCentralManager!
     private var peripheral: CBPeripheral?
     private var batteryCharacteristic: CBCharacteristic?
-
-    private var continuation: CheckedContinuation<(batteryPercent: Int, isConnected: Bool), Error>?
+    
+    private var continuation: CheckedContinuation<MeasurementResult, Never>?
     private var timeoutTask: Task<Void, Never>?
-    private let lock = NSLock()
     private var isCompleted: Bool = false
-
-    private let connectionTimeout: TimeInterval
-    private let nameHints: [String]
-
-    init(connectionTimeout: TimeInterval, nameHints: [String]) {
-        self.connectionTimeout = connectionTimeout
-        self.nameHints = nameHints
+    
+    override init() {
         super.init()
-        centralManager = CBCentralManager(delegate: self, queue: nil)
+        centralManager = CBCentralManager(delegate: self, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: true])
     }
 
-    private func completeOnce(with result: (batteryPercent: Int, isConnected: Bool)) {
-        guard let cont = lock.withLock({ () -> CheckedContinuation<(batteryPercent: Int, isConnected: Bool), Error>? in
-            guard !isCompleted, let cont = continuation else {
-                return nil
-            }
-            isCompleted = true
-            continuation = nil
-            timeoutTask?.cancel()
-            timeoutTask = nil
-            return cont
-        }) else {
-            return
-        }
-
-        cont.resume(returning: result)
-    }
-
-    func readBattery() async throws -> (batteryPercent: Int, isConnected: Bool) {
+    func readBattery() async -> MeasurementResult {
         isCompleted = false
-
-        return try await withCheckedThrowingContinuation { continuation in
+        return await withCheckedContinuation { continuation in
             self.continuation = continuation
 
             timeoutTask = Task {
-                try? await Task.sleep(nanoseconds: UInt64(self.connectionTimeout * 1_000_000_000))
-
-                let shouldComplete = self.lock.withLock { !self.isCompleted }
-
-                if shouldComplete {
-                    log("Connection timeout reached")
-                    self.completeOnce(with: (batteryPercent: 0, isConnected: false))
-                    self.cleanup()
-                } else {
-                    log("Timeout fired but already completed")
+                try? await Task.sleep(nanoseconds: UInt64(CONNECTION_TIMEOUT * 1_000_000_000))
+                if !self.isCompleted, self.continuation != nil {
+                    log("Connection timeout")
+                    self.complete(with: .failure(.timeout))
                 }
             }
         }
     }
     
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        guard central.state == .poweredOn else {
-            log("Bluetooth not powered on: \(central.state.rawValue)")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
-            return
-        }
-        
-        // Try to retrieve previously connected peripherals with Battery Service
-        let peripherals = centralManager.retrieveConnectedPeripherals(withServices: [batteryServiceUUID])
-
-        let nuphyPeripheral = peripherals.first { peripheral in
-            guard let name = peripheral.name?.lowercased() else { return false }
-            return nameHints.contains { hint in name.contains(hint.lowercased()) }
-        }
-        
-        if let peripheral = nuphyPeripheral {
+        switch central.state {
+        case .poweredOn:
+            let peripherals = centralManager.retrieveConnectedPeripherals(withServices: [BATTERY_SERVICE_UUID])
+            let nuphyPeripheral = peripherals.first { peripheral in
+                peripheral.name?.contains("NuPhy") ?? false || peripheral.name?.contains("Air75") ?? false
+            }
+            
+            guard let peripheral = nuphyPeripheral else {
+                log("NuPhy keyboard not connected (found \(peripherals.count) other devices)")
+                complete(with: .failure(.peripheralNotFound))
+                return
+            }
+            
             log("Found NuPhy keyboard: \(peripheral.name ?? "Unknown")")
             self.peripheral = peripheral
             peripheral.delegate = self
             
-            // Check if already connected
             if peripheral.state == .connected {
-                peripheral.discoverServices([batteryServiceUUID])
+                peripheral.discoverServices([BATTERY_SERVICE_UUID])
             } else {
                 centralManager.connect(peripheral)
             }
-        } else {
-            log("NuPhy keyboard not connected (found \(peripherals.count) other devices)")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
+        case .unauthorized:
+            log("Bluetooth unauthorized (state: \(central.state.rawValue))")
+            complete(with: .failure(.bluetoothUnauthorized))
+        case .poweredOff:
+            log("Bluetooth powered off")
+            complete(with: .failure(.bluetoothPoweredOff))
+        case .unsupported:
+            log("Bluetooth unsupported on this device")
+            complete(with: .failure(.bluetoothUnavailable))
+        case .resetting, .unknown:
+            log("Bluetooth state transitioning (state: \(central.state.rawValue))")
+            // Wait for next state update; timeout will handle if it stalls.
+        @unknown default:
+            log("Bluetooth state unknown: \(central.state.rawValue)")
+            complete(with: .failure(.unknown))
         }
     }
     
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         log("Connected to peripheral")
-        peripheral.discoverServices([batteryServiceUUID])
+        peripheral.discoverServices([BATTERY_SERVICE_UUID])
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         log("Failed to connect: \(error?.localizedDescription ?? "unknown")")
-        completeOnce(with: (batteryPercent: 0, isConnected: false))
-        cleanup()
+        complete(with: .failure(.peripheralNotFound))
     }
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
             log("Error discovering services: \(error)")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
-            cleanup()
+            complete(with: .failure(.unknown))
             return
         }
         
-        guard let service = peripheral.services?.first(where: { $0.uuid == batteryServiceUUID }) else {
+        guard let service = peripheral.services?.first(where: { $0.uuid == BATTERY_SERVICE_UUID }) else {
             log("Battery service not found")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
-            cleanup()
+            complete(with: .failure(.peripheralNotFound))
             return
         }
         
-        peripheral.discoverCharacteristics([batteryLevelUUID], for: service)
+        peripheral.discoverCharacteristics([BATTERY_LEVEL_UUID], for: service)
     }
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         if let error = error {
             log("Error discovering characteristics: \(error)")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
-            cleanup()
+            complete(with: .failure(.unknown))
             return
         }
         
-        guard let characteristic = service.characteristics?.first(where: { $0.uuid == batteryLevelUUID }) else {
+        guard let characteristic = service.characteristics?.first(where: { $0.uuid == BATTERY_LEVEL_UUID }) else {
             log("Battery characteristic not found")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
-            cleanup()
+            complete(with: .failure(.peripheralNotFound))
             return
         }
         
@@ -331,28 +363,28 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     }
     
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        log("didUpdateValueFor called")
+        log("didUpdateValueFor called, isCompleted: \(isCompleted)")
         
+        guard !isCompleted else {
+            log("Already completed by timeout, ignoring battery read")
+            return
+        }
+
         if let error = error {
             log("Error reading value: \(error)")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
-            cleanup()
+            complete(with: .failure(.unknown))
             return
         }
         
         guard let data = characteristic.value, !data.isEmpty else {
             log("No battery data")
-            completeOnce(with: (batteryPercent: 0, isConnected: false))
-            cleanup()
+            complete(with: .failure(.unknown))
             return
         }
         
         let batteryLevel = Int(data[0])
         log("Battery level: \(batteryLevel)%")
-        
-        completeOnce(with: (batteryPercent: batteryLevel, isConnected: true))
-        cleanup()
-        log("Battery read completed")
+        complete(with: .success(batteryPercent: batteryLevel))
     }
     
     private func cleanup() {
@@ -360,25 +392,152 @@ class BluetoothBatteryReader: NSObject, CBCentralManagerDelegate, CBPeripheralDe
             centralManager.cancelPeripheralConnection(peripheral)
         }
     }
+
+    private func complete(with result: MeasurementResult) {
+        guard !isCompleted else { return }
+        isCompleted = true
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        if let continuation {
+            continuation.resume(returning: result)
+            self.continuation = nil
+        }
+        cleanup()
+    }
+}
+
+class ConnectivityProvider {
+    private let ioAddress = KEYBOARD_ADDRESS.replacingOccurrences(of: ":", with: "-")
+
+    func evaluate() async -> ConnectivityProbe {
+        let reader = BluetoothBatteryReader()
+        let cbResult = await reader.readBattery()
+
+        switch cbResult {
+        case .success(let battery):
+            let assessment = ConnectivityAssessment(
+                isConnected: true,
+                confidence: 1.0,
+                sources: [.coreBluetooth],
+                issue: nil
+            )
+            return ConnectivityProbe(batteryPercent: battery, assessment: assessment, failure: nil)
+
+        case .failure(let failure):
+            var sources: [ConnectivitySource] = [.coreBluetooth]
+            var confidence: Double = 0.0
+            var connected = false
+
+            if let ioConnected = queryIOBluetooth() {
+                sources.append(.ioBluetooth)
+                if ioConnected {
+                    connected = true
+                    confidence = max(confidence, 0.8)
+                }
+            }
+
+            if !connected, let profilerConnected = querySystemProfiler() {
+                sources.append(.systemProfiler)
+                if profilerConnected {
+                    connected = true
+                    confidence = max(confidence, 0.6)
+                }
+            }
+
+            let uniqueSources = Array(Set(sources)).sorted { $0.rawValue < $1.rawValue }
+            let assessment = ConnectivityAssessment(
+                isConnected: connected,
+                confidence: confidence,
+                sources: uniqueSources,
+                issue: failure.sessionIssue
+            )
+            return ConnectivityProbe(batteryPercent: nil, assessment: assessment, failure: failure)
+        }
+    }
+
+    private func queryIOBluetooth() -> Bool? {
+        guard let device = IOBluetoothDevice(addressString: ioAddress) else {
+            return nil
+        }
+        return device.isConnected()
+    }
+
+    private func querySystemProfiler() -> Bool? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/system_profiler")
+        process.arguments = ["SPBluetoothDataType"]
+
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+        } catch {
+            log("system_profiler launch failed: \(error.localizedDescription)")
+            return nil
+        }
+
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        guard let text = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        if let verdict = parseSystemProfiler(text: text, token: KEYBOARD_NAME) {
+            return verdict
+        }
+
+        let addressToken = ioAddress
+        if let verdict = parseSystemProfiler(text: text, token: addressToken) {
+            return verdict
+        }
+
+        return nil
+    }
+
+    private func parseSystemProfiler(text: String, token: String) -> Bool? {
+        guard let range = text.range(of: token) else {
+            return nil
+        }
+
+        let tail = text[range.lowerBound...]
+        let lines = tail.split(separator: "\n", maxSplits: 25, omittingEmptySubsequences: false)
+        for line in lines {
+            if line.contains("Connected:") {
+                if line.contains("Yes") { return true }
+                if line.contains("No") { return false }
+            }
+        }
+        return nil
+    }
 }
 
 // MARK: - Utility Functions
+func ensureDataDirectory() {
+    try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+}
+
 func log(_ message: String) {
+    ensureDataDirectory()
     let timestamp = isoFormatter.string(from: Date())
     let logMessage = "[\(timestamp)] \(message)\n"
     
-    try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+    guard let data = logMessage.data(using: .utf8) else { return }
     
-    if let data = logMessage.data(using: .utf8) {
-        if FileManager.default.fileExists(atPath: logFile.path) {
-            if let fileHandle = try? FileHandle(forWritingTo: logFile) {
-                fileHandle.seekToEndOfFile()
+    if FileManager.default.fileExists(atPath: logFile.path) {
+        if let fileHandle = try? FileHandle(forWritingTo: logFile) {
+            fileHandle.seekToEndOfFile()
+            if #available(macOS 10.15.4, *) {
+                try? fileHandle.write(contentsOf: data)
+            } else {
                 fileHandle.write(data)
-                fileHandle.closeFile()
             }
-        } else {
-            try? data.write(to: logFile)
+            try? fileHandle.close()
         }
+    } else {
+        try? data.write(to: logFile)
     }
 }
 
@@ -388,309 +547,765 @@ func formatTime(_ seconds: Int) -> String {
     return "\(hours)h \(minutes)m"
 }
 
-func loadCurrentSession() -> SessionState? {
-    guard FileManager.default.fileExists(atPath: currentFile.path),
-          let data = try? Data(contentsOf: currentFile),
-          let state = try? JSONDecoder().decode(SessionState.self, from: data) else {
-        return nil
-    }
-    return state
-}
-
-func saveCurrentSession(_ state: SessionState?) {
-    try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
-    
-    if let state = state {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        if let data = try? encoder.encode(state) {
-            try? data.write(to: currentFile)
-        }
-    } else {
-        try? FileManager.default.removeItem(at: currentFile)
-    }
-}
-
-func saveCompletedSession(state: SessionState, stopReason: String) {
-    let history = loadHistory()
-    let sessionNum = history.sessions.count + 1
-    
-    let session = CompletedSession(
-        sessionNum: sessionNum,
-        started: state.startedAt,
-        ended: isoFormatter.string(from: Date()),
-        stopReason: stopReason,
-        batteryStart: state.batteryStart,
-        batteryEnd: state.batteryCurrent,
-        totalSeconds: state.accumulatedSeconds,
-        formatted: formatTime(state.accumulatedSeconds)
-    )
-    
-    var newHistory = history
-    newHistory.sessions.append(session)
-    
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = .prettyPrinted
-    if let data = try? encoder.encode(newHistory) {
-        try? data.write(to: sessionsFile)
-    }
-}
-
 func loadHistory() -> SessionsHistory {
-    guard FileManager.default.fileExists(atPath: sessionsFile.path),
-          let data = try? Data(contentsOf: sessionsFile),
+    guard FileManager.default.fileExists(atPath: historyFile.path),
+          let data = try? Data(contentsOf: historyFile),
           let history = try? JSONDecoder().decode(SessionsHistory.self, from: data) else {
         return SessionsHistory(sessions: [])
     }
     return history
 }
 
-func appendSample(_ sample: Sample, retentionLimit: Int) {
-    try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+func saveHistory(_ history: SessionsHistory) {
+    ensureDataDirectory()
     let encoder = JSONEncoder()
-    guard let encoded = try? encoder.encode(sample), var line = String(data: encoded, encoding: .utf8) else {
-        return
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    if let data = try? encoder.encode(history) {
+        try? data.write(to: historyFile)
     }
-    line.append("\n")
+}
 
-    if FileManager.default.fileExists(atPath: samplesFile.path) {
-        if let handle = try? FileHandle(forWritingTo: samplesFile) {
-            handle.seekToEndOfFile()
-            if let data = line.data(using: .utf8) {
-                handle.write(data)
+func removeLiveSession() {
+    try? FileManager.default.removeItem(at: sessionFile)
+}
+
+func saveLiveSession(_ session: LiveSession) {
+    ensureDataDirectory()
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    if let data = try? encoder.encode(session) {
+        try? data.write(to: sessionFile)
+    }
+}
+
+func loadLiveSession() -> LiveSession? {
+    if FileManager.default.fileExists(atPath: sessionFile.path),
+       let data = try? Data(contentsOf: sessionFile),
+       let session = try? JSONDecoder().decode(LiveSession.self, from: data) {
+        return session
+    }
+    
+    if let migrated = migrateLegacySession() {
+        saveLiveSession(migrated)
+        return migrated
+    }
+    
+    return nil
+}
+
+func migrateLegacySession() -> LiveSession? {
+    guard FileManager.default.fileExists(atPath: legacyCurrentFile.path),
+          let data = try? Data(contentsOf: legacyCurrentFile),
+          let legacy = try? JSONDecoder().decode(LegacySessionState.self, from: data) else {
+        return nil
+    }
+    
+    let status: TrackingStatus = legacy.connected ? .tracking : .paused
+    let lowest = legacy.lowestBattery ?? legacy.batteryCurrent
+    let pending = legacy.pendingChargeGain ?? 0
+    let samples = max(legacy.accumulatedSeconds / POLL_INTERVAL_SECONDS, 0)
+    
+    let session = LiveSession(
+        status: status,
+        keyboardAddress: legacy.keyboardAddress,
+        startedAt: legacy.startedAt,
+        batteryStart: legacy.batteryStart,
+        lastBattery: legacy.batteryCurrent,
+        lowestBattery: lowest,
+        accumulatedSeconds: legacy.accumulatedSeconds,
+        samples: samples,
+        pendingChargeGain: pending,
+        consecutiveIncreaseSamples: 0,
+        lastSampleAt: nil,
+        lastConnectedAt: nil,
+        isConnected: legacy.connected,
+        consecutiveUnavailableSamples: 0,
+        lastIssue: nil
+    )
+    
+    try? FileManager.default.removeItem(at: legacyCurrentFile)
+    log("Migrated legacy current session to new session.json format")
+    return session
+}
+
+func startSession(batteryPercent: Int, now: Date, force: Bool = false) -> LiveSession? {
+    guard force || batteryPercent >= START_THRESHOLD else {
+        return nil
+    }
+    
+    let timestamp = isoFormatter.string(from: now)
+    return LiveSession(
+        status: .tracking,
+        keyboardAddress: KEYBOARD_ADDRESS,
+        startedAt: timestamp,
+        batteryStart: batteryPercent,
+        lastBattery: batteryPercent,
+        lowestBattery: batteryPercent,
+        accumulatedSeconds: 0,
+        samples: 0,
+        pendingChargeGain: 0,
+        consecutiveIncreaseSamples: 0,
+        lastSampleAt: nil,
+        lastConnectedAt: timestamp,
+        isConnected: true,
+        consecutiveUnavailableSamples: 0,
+        lastIssue: nil
+    )
+}
+
+func finalizeSession(_ session: LiveSession, reason: String, batteryEndOverride: Int? = nil, endedAt: Date = Date()) {
+    let history = loadHistory()
+    let sessionNum = (history.sessions.last?.sessionNum ?? 0) + 1
+    let endedString = isoFormatter.string(from: endedAt)
+    let batteryEnd = batteryEndOverride ?? session.lastBattery
+    
+    let entry = CompletedSession(
+        sessionNum: sessionNum,
+        started: session.startedAt,
+        ended: endedString,
+        stopReason: reason,
+        batteryStart: session.batteryStart,
+        batteryEnd: batteryEnd,
+        totalSeconds: session.accumulatedSeconds,
+        formatted: formatTime(session.accumulatedSeconds),
+        samples: session.samples,
+        lowestBattery: session.lowestBattery
+    )
+    
+    var updatedHistory = history
+    updatedHistory.sessions.append(entry)
+    saveHistory(updatedHistory)
+    removeLiveSession()
+    log("Session \(sessionNum) archived with reason \(reason)")
+}
+
+// MARK: - Sample Recording
+func appendSampleRecord(_ record: SampleRecord) {
+    ensureDataDirectory()
+    let encoder = JSONEncoder()
+    if let json = try? encoder.encode(record),
+       let line = String(data: json, encoding: .utf8) {
+        let data = (line + "\n").data(using: .utf8)!
+        if FileManager.default.fileExists(atPath: samplesFile.path) {
+            if let handle = try? FileHandle(forWritingTo: samplesFile) {
+                handle.seekToEndOfFile()
+                if #available(macOS 10.15.4, *) {
+                    try? handle.write(contentsOf: data)
+                } else {
+                    handle.write(data)
+                }
+                try? handle.close()
             }
-            handle.closeFile()
+        } else {
+            try? data.write(to: samplesFile)
         }
-    } else {
-        try? line.write(to: samplesFile, atomically: true, encoding: .utf8)
     }
-
-    pruneSamplesIfNeeded(limit: retentionLimit)
 }
 
-func pruneSamplesIfNeeded(limit: Int) {
-    guard limit > 0,
-          let raw = try? String(contentsOf: samplesFile, encoding: .utf8) else {
-        return
-    }
-
-    var lines = raw.split(whereSeparator: { $0.isNewline }).map(String.init)
-    if lines.count <= limit {
-        return
-    }
-
-    lines = Array(lines.suffix(limit))
-    let trimmed = lines.joined(separator: "\n") + "\n"
-    try? trimmed.write(to: samplesFile, atomically: true, encoding: .utf8)
-}
-
-func loadRecentSamples(limit: Int) -> [Sample] {
-    guard limit > 0,
-          let raw = try? String(contentsOf: samplesFile, encoding: .utf8) else {
+func loadSamples() -> [SampleRecord] {
+    guard FileManager.default.fileExists(atPath: samplesFile.path),
+          let content = try? String(contentsOf: samplesFile, encoding: .utf8) else {
         return []
     }
-
-    let lines = raw.split(whereSeparator: { $0.isNewline })
-    let slice = lines.suffix(limit)
+    
     let decoder = JSONDecoder()
-    var samples: [Sample] = []
-    for entry in slice {
-        if let data = entry.data(using: .utf8), let sample = try? decoder.decode(Sample.self, from: data) {
+    var samples: [SampleRecord] = []
+    
+    for line in content.split(separator: "\n") {
+        if let data = line.data(using: .utf8),
+           let sample = try? decoder.decode(SampleRecord.self, from: data) {
             samples.append(sample)
         }
     }
+    
     return samples
 }
 
-func computeSmoothedRate(samples: [Sample]) -> (rate: Double, hoursPerPercent: Double, start: Sample, end: Sample)? {
-    let connectedSamples = samples.filter { $0.valid && $0.connected }
-    guard connectedSamples.count >= 2,
-          let first = connectedSamples.first,
-          let last = connectedSamples.last,
-          let startDate = isoFormatter.date(from: first.timestamp),
-          let endDate = isoFormatter.date(from: last.timestamp),
-          endDate > startDate else {
-        return nil
-    }
-
-    let percentDrop = first.battery - last.battery
-    guard percentDrop > 0 else {
-        return nil
-    }
-
-    let seconds = endDate.timeIntervalSince(startDate)
-    guard seconds > 0 else {
-        return nil
-    }
-
-    let hours = seconds / 3600.0
-    let rate = Double(percentDrop) / hours
-    let hoursPerPercent = hours / Double(percentDrop)
-    return (rate, hoursPerPercent, first, last)
+struct DischargeRate {
+    let percentPerHour: Double
+    let hoursPerPercent: Double
+    let sampleCount: Int
+    let timeSpanHours: Double
+    let batteryDrop: Int
 }
 
-func pendingStopDescription(state: SessionState, config: TrackerConfig) -> String {
-    if state.batteryCurrent <= config.stopThreshold {
-        return "Battery at \(state.batteryCurrent)% (≤ \(config.stopThreshold)% threshold)"
+func calculateDischargeRate(samples: [SampleRecord], windowSeconds: TimeInterval) -> DischargeRate? {
+    let now = Date()
+    let cutoff = now.addingTimeInterval(-windowSeconds)
+    
+    let recentSamples = samples.filter { sample in
+        guard let date = isoFormatter.date(from: sample.timestamp) else { return false }
+        return date >= cutoff && sample.battery != nil
+    }.sorted { s1, s2 in
+        guard let d1 = isoFormatter.date(from: s1.timestamp),
+              let d2 = isoFormatter.date(from: s2.timestamp) else { return false }
+        return d1 < d2
     }
+    
+    guard recentSamples.count >= 2,
+          let firstBattery = recentSamples.first?.battery,
+          let lastBattery = recentSamples.last?.battery,
+          let firstDate = isoFormatter.date(from: recentSamples.first!.timestamp),
+          let lastDate = isoFormatter.date(from: recentSamples.last!.timestamp) else {
+        return nil
+    }
+    
+    let timeSpan = lastDate.timeIntervalSince(firstDate)
+    guard timeSpan > 60 else { return nil }
+    
+    let batteryDrop = firstBattery - lastBattery
+    let hours = timeSpan / 3600.0
+    
+    if batteryDrop > 0 && hours > 0 {
+        let pph = Double(batteryDrop) / hours
+        let hpp = hours / Double(batteryDrop)
+        return DischargeRate(
+            percentPerHour: pph,
+            hoursPerPercent: hpp,
+            sampleCount: recentSamples.count,
+            timeSpanHours: hours,
+            batteryDrop: batteryDrop
+        )
+    }
+    
+    return nil
+}
 
-    if state.consecutiveFailures > 0 {
-        let remaining = max(0, config.failureGraceCycles - state.consecutiveFailures)
-        if remaining == 0 {
-            return "Grace exhausted: will stop if next read fails"
+struct DischargeRateStats {
+    let rates: [Double]
+    let mean: Double
+    let min: Double
+    let max: Double
+    let stddev: Double
+    let range: Double
+}
+
+func calculateDischargeRateStatistics(samples: [SampleRecord], segmentMinutes: Int = 60) -> DischargeRateStats? {
+    guard samples.count >= 10 else { return nil }
+    
+    let sortedSamples = samples.filter { $0.battery != nil }.sorted { s1, s2 in
+        guard let d1 = isoFormatter.date(from: s1.timestamp),
+              let d2 = isoFormatter.date(from: s2.timestamp) else { return false }
+        return d1 < d2
+    }
+    
+    guard sortedSamples.count >= 10 else { return nil }
+    
+    var rates: [Double] = []
+    let segmentSeconds = Double(segmentMinutes * 60)
+    
+    // Use sliding window approach to capture ALL rate variations
+    var i = 0
+    while i < sortedSamples.count - 1 {
+        guard let startDate = isoFormatter.date(from: sortedSamples[i].timestamp),
+              let startBattery = sortedSamples[i].battery else {
+            i += 1
+            continue
         }
-        return "Awaiting reconnect: \(state.consecutiveFailures) failure cycle(s); stops after \(remaining) more"
+        
+        // Look ahead to find segments of approximately the target duration
+        for j in (i + 1)..<sortedSamples.count {
+            guard let endDate = isoFormatter.date(from: sortedSamples[j].timestamp),
+                  let endBattery = sortedSamples[j].battery else {
+                continue
+            }
+            
+            let timeSpan = endDate.timeIntervalSince(startDate)
+            
+            // Accept segments within 20% of target duration
+            if timeSpan >= segmentSeconds * 0.8 && timeSpan <= segmentSeconds * 1.2 {
+                let hours = timeSpan / 3600.0
+                let drop = startBattery - endBattery
+                
+                // Include ALL measurements, even 0 or negative (charge)
+                if hours > 0 {
+                    let rate = Double(drop) / hours
+                    rates.append(rate)
+                }
+                
+                // Move forward by a fraction to get overlapping windows
+                break
+            }
+            
+            // Stop looking if we've gone too far past the target
+            if timeSpan > segmentSeconds * 1.5 {
+                break
+            }
+        }
+        
+        // Slide window forward
+        i += max(1, sortedSamples.count / 50)  // Overlap windows for more data points
     }
+    
+    guard rates.count >= 3 else { return nil }
+    
+    let mean = rates.reduce(0.0, +) / Double(rates.count)
+    let min = rates.min() ?? 0
+    let max = rates.max() ?? 0
+    
+    let variance = rates.map { pow($0 - mean, 2) }.reduce(0.0, +) / Double(rates.count)
+    let stddev = sqrt(variance)
+    let range = max - min
+    
+    return DischargeRateStats(rates: rates, mean: mean, min: min, max: max, stddev: stddev, range: range)
+}
 
-    return "None"
+func getTrendIndicator(recent: Double, baseline: Double, threshold: Double = 0.15) -> String {
+    let change = (recent - baseline) / baseline
+    if abs(change) < threshold {
+        return "→"
+    } else if change > 0 {
+        return "↑"
+    } else {
+        return "↓"
+    }
 }
 
 // MARK: - Daemon Logic
-func runDaemon(config: TrackerConfig) async {
+func runDaemon() async {
     log("=== Daemon cycle started ===")
-
-    let reader = BluetoothBatteryReader(connectionTimeout: config.connectionTimeout, nameHints: config.keyboardNameHints)
-    let result = try? await reader.readBattery()
-
     let now = Date()
-    let timestamp = isoFormatter.string(from: now)
-    let batteryPercent = result?.batteryPercent ?? 0
-    let isConnected = result?.isConnected ?? false
-    let validSample = isConnected && batteryPercent > 0
-
-    appendSample(
-        Sample(timestamp: timestamp, battery: batteryPercent, connected: isConnected, valid: validSample),
-        retentionLimit: config.samplesRetention
-    )
-
-    log("Read result - Battery: \(batteryPercent)%, Connected: \(isConnected)")
-
-    var currentState = loadCurrentSession()
-
-    if currentState == nil {
-        if validSample && batteryPercent >= config.startThreshold {
-            log("Starting new session at \(batteryPercent)%")
-            currentState = SessionState(
-                status: "tracking",
-                keyboardAddress: config.keyboardAddress,
-                batteryStart: batteryPercent,
-                batteryPrevious: batteryPercent,
-                batteryCurrent: batteryPercent,
-                connected: isConnected,
-                accumulatedSeconds: 0,
-                startedAt: timestamp,
-                consecutiveFailures: 0,
-                lastSampleAt: timestamp,
-                lastValidSampleAt: timestamp
+    let provider = ConnectivityProvider()
+    let probe = await provider.evaluate()
+    var session = loadLiveSession()
+    
+    log("Probe: battery=\(probe.batteryPercent?.description ?? "nil"), connected=\(probe.assessment.isConnected), confidence=\(String(format: "%.2f", probe.assessment.confidence)), sources=\(probe.assessment.sources.map { $0.rawValue }.joined(separator: ","))")
+    
+    // Determine if we should accrue time this cycle
+    let allowAccrual = probe.batteryPercent != nil || probe.assessment.confidence >= ACCRUAL_CONFIDENCE_THRESHOLD
+    
+    // If no active session, try to start one if we have a battery reading
+    if session == nil {
+        if let batteryPercent = probe.batteryPercent, batteryPercent > 0 {
+            if let newSession = startSession(batteryPercent: batteryPercent, now: now, force: false) {
+                log("Starting new session at \(batteryPercent)%")
+                saveLiveSession(newSession)
+                session = newSession
+            } else {
+                log("No active session; start conditions not met")
+                log("=== Daemon cycle completed ===")
+                return
+            }
+        } else {
+            log("No active session and no battery reading to start one")
+            log("=== Daemon cycle completed ===")
+            return
+        }
+    }
+    
+    guard var liveSession = session else {
+        log("Unable to load session")
+        log("=== Daemon cycle completed ===")
+        return
+    }
+    
+    // Calculate deltaSeconds for time accrual
+    let lastSampleDate = liveSession.lastSampleAt.flatMap { isoFormatter.date(from: $0) }
+    let deltaSeconds: Int
+    if let lastSampleDate {
+        deltaSeconds = min(max(Int(now.timeIntervalSince(lastSampleDate)), 0), MAX_SAMPLE_INTERVAL_SECONDS)
+    } else {
+        deltaSeconds = 0
+    }
+    
+    // Update session state based on probe
+    liveSession.isConnected = probe.assessment.isConnected
+    liveSession.lastIssue = probe.assessment.issue
+    
+    // Handle case where we have a battery reading
+    if let batteryPercent = probe.batteryPercent {
+        log("Battery reading: \(batteryPercent)%")
+        
+        // Skip 0% readings as they're unreliable
+        if batteryPercent == 0 {
+            log("Received 0% reading; skipping update")
+            liveSession.consecutiveUnavailableSamples = 0
+            saveLiveSession(liveSession)
+            
+            let sampleRecord = SampleRecord(
+                timestamp: isoFormatter.string(from: now),
+                battery: nil,
+                connected: probe.assessment.isConnected,
+                confidence: probe.assessment.confidence,
+                deltaSeconds: 0,
+                sources: probe.assessment.sources,
+                issue: probe.assessment.issue,
+                status: liveSession.status
             )
-            saveCurrentSession(currentState)
-        } else {
-            log("No session active, conditions not met (battery: \(batteryPercent)%, connected: \(isConnected))")
+            appendSampleRecord(sampleRecord)
+            log("=== Daemon cycle completed ===")
+            return
         }
-        return
-    }
-
-    guard var state = currentState else {
-        return
-    }
-
-    state.lastSampleAt = timestamp
-
-    if !validSample {
-        state.connected = false
-        state.consecutiveFailures += 1
-        log("Transient failure detected (cycle \(state.consecutiveFailures)/\(config.failureGraceCycles))")
-
-        if state.consecutiveFailures >= config.failureGraceCycles {
-            let stopReason = state.batteryCurrent <= config.stopThreshold ? "battery_depleted" : "signal_lost"
-            log("Grace limit reached, stopping session with reason \(stopReason)")
-            saveCompletedSession(state: state, stopReason: stopReason)
-            saveCurrentSession(nil)
-        } else {
-            saveCurrentSession(state)
+        
+        // Reset failure counters on successful reading
+        liveSession.consecutiveUnavailableSamples = 0
+        
+        // Check for offline_drop scenario
+        if liveSession.status == .paused || liveSession.status == .blocked {
+            let drop = liveSession.lastBattery - batteryPercent
+            if drop > OFFLINE_DROP_TOLERANCE_PERCENT {
+                log("Battery dropped \(drop)% while offline (\(liveSession.lastBattery)% → \(batteryPercent)%); closing session")
+                liveSession.lastBattery = batteryPercent
+                liveSession.lowestBattery = min(liveSession.lowestBattery, batteryPercent)
+                finalizeSession(liveSession, reason: "offline_drop", batteryEndOverride: batteryPercent, endedAt: now)
+                
+                if let newSession = startSession(batteryPercent: batteryPercent, now: now, force: true) {
+                    log("Starting new session after offline drop at \(batteryPercent)%")
+                    saveLiveSession(newSession)
+                }
+                log("=== Daemon cycle completed ===")
+                return
+            } else {
+                log("Keyboard reconnected; resuming session at \(batteryPercent)%")
+                liveSession.status = .tracking
+                liveSession.pendingChargeGain = 0
+                liveSession.consecutiveIncreaseSamples = 0
+            }
         }
-        return
+        
+        // Promote idle to tracking
+        if liveSession.status == .idle {
+            log("Session in idle state; promoting to tracking")
+            liveSession.status = .tracking
+        }
+        
+        // Accrue time
+        liveSession.accumulatedSeconds += deltaSeconds
+        liveSession.samples += 1
+        liveSession.lastSampleAt = isoFormatter.string(from: now)
+        if probe.assessment.isConnected {
+            liveSession.lastConnectedAt = liveSession.lastSampleAt
+        }
+        liveSession.status = .tracking
+        
+        let previousBattery = liveSession.lastBattery
+        
+        // Check for battery_depleted
+        if batteryPercent <= STOP_THRESHOLD {
+            liveSession.lastBattery = batteryPercent
+            liveSession.lowestBattery = min(liveSession.lowestBattery, batteryPercent)
+            log("Battery reached \(batteryPercent)% (≤ \(STOP_THRESHOLD)%); completing session")
+            finalizeSession(liveSession, reason: "battery_depleted", batteryEndOverride: batteryPercent, endedAt: now)
+            log("=== Daemon cycle completed ===")
+            return
+        }
+        
+        // Handle battery changes
+        if liveSession.samples == 1 {
+            liveSession.lastBattery = batteryPercent
+            liveSession.lowestBattery = min(liveSession.lowestBattery, batteryPercent)
+        } else {
+            if batteryPercent > previousBattery {
+                let increase = batteryPercent - previousBattery
+                liveSession.pendingChargeGain += increase
+                liveSession.consecutiveIncreaseSamples += 1
+                let increaseFromLowest = batteryPercent - liveSession.lowestBattery
+                log("Battery increase detected: +\(increase)% (\(previousBattery)% → \(batteryPercent)%); accumulated +\(liveSession.pendingChargeGain)% (+\(increaseFromLowest)% from lowest)")
+                
+                if liveSession.pendingChargeGain >= CHARGE_TOLERANCE_PERCENT &&
+                    liveSession.consecutiveIncreaseSamples >= 2 &&
+                    increaseFromLowest >= CHARGE_TOLERANCE_PERCENT {
+                    log("Charging trend confirmed; completing session")
+                    liveSession.lastBattery = batteryPercent
+                    finalizeSession(liveSession, reason: "charging_detected", batteryEndOverride: batteryPercent, endedAt: now)
+                    log("=== Daemon cycle completed ===")
+                    return
+                }
+            } else if batteryPercent < previousBattery {
+                let drop = previousBattery - batteryPercent
+                log("Battery decreased \(drop)% (\(previousBattery)% → \(batteryPercent)%)")
+                liveSession.pendingChargeGain = 0
+                liveSession.consecutiveIncreaseSamples = 0
+                liveSession.lowestBattery = min(liveSession.lowestBattery, batteryPercent)
+            } else {
+                if liveSession.consecutiveIncreaseSamples > 0 {
+                    log("Battery steady at \(batteryPercent)% (resetting increase counter)")
+                }
+                liveSession.consecutiveIncreaseSamples = 0
+            }
+            liveSession.lastBattery = batteryPercent
+        }
+        
+        saveLiveSession(liveSession)
+        
+        let sampleRecord = SampleRecord(
+            timestamp: isoFormatter.string(from: now),
+            battery: batteryPercent,
+            connected: probe.assessment.isConnected,
+            confidence: probe.assessment.confidence,
+            deltaSeconds: deltaSeconds,
+            sources: probe.assessment.sources,
+            issue: probe.assessment.issue,
+            status: liveSession.status
+        )
+        appendSampleRecord(sampleRecord)
+        
+    } else {
+        // No battery reading, but check if we should accrue time based on confidence
+        log("No battery reading available")
+        liveSession.consecutiveUnavailableSamples += 1
+        
+        if allowAccrual && liveSession.consecutiveUnavailableSamples <= FAILURE_CONFIDENCE_GRACE {
+            log("Confidence \(String(format: "%.2f", probe.assessment.confidence)) ≥ threshold; accruing time (failure \(liveSession.consecutiveUnavailableSamples)/\(FAILURE_CONFIDENCE_GRACE))")
+            liveSession.accumulatedSeconds += deltaSeconds
+            liveSession.samples += 1
+            liveSession.lastSampleAt = isoFormatter.string(from: now)
+            
+            let sampleRecord = SampleRecord(
+                timestamp: isoFormatter.string(from: now),
+                battery: nil,
+                connected: probe.assessment.isConnected,
+                confidence: probe.assessment.confidence,
+                deltaSeconds: deltaSeconds,
+                sources: probe.assessment.sources,
+                issue: probe.assessment.issue,
+                status: liveSession.status
+            )
+            appendSampleRecord(sampleRecord)
+            
+        } else {
+            log("Confidence too low or grace period exceeded; pausing accrual (failure \(liveSession.consecutiveUnavailableSamples)/\(FAILURE_CONFIDENCE_GRACE))")
+            
+            // After grace period, set appropriate status
+            if liveSession.consecutiveUnavailableSamples > FAILURE_CONFIDENCE_GRACE {
+                if let issue = probe.assessment.issue {
+                    switch issue {
+                    case .bluetoothUnauthorized, .bluetoothPoweredOff, .bluetoothUnavailable, .connectionTimeout, .unknown:
+                        if liveSession.status != .blocked {
+                            log("Setting session to blocked due to: \(issue.rawValue)")
+                            liveSession.status = .blocked
+                        }
+                    case .peripheralNotFound:
+                        if liveSession.status != .paused {
+                            log("Setting session to paused (peripheral not found)")
+                            liveSession.status = .paused
+                        }
+                        liveSession.lastConnectedAt = nil
+                        liveSession.pendingChargeGain = 0
+                        liveSession.consecutiveIncreaseSamples = 0
+                    }
+                } else {
+                    if liveSession.status != .paused {
+                        log("Setting session to paused (low confidence)")
+                        liveSession.status = .paused
+                    }
+                }
+            }
+            
+            let sampleRecord = SampleRecord(
+                timestamp: isoFormatter.string(from: now),
+                battery: nil,
+                connected: probe.assessment.isConnected,
+                confidence: probe.assessment.confidence,
+                deltaSeconds: 0,
+                sources: probe.assessment.sources,
+                issue: probe.assessment.issue,
+                status: liveSession.status
+            )
+            appendSampleRecord(sampleRecord)
+        }
+        
+        saveLiveSession(liveSession)
     }
-
-    state.connected = true
-    state.consecutiveFailures = 0
-    state.lastValidSampleAt = timestamp
-
-    let previousPercent = state.batteryPrevious
-    state.batteryCurrent = batteryPercent
-
-    if batteryPercent < config.stopThreshold {
-        log("Battery depleted (\(batteryPercent)%), stopping session")
-        saveCompletedSession(state: state, stopReason: "battery_depleted")
-        saveCurrentSession(nil)
-        return
-    }
-
-    if batteryPercent > previousPercent {
-        log("Charging detected (\(previousPercent)% -> \(batteryPercent)%), stopping session")
-        saveCompletedSession(state: state, stopReason: "charging_detected")
-        saveCurrentSession(nil)
-        return
-    }
-
-    let batteryDiff = abs(batteryPercent - previousPercent)
-    if batteryPercent > previousPercent && batteryDiff > config.tolerancePercent {
-        log("Battery jumped \(batteryDiff)% (\(previousPercent)% -> \(batteryPercent)%), likely charging")
-        saveCompletedSession(state: state, stopReason: "charging_detected")
-        saveCurrentSession(nil)
-        return
-    }
-
-    state.accumulatedSeconds += 60
-    state.batteryPrevious = batteryPercent
-    log("Accumulated time: \(formatTime(state.accumulatedSeconds))")
-
-    saveCurrentSession(state)
+    
     log("=== Daemon cycle completed ===")
 }
 
 // MARK: - CLI Commands
-func showStatus(config: TrackerConfig, verbose: Bool) {
-    guard let state = loadCurrentSession() else {
+func showStatus() {
+    guard let session = loadLiveSession() else {
         print("No active tracking session")
         return
     }
     
-    let connectedSymbol = state.connected ? "✓" : "✗"
-    let batteryUsed = state.batteryStart - state.batteryCurrent
-    let hours = Double(state.accumulatedSeconds) / 3600.0
+    let percentUsed = session.batteryStart - session.lastBattery
+    let hours = Double(session.accumulatedSeconds) / 3600.0
+    let connectionLabel: String
+    switch session.status {
+    case .tracking:
+        connectionLabel = session.isConnected ? "Connected ✓" : "Tracking ✓"
+    case .paused:
+        connectionLabel = "Disconnected ∅"
+    case .idle:
+        connectionLabel = "Idle"
+    case .blocked:
+        connectionLabel = "Permission blocked ⚠︎"
+    }
     
     print(String(repeating: "=", count: 60))
-    print("NuPhy Air75 V3-1: \(state.connected ? "Connected" : "Disconnected") \(connectedSymbol)")
+    print("NuPhy Air75 V3-1: \(connectionLabel)")
     print(String(repeating: "=", count: 60))
     
-    // Current status
     print("\n📊 Current Status:")
-    print("  Battery: \(state.batteryCurrent)% (started at \(state.batteryStart)%)")
-    print("  Used: \(batteryUsed)%")
-    print("  Connected time: \(formatTime(state.accumulatedSeconds))")
-    print("  Started: \(state.startedAt)")
+    print("  Battery: \(session.lastBattery)% (started at \(session.batteryStart)%)")
+    print("  Used: \(percentUsed)%")
+    print("  Connected time: \(formatTime(session.accumulatedSeconds))")
+    print("  Started: \(session.startedAt)")
+
+    if let issue = session.lastIssue {
+        let issueDescription: String
+        switch issue {
+        case .bluetoothUnauthorized:
+            issueDescription = "Bluetooth permission denied. Allow kbtrack in System Settings → Privacy & Security → Bluetooth."
+        case .bluetoothPoweredOff:
+            issueDescription = "Bluetooth is powered off. Turn Bluetooth back on to resume sampling."
+        case .bluetoothUnavailable:
+            issueDescription = "Bluetooth hardware unavailable. Check Bluetooth settings and retry."
+        case .connectionTimeout:
+            issueDescription = "Bluetooth timed out. kbtrack will retry automatically."
+        case .peripheralNotFound:
+            issueDescription = "Keyboard not detected. Ensure it is connected and awake."
+        case .unknown:
+            issueDescription = "Unknown Bluetooth error."
+        }
+        print("\n⚠️ Last issue: \(issueDescription)")
+    }
     
-    // Calculate estimates if we have meaningful data
-    if batteryUsed > 0 && hours > 0.1 {
-        let hoursPerPercent = hours / Double(batteryUsed)
-        let dischargeRate = Double(batteryUsed) / hours
-
-        let remainingPercent = max(0, state.batteryCurrent - config.stopThreshold)
+    let samples = loadSamples()
+    
+    if percentUsed > 0 && hours > 0.1 {
+        let hoursPerPercent = hours / Double(percentUsed)
+        let dischargeRate = Double(percentUsed) / hours
+        
+        let remainingPercent = max(session.lastBattery - STOP_THRESHOLD, 0)
         let estimatedRemainingHours = Double(remainingPercent) * hoursPerPercent
-
-        let totalUsablePercent = max(0, state.batteryStart - config.stopThreshold)
+        
+        let totalUsablePercent = session.batteryStart - STOP_THRESHOLD
         let estimatedTotalHours = Double(totalUsablePercent) * hoursPerPercent
         
-        print("\n⚡️ Discharge Rate:")
-        print("  \(String(format: "%.2f", dischargeRate))% per hour")
-        print("  \(String(format: "%.1f", hoursPerPercent)) hours per 1%")
+        print("\n⚡️ Discharge Rate (Session Average):")
+        print("  Losing \(String(format: "%.2f", dischargeRate))% per hour")
+        print("  1% battery lasts ~\(String(format: "%.1f", hoursPerPercent)) hours")
+        
+        if samples.count >= 2 {
+            print("\n📈 Recent Discharge Rates:")
+            
+            let rate15m = calculateDischargeRate(samples: samples, windowSeconds: 15 * 60)
+            let rate1h = calculateDischargeRate(samples: samples, windowSeconds: 60 * 60)
+            let rate3h = calculateDischargeRate(samples: samples, windowSeconds: 3 * 60 * 60)
+            let rate12h = calculateDischargeRate(samples: samples, windowSeconds: 12 * 60 * 60)
+            let rate48h = calculateDischargeRate(samples: samples, windowSeconds: 48 * 60 * 60)
+            
+            // 15m window
+            if let rate15m = rate15m {
+                let trend = rate1h != nil ? getTrendIndicator(recent: rate15m.percentPerHour, baseline: rate1h!.percentPerHour) : ""
+                print("  Last 15m: -\(rate15m.batteryDrop)% in \(String(format: "%.1f", rate15m.timeSpanHours * 60))min = \(String(format: "%.2f", rate15m.percentPerHour))%/hr \(trend) (\(rate15m.sampleCount) samples)")
+                if let rate1h = rate1h {
+                    let change = ((rate15m.percentPerHour - rate1h.percentPerHour) / rate1h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 1h avg")
+                }
+            } else {
+                let trend = rate1h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate1h!.percentPerHour) : ""
+                print("  Last 15m: -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
+                if let rate1h = rate1h {
+                    let change = ((dischargeRate - rate1h.percentPerHour) / rate1h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 1h avg")
+                }
+            }
+            
+            // 1h window
+            if let rate1h = rate1h {
+                let trend = rate3h != nil ? getTrendIndicator(recent: rate1h.percentPerHour, baseline: rate3h!.percentPerHour) : ""
+                print("  Last 1h:  -\(rate1h.batteryDrop)% in \(String(format: "%.1f", rate1h.timeSpanHours))hr = \(String(format: "%.2f", rate1h.percentPerHour))%/hr \(trend) (\(rate1h.sampleCount) samples)")
+                if let rate3h = rate3h {
+                    let change = ((rate1h.percentPerHour - rate3h.percentPerHour) / rate3h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 3h avg")
+                }
+            } else {
+                let trend = rate3h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate3h!.percentPerHour) : ""
+                print("  Last 1h:  -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
+                if let rate3h = rate3h {
+                    let change = ((dischargeRate - rate3h.percentPerHour) / rate3h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 3h avg")
+                }
+            }
+            
+            // 3h window
+            if let rate3h = rate3h {
+                let trend = rate12h != nil ? getTrendIndicator(recent: rate3h.percentPerHour, baseline: rate12h!.percentPerHour) : ""
+                print("  Last 3h:  -\(rate3h.batteryDrop)% in \(String(format: "%.1f", rate3h.timeSpanHours))hr = \(String(format: "%.2f", rate3h.percentPerHour))%/hr \(trend) (\(rate3h.sampleCount) samples)")
+                if let rate12h = rate12h {
+                    let change = ((rate3h.percentPerHour - rate12h.percentPerHour) / rate12h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 12h avg")
+                }
+            } else {
+                let trend = rate12h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate12h!.percentPerHour) : ""
+                print("  Last 3h:  -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
+                if let rate12h = rate12h {
+                    let change = ((dischargeRate - rate12h.percentPerHour) / rate12h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 12h avg")
+                }
+            }
+            
+            // 12h window
+            if let rate12h = rate12h {
+                let trend = rate48h != nil ? getTrendIndicator(recent: rate12h.percentPerHour, baseline: rate48h!.percentPerHour) : ""
+                print("  Last 12h: -\(rate12h.batteryDrop)% in \(String(format: "%.1f", rate12h.timeSpanHours))hr = \(String(format: "%.2f", rate12h.percentPerHour))%/hr \(trend) (\(rate12h.sampleCount) samples)")
+                if let rate48h = rate48h {
+                    let change = ((rate12h.percentPerHour - rate48h.percentPerHour) / rate48h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 48h avg")
+                }
+            } else {
+                let trend = rate48h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate48h!.percentPerHour) : ""
+                print("  Last 12h: -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
+                if let rate48h = rate48h {
+                    let change = ((dischargeRate - rate48h.percentPerHour) / rate48h.percentPerHour) * 100
+                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 48h avg")
+                }
+            }
+            
+            // 48h window
+            if let rate48h = rate48h {
+                let trend = getTrendIndicator(recent: rate48h.percentPerHour, baseline: dischargeRate)
+                print("  Last 48h: -\(rate48h.batteryDrop)% in \(String(format: "%.1f", rate48h.timeSpanHours))hr = \(String(format: "%.2f", rate48h.percentPerHour))%/hr \(trend) (\(rate48h.sampleCount) samples)")
+                let change = ((rate48h.percentPerHour - dischargeRate) / dischargeRate) * 100
+                print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs session avg")
+            } else {
+                let trend = getTrendIndicator(recent: dischargeRate, baseline: dischargeRate)
+                print("  Last 48h: -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
+                print("            0.0% vs session avg")
+            }
+            
+            print("\n📊 Discharge Rate Analysis:")
+            if let stats = calculateDischargeRateStatistics(samples: samples, segmentMinutes: 60) {
+                print("  Historical rates (1hr segments):")
+                print("    Mean: \(String(format: "%.2f", stats.mean))%/hr")
+                print("    Range: \(String(format: "%.2f", stats.min))%/hr - \(String(format: "%.2f", stats.max))%/hr (Δ\(String(format: "%.2f", stats.range))%/hr)")
+                print("    Std Dev: ±\(String(format: "%.2f", stats.stddev))%/hr")
+                
+                if stats.mean > 0.01 {
+                    let variability = (stats.range / stats.mean) * 100
+                    let stability = max(0, 100 - variability)
+                    print("    Variability: \(String(format: "%.1f", min(variability, 999.9)))% (stability: \(String(format: "%.0f", max(stability, 0)))%)")
+                }
+                
+                if stats.rates.count >= 3 {
+                    let recentThird = stats.rates.suffix(stats.rates.count / 3)
+                    let oldThird = stats.rates.prefix(stats.rates.count / 3)
+                    let recentAvg = recentThird.reduce(0.0, +) / Double(recentThird.count)
+                    let oldAvg = oldThird.reduce(0.0, +) / Double(oldThird.count)
+                    
+                    if oldAvg > 0.01 {
+                        let trend = ((recentAvg - oldAvg) / oldAvg) * 100
+                        let trendIcon = trend > 5 ? "↑ worsening" : trend < -5 ? "↓ improving" : "→ stable"
+                        print("    Trend: \(trendIcon) (\(trend > 0 ? "+" : "")\(String(format: "%.1f", min(abs(trend), 999.9) * (trend >= 0 ? 1 : -1)))% recent vs early)")
+                    } else if recentAvg > 0.05 {
+                        print("    Trend: ↑ worsening (early data had no drops)")
+                    } else {
+                        print("    Trend: → stable (minimal discharge throughout)")
+                    }
+                }
+                
+                print("    Data points: \(stats.rates.count) hourly segments")
+            }
+            
+            print("\n  Total samples recorded: \(samples.count)")
+        }
         
         print("\n🔋 Estimates:")
-        print("  Remaining: ~\(formatTime(Int(estimatedRemainingHours * 3600))) (\(state.batteryCurrent)% → \(config.stopThreshold)%)")
-        print("  Total life: ~\(formatTime(Int(estimatedTotalHours * 3600))) (\(state.batteryStart)% → \(config.stopThreshold)%)")
+        print("  Remaining: ~\(formatTime(Int(estimatedRemainingHours * 3600))) (\(session.lastBattery)% → \(STOP_THRESHOLD)%)")
+        print("  Total life: ~\(formatTime(Int(estimatedTotalHours * 3600))) (\(session.batteryStart)% → \(STOP_THRESHOLD)%)")
         
-        // Days estimate if > 24 hours
         if estimatedTotalHours >= 24 {
             let days = estimatedTotalHours / 24.0
             print("  (~\(String(format: "%.1f", days)) days)")
@@ -699,90 +1314,7 @@ func showStatus(config: TrackerConfig, verbose: Bool) {
         print("\n⏳ Gathering data... (estimates available after some battery usage)")
     }
     
-    let samples = loadRecentSamples(limit: config.smoothingWindow)
-    if let smoothed = computeSmoothedRate(samples: samples) {
-        print("\n🎯 Smoothed rate (last \(samples.count) samples):")
-        print("  \(String(format: "%.2f", smoothed.rate))% per hour")
-        print("  \(String(format: "%.1f", smoothed.hoursPerPercent)) hours per 1%")
-    }
-
-    let pending = pendingStopDescription(state: state, config: config)
-    print("\n🚦 Pending stop condition: \(pending)")
-
-    if verbose {
-        print("\n🔍 Verbose details:")
-        print("  Failure grace: \(state.consecutiveFailures)/\(config.failureGraceCycles)")
-        if let lastSampleAt = state.lastSampleAt {
-            print("  Last sample: \(lastSampleAt)")
-        }
-        if let lastValidSampleAt = state.lastValidSampleAt {
-            print("  Last valid sample: \(lastValidSampleAt)")
-        }
-        print("  Thresholds: start ≥ \(config.startThreshold)% | stop < \(config.stopThreshold)% | charge jump > \(config.tolerancePercent)%")
-
-        let recent = samples.suffix(config.verboseSampleCount)
-        if !recent.isEmpty {
-            print("\n  Recent samples (oldest → newest):")
-            for sample in recent {
-                let validity = sample.valid ? "valid" : "invalid"
-                let link = sample.connected ? "connected" : "disconnected"
-                print("    • \(sample.timestamp) — \(sample.battery)% (\(link), \(validity))")
-            }
-        }
-    }
-
     print("")
-}
-
-func parseArguments(args: [String]) -> (command: String, overrides: ConfigOverrides, flags: Set<String>) {
-    var overrides = ConfigOverrides()
-    var flags = Set<String>()
-
-    guard args.count >= 2 else {
-        return (command: "", overrides: overrides, flags: flags)
-    }
-
-    let command = args[1]
-
-    let optionArgs = args.dropFirst(2)
-    for option in optionArgs {
-        if option == "--verbose" {
-            flags.insert("verbose")
-            continue
-        }
-
-        let parts = option.split(separator: "=", maxSplits: 1).map(String.init)
-        guard parts.count == 2 else {
-            print("Ignoring malformed option: \(option)")
-            continue
-        }
-
-        let key = parts[0]
-        let value = parts[1]
-
-        switch key {
-        case "--start-threshold":
-            overrides.startThreshold = Int(value)
-        case "--stop-threshold":
-            overrides.stopThreshold = Int(value)
-        case "--tolerance":
-            overrides.tolerancePercent = Int(value)
-        case "--timeout":
-            overrides.connectionTimeout = TimeInterval(value)
-        case "--grace-cycles":
-            overrides.failureGraceCycles = Int(value)
-        case "--smooth-window":
-            overrides.smoothingWindow = Int(value)
-        case "--samples-retention":
-            overrides.samplesRetention = Int(value)
-        case "--verbose-samples":
-            overrides.verboseSampleCount = Int(value)
-        default:
-            print("Unknown option: \(key)")
-        }
-    }
-
-    return (command: command, overrides: overrides, flags: flags)
 }
 
 func showHistory() {
@@ -803,18 +1335,21 @@ func showHistory() {
         print("  Time: \(session.formatted)")
         print("  Battery: \(session.batteryStart)% → \(session.batteryEnd)% (\(percentUsed)% used)")
         print("  Reason: \(session.stopReason)")
+        if let samples = session.samples {
+            print("  Samples: \(samples)")
+        }
         print("")
     }
 }
 
 func resetSession() {
-    if let state = loadCurrentSession() {
-        saveCompletedSession(state: state, stopReason: "manual_reset")
-        saveCurrentSession(nil)
-        print("Session reset and saved to history")
-    } else {
+    guard let session = loadLiveSession() else {
         print("No active session to reset")
+        return
     }
+    
+    finalizeSession(session, reason: "manual_reset")
+    print("Session reset and saved to history")
 }
 
 // MARK: - Main
@@ -822,35 +1357,20 @@ func main() async {
     let args = CommandLine.arguments
     
     if args.count < 2 {
-        print("Usage: kbtrack <command> [options]")
+        print("Usage: kbtrack <command>")
         print("Commands:")
         print("  daemon   - Run monitoring cycle (called by LaunchAgent)")
         print("  status   - Show current tracking status")
         print("  history  - Show completed sessions")
         print("  reset    - Force stop current session")
-        print("")
-        print("Options:")
-        print("  --start-threshold=<percent>")
-        print("  --stop-threshold=<percent>")
-        print("  --tolerance=<percent>")
-        print("  --timeout=<seconds>")
-        print("  --grace-cycles=<count>")
-        print("  --smooth-window=<samples>")
-        print("  --samples-retention=<count>")
-        print("  --verbose-samples=<count>")
-        print("  --verbose (status command)")
         exit(1)
     }
     
-    let (command, overrides, flags) = parseArguments(args: args)
-    let config = baseConfig.overriding(overrides)
-
-    switch command {
+    switch args[1] {
     case "daemon":
-        await runDaemon(config: config)
+        await runDaemon()
     case "status":
-        let isVerbose = flags.contains("verbose")
-        showStatus(config: config, verbose: isVerbose)
+        showStatus()
     case "history":
         showHistory()
     case "reset":
@@ -861,7 +1381,6 @@ func main() async {
     }
 }
 
-// Run main
 Task {
     await main()
     exit(0)
