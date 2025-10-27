@@ -32,6 +32,7 @@ echo "📝 Compiling kbtrack.swift..."
 swiftc "$SRC_FILE" \
     -o "$BIN_FILE" \
     -framework CoreBluetooth \
+    -framework IOBluetooth \
     -framework Foundation
 
 # Make executable
