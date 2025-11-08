@@ -6,8 +6,8 @@ return {
     local base_dir = vim.fn.stdpath("state") .. "/sessions/"
     local session_dir = base_dir
 
-    -- Check for tmux-specific directory
-    if vim.env.TMUX then
+    -- Check for tmux-specific directory (skip if in popup)
+    if vim.env.TMUX and not vim.env.TMUX_POPUP then
       local handle = io.popen("tmux display-message -p '#S_#W'")
       if handle then
         local tmux_info = handle:read("*a"):gsub("\n", ""):gsub("[^%w%-_]", "_")
@@ -15,9 +15,16 @@ return {
 
         if tmux_info ~= "" then
           local tmux_dir = base_dir .. "tmux-" .. tmux_info .. "/"
-          -- Use tmux dir if it exists and has sessions
-          if vim.fn.isdirectory(tmux_dir) == 1 and #vim.fn.glob(tmux_dir .. "*.vim", false, true) > 0 then
+
+          -- Check if tmux directory exists and has any .vim files
+          local tmux_has_sessions = vim.fn.isdirectory(tmux_dir) == 1 and
+            (#vim.fn.glob(tmux_dir .. "*.vim", false, true) > 0 or
+             #vim.fn.glob(tmux_dir .. "**/*.vim", false, true) > 0)
+
+          if tmux_has_sessions then
             session_dir = tmux_dir
+          -- else
+          --   session_dir = base_dir
           end
         end
       end
