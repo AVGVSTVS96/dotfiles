@@ -23,9 +23,9 @@ export PATH="./node_modules/.bin:$PATH"
 
 
 # -----------------------
-# --- VSCode Insiders ---
+# --- Cursor ---
 # -----------------------
-export PATH="$PATH:/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin"
+export PATH="$PATH:/Applications/Cursor.app/Contents/Resources/app/bin"
 
 
 # -------------
@@ -200,6 +200,7 @@ alias update-last-commit="git commit -a --amend --no-edit && git push --force-wi
 alias prc="gh pr create"
 alias devs='lsof -nP -iTCP -sTCP:LISTEN | grep -E "(node|next|astro|vite|webpack|parcel)" | awk "{split(\$9, addr, \":\"); port = addr[length(addr)]; process = \$1; printf \"\\033[1;36m%-6s\\033[0m \\033[1;33m%s\\033[0m\\n\", process, port}" | sort -k2 -n'
 alias list-servers="devs"
+alias pbc="pbcopy"
 
 unalias gcb
 unalias gcl
@@ -335,6 +336,9 @@ fkill() {
 # -----------
 # --- bun ---
 # -----------
+# bun path
+export PATH="$PATH:/Users/bassimshahidy/.cache/.bun/bin"
+
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
