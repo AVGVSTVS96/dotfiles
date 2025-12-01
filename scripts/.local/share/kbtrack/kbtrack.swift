@@ -771,13 +771,41 @@ func calculateDischargeRate(samples: [SampleRecord], windowSeconds: TimeInterval
     return nil
 }
 
+func computeTrendSlope(rates: [Double], timestamps: [Date], sessionStart: Date) -> Double {
+    guard rates.count >= 3, rates.count == timestamps.count else { return 0.0 }
+    
+    // Convert timestamps to elapsed hours from session start
+    let hours = timestamps.map { $0.timeIntervalSince(sessionStart) / 3600.0 }
+    
+    // Simple linear regression: slope = Σ((x - x̄)(y - ȳ)) / Σ((x - x̄)²)
+    let n = Double(rates.count)
+    let meanX = hours.reduce(0.0, +) / n
+    let meanY = rates.reduce(0.0, +) / n
+    
+    var numerator = 0.0
+    var denominator = 0.0
+    
+    for i in 0..<rates.count {
+        let dx = hours[i] - meanX
+        let dy = rates[i] - meanY
+        numerator += dx * dy
+        denominator += dx * dx
+    }
+    
+    guard denominator > 0.001 else { return 0.0 }
+    return numerator / denominator
+}
+
 struct DischargeRateStats {
     let rates: [Double]
+    let filteredRates: [Double]
     let mean: Double
     let min: Double
     let max: Double
     let stddev: Double
     let range: Double
+    let slope: Double
+    let sampleTimestamps: [Date]
 }
 
 func calculateDischargeRateStatistics(samples: [SampleRecord], segmentMinutes: Int = 60) -> DischargeRateStats? {
@@ -789,12 +817,15 @@ func calculateDischargeRateStatistics(samples: [SampleRecord], segmentMinutes: I
         return d1 < d2
     }
     
-    guard sortedSamples.count >= 10 else { return nil }
+    guard sortedSamples.count >= 10,
+          let sessionStart = isoFormatter.date(from: sortedSamples.first!.timestamp) else { return nil }
     
     var rates: [Double] = []
+    var timestamps: [Date] = []
     let segmentSeconds = Double(segmentMinutes * 60)
+    let minSegmentSeconds = segmentSeconds * 0.5  // Require at least 30 min for 1hr segments
     
-    // Use sliding window approach to capture ALL rate variations
+    // Use fixed window approach for consistent measurements
     var i = 0
     while i < sortedSamples.count - 1 {
         guard let startDate = isoFormatter.date(from: sortedSamples[i].timestamp),
@@ -812,18 +843,18 @@ func calculateDischargeRateStatistics(samples: [SampleRecord], segmentMinutes: I
             
             let timeSpan = endDate.timeIntervalSince(startDate)
             
-            // Accept segments within 20% of target duration
-            if timeSpan >= segmentSeconds * 0.8 && timeSpan <= segmentSeconds * 1.2 {
+            // Accept segments within 20% of target, but require minimum duration
+            if timeSpan >= minSegmentSeconds && timeSpan <= segmentSeconds * 1.2 {
                 let hours = timeSpan / 3600.0
                 let drop = startBattery - endBattery
                 
-                // Include ALL measurements, even 0 or negative (charge)
+                // Include ALL measurements for time tracking (even 0 or negative)
                 if hours > 0 {
                     let rate = Double(drop) / hours
                     rates.append(rate)
+                    timestamps.append(endDate)
                 }
                 
-                // Move forward by a fraction to get overlapping windows
                 break
             }
             
@@ -834,20 +865,41 @@ func calculateDischargeRateStatistics(samples: [SampleRecord], segmentMinutes: I
         }
         
         // Slide window forward
-        i += max(1, sortedSamples.count / 50)  // Overlap windows for more data points
+        i += max(1, sortedSamples.count / 50)
     }
     
     guard rates.count >= 3 else { return nil }
     
-    let mean = rates.reduce(0.0, +) / Double(rates.count)
-    let min = rates.min() ?? 0
-    let max = rates.max() ?? 0
+    // Filter rates > 0.01%/hr for statistics (exclude idle/charge periods)
+    let filteredRates = rates.filter { $0 > 0.01 }
     
-    let variance = rates.map { pow($0 - mean, 2) }.reduce(0.0, +) / Double(rates.count)
+    // If too few actual discharge samples, use all rates for basic stats
+    let statsRates = filteredRates.count >= 3 ? filteredRates : rates
+    
+    let mean = statsRates.reduce(0.0, +) / Double(statsRates.count)
+    let min = statsRates.min() ?? 0
+    let max = statsRates.max() ?? 0
+    
+    let variance = statsRates.map { pow($0 - mean, 2) }.reduce(0.0, +) / Double(statsRates.count)
     let stddev = sqrt(variance)
     let range = max - min
     
-    return DischargeRateStats(rates: rates, mean: mean, min: min, max: max, stddev: stddev, range: range)
+    // Compute slope using filtered rates for trend detection
+    let slope = filteredRates.count >= 3 ? 
+        computeTrendSlope(rates: filteredRates, timestamps: Array(timestamps.suffix(filteredRates.count)), sessionStart: sessionStart) : 
+        0.0
+    
+    return DischargeRateStats(
+        rates: rates,
+        filteredRates: filteredRates,
+        mean: mean,
+        min: min,
+        max: max,
+        stddev: stddev,
+        range: range,
+        slope: slope,
+        sampleTimestamps: timestamps
+    )
 }
 
 func getTrendIndicator(recent: Double, baseline: Double, threshold: Double = 0.15) -> String {
@@ -1195,12 +1247,7 @@ func showStatus() {
                     print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 1h avg")
                 }
             } else {
-                let trend = rate1h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate1h!.percentPerHour) : ""
-                print("  Last 15m: -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
-                if let rate1h = rate1h {
-                    let change = ((dischargeRate - rate1h.percentPerHour) / rate1h.percentPerHour) * 100
-                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 1h avg")
-                }
+                print("  Last 15m: No discharge (stable)")
             }
             
             // 1h window
@@ -1212,12 +1259,7 @@ func showStatus() {
                     print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 3h avg")
                 }
             } else {
-                let trend = rate3h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate3h!.percentPerHour) : ""
-                print("  Last 1h:  -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
-                if let rate3h = rate3h {
-                    let change = ((dischargeRate - rate3h.percentPerHour) / rate3h.percentPerHour) * 100
-                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 3h avg")
-                }
+                print("  Last 1h:  No discharge (stable)")
             }
             
             // 3h window
@@ -1229,12 +1271,7 @@ func showStatus() {
                     print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 12h avg")
                 }
             } else {
-                let trend = rate12h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate12h!.percentPerHour) : ""
-                print("  Last 3h:  -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
-                if let rate12h = rate12h {
-                    let change = ((dischargeRate - rate12h.percentPerHour) / rate12h.percentPerHour) * 100
-                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 12h avg")
-                }
+                print("  Last 3h:  No discharge (stable)")
             }
             
             // 12h window
@@ -1246,12 +1283,7 @@ func showStatus() {
                     print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 48h avg")
                 }
             } else {
-                let trend = rate48h != nil ? getTrendIndicator(recent: dischargeRate, baseline: rate48h!.percentPerHour) : ""
-                print("  Last 12h: -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
-                if let rate48h = rate48h {
-                    let change = ((dischargeRate - rate48h.percentPerHour) / rate48h.percentPerHour) * 100
-                    print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs 48h avg")
-                }
+                print("  Last 12h: No discharge (stable)")
             }
             
             // 48h window
@@ -1261,9 +1293,7 @@ func showStatus() {
                 let change = ((rate48h.percentPerHour - dischargeRate) / dischargeRate) * 100
                 print("            \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% vs session avg")
             } else {
-                let trend = getTrendIndicator(recent: dischargeRate, baseline: dischargeRate)
-                print("  Last 48h: -0% = \(String(format: "%.2f", dischargeRate))%/hr \(trend) (~extrapolated)")
-                print("            0.0% vs session avg")
+                print("  Last 48h: No discharge (stable)")
             }
             
             print("\n📊 Discharge Rate Analysis:")
@@ -1273,30 +1303,66 @@ func showStatus() {
                 print("    Range: \(String(format: "%.2f", stats.min))%/hr - \(String(format: "%.2f", stats.max))%/hr (Δ\(String(format: "%.2f", stats.range))%/hr)")
                 print("    Std Dev: ±\(String(format: "%.2f", stats.stddev))%/hr")
                 
-                if stats.mean > 0.01 {
+                // Variability with better handling
+                if stats.filteredRates.count < 3 {
+                    print("    Variability: N/A (sparse discharge data, range: \(String(format: "%.2f", stats.min))-\(String(format: "%.2f", stats.max))%/hr)")
+                } else if stats.mean > 0.01 {
                     let variability = (stats.range / stats.mean) * 100
-                    let stability = max(0, 100 - variability)
-                    print("    Variability: \(String(format: "%.1f", min(variability, 999.9)))% (stability: \(String(format: "%.0f", max(stability, 0)))%)")
+                    let cappedVariability = min(variability, 200.0)
+                    let stability = max(0, 100 - (stats.stddev / stats.mean * 100))
+                    
+                    if variability > 200 && stats.mean < 0.05 {
+                        print("    Variability: \(String(format: "%.1f", cappedVariability))% (capped, due to sparse drops)")
+                    } else {
+                        print("    Variability: \(String(format: "%.1f", cappedVariability))%")
+                    }
+                    print("    Stability: \(String(format: "%.0f", max(stability, 0)))%")
                 }
                 
-                if stats.rates.count >= 3 {
-                    let recentThird = stats.rates.suffix(stats.rates.count / 3)
-                    let oldThird = stats.rates.prefix(stats.rates.count / 3)
-                    let recentAvg = recentThird.reduce(0.0, +) / Double(recentThird.count)
-                    let oldAvg = oldThird.reduce(0.0, +) / Double(oldThird.count)
+                // Slope-based trend detection
+                if stats.filteredRates.count >= 3 {
+                    let slopeThreshold = 0.03  // %/hr per hour
                     
-                    if oldAvg > 0.01 {
-                        let trend = ((recentAvg - oldAvg) / oldAvg) * 100
-                        let trendIcon = trend > 5 ? "↑ worsening" : trend < -5 ? "↓ improving" : "→ stable"
-                        print("    Trend: \(trendIcon) (\(trend > 0 ? "+" : "")\(String(format: "%.1f", min(abs(trend), 999.9) * (trend >= 0 ? 1 : -1)))% recent vs early)")
-                    } else if recentAvg > 0.05 {
-                        print("    Trend: ↑ worsening (early data had no drops)")
+                    if stats.slope > slopeThreshold {
+                        let recentAvg = stats.filteredRates.suffix(stats.filteredRates.count / 3).reduce(0.0, +) / Double(stats.filteredRates.count / 3)
+                        let oldAvg = stats.filteredRates.prefix(stats.filteredRates.count / 3).reduce(0.0, +) / Double(stats.filteredRates.count / 3)
+                        let change = oldAvg > 0.01 ? ((recentAvg - oldAvg) / oldAvg * 100) : 0
+                        print("    Trend: ↑ discharge increasing (slope: +\(String(format: "%.3f", stats.slope))%/hr², \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% recent vs early)")
+                    } else if stats.slope < -slopeThreshold {
+                        let recentAvg = stats.filteredRates.suffix(stats.filteredRates.count / 3).reduce(0.0, +) / Double(stats.filteredRates.count / 3)
+                        let oldAvg = stats.filteredRates.prefix(stats.filteredRates.count / 3).reduce(0.0, +) / Double(stats.filteredRates.count / 3)
+                        let change = oldAvg > 0.01 ? ((recentAvg - oldAvg) / oldAvg * 100) : 0
+                        print("    Trend: ↓ discharge decreasing (slope: \(String(format: "%.3f", stats.slope))%/hr², \(change > 0 ? "+" : "")\(String(format: "%.1f", change))% recent vs early)")
                     } else {
+                        let recentAvg = stats.filteredRates.suffix(max(3, stats.filteredRates.count / 5)).reduce(0.0, +) / Double(max(3, stats.filteredRates.count / 5))
+                        if recentAvg < 0.05 {
+                            print("    Trend: → stable (negligible recent discharge)")
+                        } else {
+                            print("    Trend: → stable (consistent discharge rate)")
+                        }
+                    }
+                } else if stats.rates.count >= 3 {
+                    let recentAvg = stats.rates.suffix(max(3, stats.rates.count / 3)).reduce(0.0, +) / Double(max(3, stats.rates.count / 3))
+                    if recentAvg < 0.05 {
                         print("    Trend: → stable (minimal discharge throughout)")
+                    } else {
+                        print("    Trend: N/A (insufficient active discharge data)")
                     }
                 }
                 
-                print("    Data points: \(stats.rates.count) hourly segments")
+                print("    Data points: \(stats.rates.count) hourly segments (\(stats.filteredRates.count) with discharge)")
+                
+                // Overall trend summary
+                let recentRate = rate12h?.percentPerHour ?? rate48h?.percentPerHour ?? dischargeRate
+                if recentRate < 0.10 {
+                    print("\n  Summary: Battery extremely stable recently (minimal discharge).")
+                } else if stats.slope < -0.03 {
+                    print("\n  Summary: Discharge rate improving over time (recent better than early).")
+                } else if stats.slope > 0.03 {
+                    print("\n  Summary: Discharge rate increasing (consider checking for changes in usage).")
+                } else {
+                    print("\n  Summary: Discharge rate consistent and predictable.")
+                }
             }
             
             print("\n  Total samples recorded: \(samples.count)")
