@@ -17,11 +17,10 @@
     "default_profile": "write",
     "always_allow_tool_actions": true,
     "model_parameters": [],
-    "default_model": {
-      "provider": "anthropic",
-      "model": "claude-3-7-sonnet-thinking-latest"
-    },
     "version": "2"
+  },
+  "terminal": {
+    "minimum_contrast": 0
   },
   "theme": "Tokyo Night",
   "icon_theme": "Catppuccin Mocha",
