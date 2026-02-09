@@ -90,6 +90,26 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
+# Auto-use .nvmrc when entering a directory (and at shell startup).
+autoload -U add-zsh-hook
+load-nvmrc() {
+  local nvmrc_path
+  nvmrc_path="$(nvm_find_nvmrc)"
+
+  if [ -n "$nvmrc_path" ]; then
+    local nvmrc_node_version
+    nvmrc_node_version="$(nvm version "$(cat "${nvmrc_path}")")"
+
+    if [ "$nvmrc_node_version" = "N/A" ]; then
+      nvm install
+    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
+      nvm use --silent
+    fi
+  fi
+}
+add-zsh-hook chpwd load-nvmrc
+load-nvmrc
+
 
 # -----------
 #
@@ -195,7 +215,7 @@ alias gpf="git push --force-with-lease origin"
 alias gd="git diff"
 alias bsy="git fetch -p | git branch -vv | grep ': gone]' | awk '{print }' | xargs -n 1 git branch -d"
 alias conv-commit="zsh ~/commit.sh"
-alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
+# alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
 alias update-last-commit="git commit -a --amend --no-edit && git push --force-with-lease origin"
 alias prc="gh pr create"
 alias devs='lsof -nP -iTCP -sTCP:LISTEN | grep -E "(node|next|astro|vite|webpack|parcel)" | awk "{split(\$9, addr, \":\"); port = addr[length(addr)]; process = \$1; printf \"\\033[1;36m%-6s\\033[0m \\033[1;33m%s\\033[0m\\n\", process, port}" | sort -k2 -n'
@@ -232,6 +252,10 @@ alias ltg="$eza $long --tree --git-ignore"
 # -- fzf with bat and eza previews --
 alias lspe="fzf --preview '$show_file_or_dir_preview'"
 alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
+
+
+# -- claude --
+alias c="claude --dangerously-skip-permissions"
 
 # -------------------
 # --- end aliases ---
@@ -403,3 +427,19 @@ export VISUAL='nvim'
 # Added by CodeRabbit CLI installer
 export PATH="/Users/bassimshahidy/.local/bin:$PATH"
 export CLAUDE_BASH_NO_LOGIN=1
+
+# OpenClaw
+export OPENCLAW_IMAGE_BACKEND=sips
+# Cached openclaw completions (auto-refreshes in background if older than 1 day)
+_openclaw_cache="$HOME/.cache/openclaw.zsh"
+if [[ -f "$_openclaw_cache" ]]; then
+    source "$_openclaw_cache"
+    # Refresh in background if older than 1 day
+    if [[ -n $(find "$_openclaw_cache" -mtime +1 2>/dev/null) ]]; then
+        (openclaw completion --shell zsh > "$_openclaw_cache" &)
+    fi
+else
+    # No cache exists - generate in background, completions available next shell
+    (openclaw completion --shell zsh > "$_openclaw_cache" &)
+fi
+unset _openclaw_cache
