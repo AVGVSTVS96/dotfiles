@@ -38,8 +38,15 @@ scripts/.local/bin/kbtrack
 
 # Fish shell auto-generated files (regenerate with `fisher update`)
 fish/.config/fish/fish_variables
-fish/.config/fish/functions/
-fish/.config/fish/conf.d/
 fish/.config/fish/themes/
 fish/.config/fish/completions/fisher.fish
 fish/.config/fish/completions/fzf_configure_bindings.fish
+
+# Fish functions/ - ignore plugin-generated files, track custom ones
+fish/.config/fish/functions/*
+# (no custom function files yet - add !negation lines here if needed)
+
+# Fish conf.d/ - ignore plugin-generated files, track custom ones
+fish/.config/fish/conf.d/*
+!fish/.config/fish/conf.d/01-secrets.fish
+!fish/.config/fish/conf.d/functions.fish
