@@ -5,7 +5,7 @@
 	clean = git-lfs clean -- %f
 
 [user]
-	name = AVGVSTVS96
+	name = Bassim Shahidy
 	email = 122117267+AVGVSTVS96@users.noreply.github.com
 	signingkey = ~/.ssh/id_ed25519
 
