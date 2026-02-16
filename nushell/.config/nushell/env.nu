@@ -68,9 +68,8 @@ $env.FZF_CTRL_T_COMMAND = $env.FZF_DEFAULT_COMMAND
 $env.FZF_ALT_C_COMMAND = "fd --type=d --hidden --strip-cwd-prefix --exclude .git"
 
 # ===========
-# === NVM ===
+# === fnm ===
 # ===========
-$env.NVM_DIR = ($env.HOME | path join ".nvm")
 
 # ============
 # === PNPM ===
@@ -101,14 +100,17 @@ path add ($env.HOME | path join ".cache" ".bun" "bin")
 # Cursor Editor
 path add "/Applications/Cursor.app/Contents/Resources/app/bin"
 
-# NVM - find active node version and add to path
-let nvm_versions = ($env.HOME | path join ".nvm" "versions" "node")
-if ($nvm_versions | path exists) {
-    let node_dirs = (ls $nvm_versions | where type == dir | sort-by modified | reverse)
-    if ($node_dirs | length) > 0 {
-        let latest_node = ($node_dirs | first | get name)
-        path add ($latest_node | path join "bin")
+# fnm - node version management
+if (which fnm | is-not-empty) {
+    ^fnm env --use-on-cd --shell bash | lines | each { |line|
+        if ($line | str starts-with "export ") {
+            let parts = ($line | str replace "export " "" | split row "=")
+            let key = ($parts | first)
+            let value = ($parts | skip 1 | str join "=" | str trim -c '"')
+            load-env { ($key): $value }
+        }
     }
+    path add ($env.FNM_MULTISHELL_PATH | path join "bin")
 }
 
 # Local node_modules (project-specific, highest priority)

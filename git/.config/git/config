@@ -42,7 +42,7 @@
   line-numbers = true
   hyperlinks = true
   hyperlinks-file-link-format = "vscode-insiders://file/{path}:{line}"
-  side-by-side = true
+ # side-by-side = true
 
 [merge]
   conflictstyle = diff3

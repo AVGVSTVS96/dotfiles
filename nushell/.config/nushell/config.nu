@@ -33,6 +33,9 @@ oh-my-posh init nu --config ~/.config/oh-my-posh/tokyonight_storm-customized.omp
 # === Shell Aliases ===
 # ======================
 alias cl = clear
+alias br = bun run
+alias xr = xpm run
+alias pr = pnpm run
 alias nrc = nvim ~/.config/nushell/config.nu
 alias nenv = nvim ~/.config/nushell/env.nu
 # Note: Can't alias 'source' - use `source ~/.config/nushell/config.nu` directly

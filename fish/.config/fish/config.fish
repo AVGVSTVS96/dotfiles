@@ -24,7 +24,8 @@ fish_add_path -p ./node_modules/.bin
 # User-local binaries
 fish_add_path -p ~/.local/bin
 
-# Node version management is handled by nvm.sh auto-use logic in conf.d.
+# Node version management via fnm (auto-switches on cd via --use-on-cd)
+fnm env --use-on-cd --shell fish | source
 
 # pnpm
 set -gx PNPM_HOME $HOME/Library/pnpm
@@ -62,6 +63,9 @@ test -f ~/.cache/openclaw.fish && source ~/.cache/openclaw.fish
 # aliases and abbreviations
 
 # terminal aliases
+abbr br "bun run"
+abbr xr "xpm run"
+abbr pr "pnpm run"
 abbr zrc "nvim ~/.zshrc"
 abbr szrc "source ~/.zshrc"
 abbr exz "exec zsh"
@@ -121,6 +125,7 @@ abbr ltg "$eza $long --tree --git-ignore"
 
 # -- claude --
 abbr c "claude --dangerously-skip-permissions"
+abbr cx "codex --yolo"
 abbr pbc "pbcopy"
 
 # -- fastfetch --

@@ -1,3 +1,30 @@
+# ── cached eval ──
+# Caches the output of a slow command and sources it.
+# Refreshes in background if the cache is older than 1 day.
+# Usage: cached_eval <cache-name> <command...>
+zmodload zsh/stat 2>/dev/null
+zmodload zsh/datetime 2>/dev/null
+
+cached_eval() {
+    local name="$1"; shift
+    local cache_file="$HOME/.cache/${name}.zsh"
+    local refresh_cache=0
+    if [[ -f "$cache_file" ]]; then
+        source "$cache_file"
+        local -a stat_out
+        if zstat -A stat_out +mtime -- "$cache_file" 2>/dev/null; then
+            (( EPOCHSECONDS - stat_out[1] > 86400 )) && refresh_cache=1
+        else
+            refresh_cache=1
+        fi
+        if (( refresh_cache )); then
+            ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &
+        fi
+    else
+        ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &
+    fi
+}
+
 # ----------------
 # --- Check OS ---
 # ----------------
@@ -19,7 +46,7 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 # -----------
 # --- NPM ---
 # -----------
-export PATH="./node_modules/.bin:$PATH"
+export PATH="$PATH:./node_modules/.bin"
 
 
 # -----------------------
@@ -37,25 +64,45 @@ export PATH="$PATH:/Users/bassimshahidy/.cargo/bin"
 # ----------------
 # --- Homebrew ---
 # ----------------
-$darwin && eval "$(/opt/homebrew/bin/brew shellenv)"
-$linux && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" && export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+if $darwin; then
+  export HOMEBREW_PREFIX="/opt/homebrew"
+  export HOMEBREW_CELLAR="/opt/homebrew/Cellar"
+  export HOMEBREW_REPOSITORY="/opt/homebrew"
+  case ":$PATH:" in
+    *":$HOMEBREW_PREFIX/bin:"*) ;;
+    *) export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH" ;;
+  esac
+elif $linux; then
+  export HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
+  export HOMEBREW_CELLAR="$HOMEBREW_PREFIX/Cellar"
+  export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX/Homebrew"
+  case ":$PATH:" in
+    *":$HOMEBREW_PREFIX/bin:"*) ;;
+    *) export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH" ;;
+  esac
+fi
+
+_brew_prefix="$HOMEBREW_PREFIX"
 
 # Add brew's zsh completions to fpath
-FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+FPATH="$_brew_prefix/share/zsh/site-functions:${FPATH}"
 
 
 # -----------------
 # --- oh-my-zsh ---
 # -----------------
 export ZSH="$HOME/.oh-my-zsh"
+ZSH_DISABLE_COMPFIX=false
+ZSH_COMPDUMP="${ZDOTDIR:-$HOME}/.zcompdump-${HOST/.*/}-${ZSH_VERSION}"
 
 # -------------------
 # --- zsh plugins ---
 # -------------------
 plugins=(git)
 
-source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+source "$_brew_prefix/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+source "$_brew_prefix/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+unset _brew_prefix
 
 # load oh-my-zsh
 source $ZSH/oh-my-zsh.sh
@@ -82,33 +129,9 @@ export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml"
 
 
 # -----------
-# --- NVM ---
+# --- fnm ---
 # -----------
-# export PATH=$HOME/.nvm/versions/node/v21.6.1/bin:$PATH
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-
-# Auto-use .nvmrc when entering a directory (and at shell startup).
-autoload -U add-zsh-hook
-load-nvmrc() {
-  local nvmrc_path
-  nvmrc_path="$(nvm_find_nvmrc)"
-
-  if [ -n "$nvmrc_path" ]; then
-    local nvmrc_node_version
-    nvmrc_node_version="$(nvm version "$(cat "${nvmrc_path}")")"
-
-    if [ "$nvmrc_node_version" = "N/A" ]; then
-      nvm install
-    elif [ "$nvmrc_node_version" != "$(nvm version)" ]; then
-      nvm use --silent
-    fi
-  fi
-}
-add-zsh-hook chpwd load-nvmrc
-load-nvmrc
+cached_eval fnm fnm env --use-on-cd --shell zsh
 
 
 # -----------
@@ -116,7 +139,7 @@ load-nvmrc
 # --- fzf ---
 #
 # -----------
-eval "$(fzf --zsh)"
+cached_eval fzf fzf --zsh
 
 # ---------------------------
 # -- Use fd instead of fzf --
@@ -140,7 +163,7 @@ _fzf_compgen_dir() {
 # --------------------
 # -- fzf-git script --
 # --------------------
-source ~/fzf-git.sh
+[[ -f ~/fzf-git.sh ]] && source ~/fzf-git.sh
 
 # ------------------
 # -- fzf previews --
@@ -174,7 +197,7 @@ _fzf_comprun() {
 # ---------------
 # --- thefuck ---
 # ---------------
-eval $(thefuck --alias)
+cached_eval thefuck thefuck --alias
 
 
 # --------------------------
@@ -193,10 +216,16 @@ fi
 # For a full list of active aliases, run `alias`.
 
 # -- zsh aliases --
+alias br="bun run"
+alias xr="xpm run"
+alias pr="pnpm run"
 alias zrc="nvim ~/.zshrc"
 alias szrc="source ~/.zshrc"
 alias exz="exec zsh"
 alias cl="clear"
+
+# -- named directories --
+hash -d iCloud="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
 
 # -- git aliases --
 alias aga="add_git_alias"
@@ -256,6 +285,7 @@ alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$s
 
 # -- claude --
 alias c="claude --dangerously-skip-permissions"
+alias cx="codex --yolo"
 
 # -------------------
 # --- end aliases ---
@@ -376,7 +406,7 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 
-source ~/completion-for-pnpm.zsh
+[[ -f ~/completion-for-pnpm.zsh ]] && source ~/completion-for-pnpm.zsh
 # ----------------
 # --- end pnpm ---
 # ----------------
@@ -430,16 +460,5 @@ export CLAUDE_BASH_NO_LOGIN=1
 
 # OpenClaw
 export OPENCLAW_IMAGE_BACKEND=sips
-# Cached openclaw completions (auto-refreshes in background if older than 1 day)
-_openclaw_cache="$HOME/.cache/openclaw.zsh"
-if [[ -f "$_openclaw_cache" ]]; then
-    source "$_openclaw_cache"
-    # Refresh in background if older than 1 day
-    if [[ -n $(find "$_openclaw_cache" -mtime +1 2>/dev/null) ]]; then
-        (openclaw completion --shell zsh > "$_openclaw_cache" &)
-    fi
-else
-    # No cache exists - generate in background, completions available next shell
-    (openclaw completion --shell zsh > "$_openclaw_cache" &)
-fi
-unset _openclaw_cache
+cached_eval openclaw openclaw completion --shell zsh
+cached_eval but-completions but completions zsh
