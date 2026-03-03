@@ -124,7 +124,8 @@ abbr lt3 "$eza $long -all --tree --level=4"
 abbr ltg "$eza $long --tree --git-ignore"
 
 # -- claude --
-abbr c "claude --dangerously-skip-permissions"
+abbr c "ai-tmux --agent claude"
+abbr oc "ai-tmux --agent opencode"
 abbr cx "codex --yolo"
 abbr pbc "pbcopy"
 

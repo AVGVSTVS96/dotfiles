@@ -62,6 +62,9 @@ alias prc = gh pr create
 # ====================
 # === Tool Aliases ===
 # ====================
+alias c = ai-tmux --agent claude
+alias oc = ai-tmux --agent opencode
+alias cx = codex --yolo
 alias lg = lazygit
 alias yz = yazi
 

@@ -284,7 +284,8 @@ alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$s
 
 
 # -- claude --
-alias c="claude --dangerously-skip-permissions"
+alias c="ai-tmux --agent claude"
+alias oc="ai-tmux --agent opencode"
 alias cx="codex --yolo"
 
 # -------------------
