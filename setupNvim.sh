@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# NVIM is symlinked into the dotfiles repo from it's own repo, stow
+# NVIM is symlinked into .config from it's own repo, stow
 # will not symlink it, so this script symlinks it manually
 
 set -e
 
-SOURCE="nvim/.config/nvim"
+SOURCE="$HOME/Documents/GitHub/nvim"
 TARGET="$HOME/.config/nvim"
 
 # Check if the target already exists
