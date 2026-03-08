@@ -10,7 +10,7 @@ return {
 
       -- Enable virtual lines and configure diagnostics
       vim.diagnostic.config({
-        virtual_lines = true,
+        virtual_lines = { current_line = true },
         virtual_text = false,
 
         -- Other diagnostic improvements

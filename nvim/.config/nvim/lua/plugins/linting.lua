@@ -1,7 +1,7 @@
 return {
   -- Override markdown extra to remove markdownlint-cli2
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = function(_, opts)
       -- Remove markdownlint-cli2 from Mason auto-install
       opts.ensure_installed = opts.ensure_installed or {}
