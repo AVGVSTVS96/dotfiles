@@ -286,7 +286,10 @@ alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$s
 # -- claude --
 alias c="ai-tmux --agent claude"
 alias oc="ai-tmux --agent opencode"
-alias cx="codex --yolo"
+alias cx="ai-tmux --agent codex"
+alias aic="ai-tmux -c"
+alias air="ai-tmux -s"
+alias aip="ai-tmux --pick"
 
 # -------------------
 # --- end aliases ---

@@ -126,7 +126,10 @@ abbr ltg "$eza $long --tree --git-ignore"
 # -- claude --
 abbr c "ai-tmux --agent claude"
 abbr oc "ai-tmux --agent opencode"
-abbr cx "codex --yolo"
+abbr cx "ai-tmux --agent codex"
+abbr aic "ai-tmux -c"
+abbr air "ai-tmux -s"
+abbr aip "ai-tmux --pick"
 abbr pbc "pbcopy"
 
 # -- fastfetch --
