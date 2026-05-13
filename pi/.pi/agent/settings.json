@@ -1,0 +1,17 @@
+{
+  "lastChangelogVersion": "0.74.0",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-7",
+  "defaultThinkingLevel": "high",
+  "hideThinkingBlock": false,
+  "packages": [
+    "~/.pi/agent/local-packages/bash-pty-code-preview-bridge",
+    "npm:pi-code-previews",
+    "npm:@ifi/oh-pi-themes",
+    "npm:pi-bash-live-view",
+    "npm:@grayolson/pi-treebase",
+    "npm:pi-research",
+    "npm:pi-autoresearch"
+  ],
+  "theme": "tokyo-night"
+}

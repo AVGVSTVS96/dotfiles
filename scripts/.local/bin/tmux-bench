@@ -1,0 +1,160 @@
+#!/usr/bin/env zsh
+# tmux-bench — measure terminal escape/scroll throughput.
+# Run inside tmux and outside tmux; compare to quantify tmux's overhead.
+
+set -eu
+setopt pipefail
+zmodload zsh/datetime
+
+DATA=${HOME}/.local/share/tmux-bench
+LOG=$DATA/bench.csv
+RUNS=3
+
+mkdir -p $DATA
+[[ -f $LOG ]] || print "ts,host,term,in_tmux,test,median,min,max" > $LOG
+
+# ── stress-file generators ──
+gen_sgr()       { awk 'BEGIN{for(i=1;i<=50000;i++)printf "\033[38;5;%dm%d\033[0m ",i%256,i;print "\033[0m"}' > $1 }
+gen_scroll()    { awk 'BEGIN{for(i=1;i<=100000;i++)print i}' > $1 }
+gen_altscreen() { awk 'BEGIN{printf "\033[?1049h"; for(i=1;i<=20000;i++)printf "\033[%d;1H\033[38;5;%dmline %d\033[0m",(i%40)+1,i%256,i; printf "\033[?1049l"}' > $1 }
+gen_cursor()    { awk 'BEGIN{for(i=1;i<=30000;i++)printf "\033[%d;%dH#",(i*17%40)+1,(i*31%80)+1; print "\033[0m"}' > $1 }
+
+tests=(sgr scroll altscreen cursor)
+typeset -A labels
+labels=(
+  sgr       "SGR color churn      (escape parser)"
+  scroll    "Newline scroll       (buffer shift)"
+  altscreen "Alt-screen writes    (nvim-like)"
+  cursor   "Cursor jumping       (positioning)"
+)
+
+for t in $tests; do
+  f=$DATA/$t.txt
+  [[ -s $f ]] || gen_$t $f
+done
+
+# ── environment ──
+in_tmux=no; [[ -n ${TMUX:-} ]] && in_tmux=yes
+term=${TERM:-unknown}
+host=$(hostname -s)
+ts=$(date +%Y-%m-%dT%H:%M:%S)
+
+# colors
+b=$'\e[1m'; dim=$'\e[2m'; r=$'\e[0m'
+green=$'\e[32m'; red=$'\e[31m'; yellow=$'\e[33m'; cyan=$'\e[36m'
+
+print "\n${dim}running tmux-bench — screen will flash briefly${r}\n"
+
+typeset -A med_of min_of max_of
+
+# ── run tests ──
+for t in $tests; do
+  f=$DATA/$t.txt
+  vals=()
+  repeat $RUNS; do
+    t0=$EPOCHREALTIME
+    cat $f
+    vals+=$(( EPOCHREALTIME - t0 ))
+  done
+  sorted=(${(on)vals})
+  n=${#sorted}
+  mn=$sorted[1]; mx=$sorted[$n]; med=$sorted[$(( (n+1)/2 ))]
+  med_of[$t]=$med; min_of[$t]=$mn; max_of[$t]=$mx
+  print "$ts,$host,$term,$in_tmux,$t,$med,$mn,$mx" >> $LOG
+done
+
+# clear screen and reset SGR so report prints cleanly
+printf '\e[2J\e[H\e[0m'
+
+# ── lookups from history ──
+last_same_env() {
+  awk -F, -v t=$1 -v i=$in_tmux -v ts=$ts '
+    $5==t && $4==i && $1!=ts { last=$6 }
+    END { if (last!="") printf "%.4f", last }
+  ' $LOG
+}
+
+last_no_tmux() {
+  awk -F, -v t=$1 '
+    $5==t && $4=="no" { last=$6 }
+    END { if (last!="") printf "%.4f", last }
+  ' $LOG
+}
+
+# ── report ──
+print "${b}tmux-bench${r}  ${dim}${ts}${r}"
+print "${dim}host=${host}  term=${term}  in_tmux=${in_tmux}  runs=${RUNS} (median of)${r}"
+print
+
+# bar chart scaling — find largest median this run
+bar_max=0
+for t in $tests; do
+  (( med_of[$t] > bar_max )) && bar_max=$med_of[$t]
+done
+
+printf "  ${b}%-40s  %9s  %9s  %9s  %s${r}\n" "test" "median" "min" "max" "perf"
+print "  ────────────────────────────────────────────────────────────────────────────────────"
+
+for t in $tests; do
+  label=$labels[$t]
+  med=$med_of[$t]; mn=$min_of[$t]; mx=$max_of[$t]
+
+  # bar: ~20 chars wide, scaled to bar_max this run
+  bar_len=$(printf '%.0f' $(( 20.0 * med / bar_max )))
+  (( bar_len < 1 )) && bar_len=1
+  bar=""
+  for ((i=0; i<bar_len; i++)); do bar="${bar}█"; done
+
+  printf "  %-40s  %8.4fs  %8.4fs  %8.4fs  ${cyan}%s${r}\n" "$label" $med $mn $mx "$bar"
+done
+print
+
+# ── vs previous same-env run ──
+have_prev=0
+for t in $tests; do
+  [[ -n $(last_same_env $t) ]] && have_prev=1 && break
+done
+
+if (( have_prev )); then
+  print "  ${b}vs previous ${in_tmux}-tmux run${r}"
+  for t in $tests; do
+    prev=$(last_same_env $t) || prev=""
+    [[ -z $prev ]] && continue
+    med=$med_of[$t]
+    ratio=$(( med / prev ))
+    arrow="="; col=$dim; verdict="steady"
+    (( ratio > 1.30 )) && { arrow="↑"; col=$red;    verdict="slower" }
+    (( ratio < 0.80 )) && { arrow="↓"; col=$green;  verdict="faster" }
+    printf "    %-40s  prev=%.4fs  ${col}%s %.2f× %s${r}\n" "$labels[$t]" $prev $arrow $ratio $verdict
+  done
+  print
+fi
+
+# ── tmux tax: only meaningful when in tmux, compared to last outside run ──
+if [[ $in_tmux == yes ]]; then
+  have_out=0
+  for t in $tests; do
+    [[ -n $(last_no_tmux $t) ]] && have_out=1 && break
+  done
+  if (( have_out )); then
+    print "  ${b}tmux tax${r}  ${dim}(this run ÷ last run outside tmux)${r}"
+    for t in $tests; do
+      out=$(last_no_tmux $t) || out=""
+      [[ -z $out ]] && continue
+      med=$med_of[$t]
+      tax=$(( med / out ))
+      col=$green; label_note="healthy"
+      (( tax > 5.0 ))  && { col=$yellow; label_note="elevated" }
+      (( tax > 10.0 )) && { col=$red;    label_note="bad" }
+      printf "    %-40s  ${col}%5.2f×  %s${r}\n" "$labels[$t]" $tax "$label_note"
+    done
+    print
+  else
+    print "  ${dim}no outside-tmux baseline yet — detach tmux and run tmux-bench once to establish one${r}\n"
+  fi
+else
+  print "  ${dim}this was an outside-tmux run — attach tmux and rerun to measure tax${r}\n"
+fi
+
+print "  ${dim}log: ${LOG}${r}"
+print "  ${dim}data: ${DATA}/*.txt${r}\n"
