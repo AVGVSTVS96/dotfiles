@@ -18,10 +18,10 @@ cached_eval() {
             refresh_cache=1
         fi
         if (( refresh_cache )); then
-            ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &
+            ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &!
         fi
     else
-        ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &
+        ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &!
     fi
 }
 
@@ -219,6 +219,12 @@ fi
 alias br="bun run"
 alias xr="xpm run"
 alias pr="pnpm run"
+alias xi="xpm install"
+alias bi="bun install"
+alias xd="xpm run dev"
+alias pd="pnpm run dev"
+alias bd="bun run dev"
+alias bd="bun run dev"
 alias zrc="nvim ~/.zshrc"
 alias szrc="source ~/.zshrc"
 alias exz="exec zsh"
