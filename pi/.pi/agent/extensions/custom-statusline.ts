@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
@@ -19,7 +20,38 @@ const dimBold = (text: string) => `\u001b[1;90m${text}\u001b[0m`;
 const OMP_MONOREPO = `${process.env.HOME}/.local/bin/omp-monorepo`;
 
 let currentThinkingLevel = "off";
+let currentSessionName: string | undefined;
+let latestCtx: ExtensionContext | undefined;
 const dirLabelCache = new Map<string, string>();
+
+const FAST_CONFIG_PATH = `${process.env.HOME}/.pi/agent/fast.json`;
+
+type FastState = {
+	enabled?: boolean;
+	models?: string[];
+};
+
+let fastState: FastState = loadFastState();
+
+function loadFastState(): FastState {
+	try {
+		if (!existsSync(FAST_CONFIG_PATH)) return { enabled: true, models: ["openai/gpt-5.5", "openai-codex/gpt-5.5"] };
+		const parsed = JSON.parse(readFileSync(FAST_CONFIG_PATH, "utf8"));
+		return {
+			enabled: parsed.enabled !== false,
+			models: Array.isArray(parsed.models) ? parsed.models : ["openai/gpt-5.5", "openai-codex/gpt-5.5"],
+		};
+	} catch {
+		return { enabled: true, models: ["openai/gpt-5.5", "openai-codex/gpt-5.5"] };
+	}
+}
+
+function isFastActiveForModel(ctx: ExtensionContext) {
+	const model = ctx.model;
+	if (!model || fastState.enabled !== true) return false;
+	const models = fastState.models ?? ["openai/gpt-5.5", "openai-codex/gpt-5.5"];
+	return models.includes(`${model.provider}/${model.id}`) || models.includes(model.id);
+}
 
 function fallbackDir(cwd: string) {
 	const parent = path.basename(path.dirname(cwd));
@@ -75,10 +107,16 @@ function repoLabel(cwd: string): string {
 }
 
 function sessionId(ctx: ExtensionContext) {
-	const file = ctx.sessionManager.getSessionFile();
-	if (!file) return "ephemeral";
-	const base = path.basename(file, ".jsonl");
-	return base.includes("_") ? (base.split("_").pop() ?? base) : base;
+	if (!ctx.sessionManager.isPersisted()) return "ephemeral";
+	return ctx.sessionManager.getSessionId();
+}
+
+function sessionName(ctx: ExtensionContext) {
+	return currentSessionName ?? ctx.sessionManager.getSessionName();
+}
+
+function sessionDisplay(ctx: ExtensionContext) {
+	return sessionId(ctx);
 }
 
 function modelName(ctx: ExtensionContext) {
@@ -122,19 +160,22 @@ function renderStatusline(ctx: ExtensionContext, width: number) {
 	const model = modelName(ctx);
 	const context = tokenStats(ctx).context;
 	const thinking = ctx.model?.reasoning ? `${dimBold("[")}${yellowBoldText(currentThinkingLevel)}${dimBold("]")}` : "";
-	const modelWithThinking = `${blueBold(model)}${thinking}`;
+	const fastPrefix = isFastActiveForModel(ctx) ? yellowBoldText("⚡") : "";
+	const modelWithThinking = `${fastPrefix}${blueBold(model)}${thinking}`;
 	const contextDisplay = context
 		? (() => {
 				const [percent = "", total = ""] = context.split("/");
 				return `${dimBold("[")}${orange(percent.replace(/\.0%$/, "%"))}${dimBold("/")}${tealBold(total)}${dimBold("]")}`;
 			})()
 		: undefined;
+	const name = sessionName(ctx);
+	const sessionNameDisplay = name ? ` ${dimBold("in")} ${cyanBold(name)}` : "";
 
 	const line1 = contextDisplay
-		? `${dir} ${dimBold("with")} ${modelWithThinking} ${dimBold("at")} ${contextDisplay}`
-		: `${dir} ${dimBold("with")} ${modelWithThinking}`;
+		? `${dir} ${dimBold("with")} ${modelWithThinking} ${dimBold("at")} ${contextDisplay}${sessionNameDisplay}`
+		: `${dir} ${dimBold("with")} ${modelWithThinking}${sessionNameDisplay}`;
 
-	const line2 = `${dimBold("-r ")}${green(sessionId(ctx))}`;
+	const line2 = `${dimBold("--session ")}${green(sessionDisplay(ctx))}`;
 
 	return [line1, line2].map((line) => truncateToWidth(line, width));
 }
@@ -185,11 +226,32 @@ export default function customStatusline(pi: ExtensionAPI) {
 		currentThinkingLevel = pi.getThinkingLevel();
 	};
 
+	const refreshSessionName = (ctx: ExtensionContext) => {
+		currentSessionName = pi.getSessionName() ?? ctx.sessionManager.getSessionName();
+	};
+
 	const refreshStatusline = (ctx: ExtensionContext) => {
+		latestCtx = ctx;
+		fastState = loadFastState();
 		refreshThinkingLevel();
+		refreshSessionName(ctx);
 		installStatusline(ctx);
 	};
 
+	pi.events.on("fast:state", (data) => {
+		const state = data as FastState;
+		fastState = {
+			enabled: state.enabled === true,
+			models: Array.isArray(state.models) ? state.models : ["openai/gpt-5.5", "openai-codex/gpt-5.5"],
+		};
+		if (latestCtx) installStatusline(latestCtx);
+	});
+
+	pi.on("input", (event, ctx) => {
+		if (event.text.trim().startsWith("/name")) {
+			setTimeout(() => refreshStatusline(ctx), 50);
+		}
+	});
 	pi.on("session_start", (_event, ctx) => refreshStatusline(ctx));
 	pi.on("model_select", (_event, ctx) => refreshStatusline(ctx));
 	pi.on("thinking_level_select", (event, ctx) => {

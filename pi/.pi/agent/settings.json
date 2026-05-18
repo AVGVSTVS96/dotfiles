@@ -1,8 +1,12 @@
 {
-  "lastChangelogVersion": "0.74.0",
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-7",
-  "defaultThinkingLevel": "high",
+  "lastChangelogVersion": "0.74.1",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.5",
+  "defaultThinkingLevel": "low",
+  "enabledModels": [
+    "openai-codex/gpt-5.5",
+    "anthropic/claude-opus-4-7"
+  ],
   "hideThinkingBlock": false,
   "packages": [
     "~/.pi/agent/local-packages/bash-pty-code-preview-bridge",

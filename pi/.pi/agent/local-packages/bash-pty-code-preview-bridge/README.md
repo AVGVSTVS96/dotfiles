@@ -114,19 +114,17 @@ If live terminal works but final output is unstyled, the bridge probably did not
 
 ## Update compatibility
 
-By default, this bridge tries to use the bash-specific `pi-code-previews` renderer so completed bash output keeps the nice styled block. If that renderer moves after a package update, the bridge falls back to the public `pi-code-previews` shell wrapper instead of preventing Pi from starting.
+This bridge deliberately imports internal files from both packages. That is why it can combine live PTY execution with the bash-specific `pi-code-previews` renderer today, but it also means package updates can break the bridge if internals move.
 
-The bash-specific renderer path may need updating after package upgrades because it probes this non-public file:
-
-```text
-pi-code-previews/src/tool-renderers/bash.ts
-```
-
-The PTY execution path still depends on these `pi-bash-live-view` internals, but they are lazy-loaded so a future move should produce a `usePTY=true` error rather than preventing Pi from starting:
+Imports that may need updating after package upgrades:
 
 ```text
 pi-bash-live-view/pty-execute.ts
 pi-bash-live-view/spawn-helper.ts
+pi-code-previews/src/tool-renderers/bash.ts
+pi-code-previews/src/syntax/shiki.ts
+pi-code-previews/src/settings/index.ts
+pi-code-previews/src/settings/bootstrap.ts
 ```
 
 If `/reload` reports extension load errors after `pi update`, inspect those paths and adjust `index.ts`.
