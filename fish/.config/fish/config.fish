@@ -25,6 +25,8 @@ fish_add_path -p ./node_modules/.bin
 fish_add_path -p ~/.local/bin
 
 # Node version management via fnm (auto-switches on cd via --use-on-cd)
+# Stable path for GUI apps and non-shell contexts
+fish_add_path $HOME/.local/share/fnm/aliases/default/bin
 fnm env --use-on-cd --shell fish | source
 
 # pnpm

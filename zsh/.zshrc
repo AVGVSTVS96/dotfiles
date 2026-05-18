@@ -131,6 +131,7 @@ export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml"
 # -----------
 # --- fnm ---
 # -----------
+export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
 cached_eval fnm fnm env --use-on-cd --shell zsh
 
 

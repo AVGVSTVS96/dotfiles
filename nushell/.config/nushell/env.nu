@@ -100,6 +100,9 @@ path add ($env.HOME | path join ".cache" ".bun" "bin")
 # Cursor Editor
 path add "/Applications/Cursor.app/Contents/Resources/app/bin"
 
+# fnm - stable path for GUI apps and non-shell contexts
+path add ($env.HOME | path join ".local" "share" "fnm" "aliases" "default" "bin")
+
 # fnm - node version management
 if (which fnm | is-not-empty) {
     ^fnm env --use-on-cd --shell bash | lines | each { |line|
