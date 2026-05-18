@@ -1,8 +1,8 @@
 {
-  "lastChangelogVersion": "0.74.1",
+  "lastChangelogVersion": "0.75.1",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.5",
-  "defaultThinkingLevel": "low",
+  "defaultThinkingLevel": "medium",
   "enabledModels": [
     "openai-codex/gpt-5.5",
     "anthropic/claude-opus-4-7"
@@ -15,7 +15,8 @@
     "npm:pi-bash-live-view",
     "npm:@grayolson/pi-treebase",
     "npm:pi-research",
-    "npm:pi-autoresearch"
+    "npm:pi-autoresearch",
+    "npm:pi-web-access"
   ],
   "theme": "tokyo-night"
 }
