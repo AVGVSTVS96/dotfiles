@@ -50,3 +50,10 @@ fish/.config/fish/functions/*
 fish/.config/fish/conf.d/*
 !fish/.config/fish/conf.d/01-secrets.fish
 !fish/.config/fish/conf.d/functions.fish
+
+# pi
+pi/.pi/agent/auth.json
+pi/.pi/agent/sessions
+pi/.pi/agent/npm
+pi/.pi/agent/pi-crash.log
+pi/.pi/exa-usage.json

@@ -1,7 +1,7 @@
 {
-  "lastChangelogVersion": "0.75.1",
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.5",
+  "lastChangelogVersion": "0.75.4",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-7",
   "defaultThinkingLevel": "medium",
   "enabledModels": [
     "openai-codex/gpt-5.5",
@@ -14,7 +14,6 @@
     "npm:@ifi/oh-pi-themes",
     "npm:pi-bash-live-view",
     "npm:@grayolson/pi-treebase",
-    "npm:pi-research",
     "npm:pi-autoresearch",
     "npm:pi-web-access"
   ],
