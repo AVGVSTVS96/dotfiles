@@ -1,17 +1,22 @@
 /**
- * pi-note — Stage 1
+ * pi-note — v1.5
  *
  * Pins a single note above the input editor, scoped to the current session.
  *
  * Commands:
- *   /note <content>             Set/replace the session note.
- *   /note :recap: <content>     Set a note with a custom prefix word (default: "note").
- *   /note                       If a note exists, prefill the editor with its
- *                               command for editing. Otherwise show usage.
+ *   /note <content>             Set/replace the session note (default prefix "note").
+ *   /note :recap: <content>     Set a note with a custom prefix word.
+ *   /note                       Open a multi-line editor to compose/edit the note.
+ *   /notes                      Browse notes; pick one to open it in the editor and
+ *                               restore it. Cycle scope (this session / this project /
+ *                               all projects) by selecting the top “Scope:…” row.
  *   /note-clear                 Clear the note in this session only.
  *
  * The note is stored via pi.appendEntry, so it never enters the LLM context.
- * It persists across resume/fork and follows the active branch via /tree.
+ * The PINNED note is SESSION-scoped: reconstruction scans all entries of the
+ * current session (not just the active /tree branch), so switching branches can
+ * never strand or lose a note. /notes can additionally browse OTHER sessions by
+ * reading their .jsonl files (enumerated via SessionManager.list / listAll).
  *
  * Visual style:
  *   ※ note: long content that wraps across multiple
@@ -19,8 +24,10 @@
  */
 
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { Component } from "@earendil-works/pi-tui";
 import { visibleWidth } from "@earendil-works/pi-tui";
+import { readFileSync } from "node:fs";
 
 // ----- types ---------------------------------------------------------------
 
@@ -59,12 +66,6 @@ function parseArgs(raw: string): { prefix: string; text: string } | null {
     return { prefix: match[1]!, text: match[2]! };
   }
   return { prefix: DEFAULT_PREFIX, text: trimmed };
-}
-
-/** Reconstruct the `/note` command string for edit mode. */
-function buildPrefill(note: Note): string {
-  if (note.prefix === DEFAULT_PREFIX) return `/note ${note.text}`;
-  return `/note :${note.prefix}: ${note.text}`;
 }
 
 // ----- word-wrap -----------------------------------------------------------
@@ -204,6 +205,8 @@ export default function (pi: ExtensionAPI) {
   // In-memory state. Reconstructed from session entries on every
   // session_start and session_tree event.
   let currentNote: Note | null = null;
+  // Last scope used by /notes; persists across invocations within this session.
+  let notesScope: Scope = "session";
 
   function reconstruct(ctx: ExtensionContext): void {
     currentNote = null;
@@ -214,6 +217,152 @@ export default function (pi: ExtensionAPI) {
       if ("deleted" in data && data.deleted) currentNote = null;
       else if ("text" in data) currentNote = { text: data.text, prefix: data.prefix };
     }
+  }
+
+  // A note plus the session it came from. `fromCurrentSession` drives labeling
+  // and lets the editor know it's restoring across sessions.
+  type SavedNote = {
+    text: string;
+    prefix: string;
+    createdAt: number;
+    sessionId?: string;
+    sessionName?: string;
+    fromCurrentSession: boolean;
+  };
+
+  type Scope = "session" | "project" | "global";
+  const SCOPE_LABEL: Record<Scope, string> = {
+    session: "This session",
+    project: "This project",
+    global: "All projects",
+  };
+  const nextScope = (s: Scope): Scope =>
+    s === "session" ? "project" : s === "project" ? "global" : "session";
+
+  // Extract non-deleted note entries from a raw list of session entries.
+  function notesFromEntries(
+    entries: readonly { type: string; customType?: string; data?: unknown }[],
+    meta: {
+      fromCurrentSession: boolean;
+      sessionId?: string;
+      sessionName?: string;
+    },
+  ): SavedNote[] {
+    const out: SavedNote[] = [];
+    for (const entry of entries) {
+      if (entry.type !== "custom" || entry.customType !== ENTRY_TYPE) continue;
+      const data = entry.data as NoteEntryData | undefined;
+      if (!data || "deleted" in data || !("text" in data)) continue;
+      out.push({
+        text: data.text,
+        prefix: data.prefix,
+        createdAt: data.createdAt,
+        ...meta,
+      });
+    }
+    return out;
+  }
+
+  // Gather notes for the requested scope, newest first.
+  //  - session: in-memory entries of the current session (always current,
+  //    works for unsaved/in-memory sessions too).
+  //  - project/global: enumerate session files via SessionManager.list/listAll,
+  //    then raw-read each file's note lines (string pre-filter before JSON.parse
+  //    keeps it fast on large sessions).
+  async function gatherNotes(ctx: ExtensionContext, scope: Scope): Promise<SavedNote[]> {
+    if (scope === "session") {
+      const notes = notesFromEntries(ctx.sessionManager.getEntries(), {
+        fromCurrentSession: true,
+        sessionId: ctx.sessionManager.getSessionId(),
+      });
+      return notes.reverse();
+    }
+
+    const infos =
+      scope === "project" ? await SessionManager.list(ctx.cwd) : await SessionManager.listAll();
+    const currentFile = ctx.sessionManager.getSessionFile();
+    const out: SavedNote[] = [];
+    for (const info of infos) {
+      let raw: string;
+      try {
+        raw = readFileSync(info.path, "utf8");
+      } catch {
+        continue;
+      }
+      const lines: { type: string; customType?: string; data?: unknown }[] = [];
+      for (const line of raw.split("\n")) {
+        if (!line.includes('"customType":"note"')) continue;
+        try {
+          lines.push(JSON.parse(line));
+        } catch {
+          /* skip malformed line */
+        }
+      }
+      out.push(
+        ...notesFromEntries(lines, {
+          fromCurrentSession: info.path === currentFile,
+          sessionId: info.id,
+          sessionName: info.name,
+        }),
+      );
+    }
+    out.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    return out;
+  }
+
+  /** One-line label for the /notes selector: "[prefix] <when> · first line… ← src". */
+  function formatNoteLabel(n: SavedNote, scope: Scope): string {
+    const time = n.createdAt
+      ? new Date(n.createdAt).toLocaleString([], {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "";
+    const firstLine = n.text.split("\n")[0] ?? "";
+    const snippet = firstLine.length > 56 ? `${firstLine.slice(0, 53)}…` : firstLine;
+    let src = "";
+    if (scope !== "session") {
+      src = n.fromCurrentSession
+        ? "  ← this session"
+        : `  ← ${n.sessionName ?? n.sessionId?.slice(0, 8) ?? "?"}`;
+    }
+    return `[${n.prefix}]${time ? ` ${time}` : ""} · ${snippet}${src}`;
+  }
+
+  /** Persist a note and refresh the pinned shelf. */
+  function setNote(ctx: ExtensionContext, text: string, prefix: string): void {
+    pi.appendEntry(ENTRY_TYPE, {
+      text,
+      prefix,
+      createdAt: Date.now(),
+    } as NoteEntryData);
+    currentNote = { text, prefix };
+    renderShelf(ctx);
+  }
+
+  // Open the multi-line editor to compose or edit a note. `base` seeds the
+  // editor text + prefix (null = brand-new note with the default prefix).
+  // On submit, the edited body becomes the note; the prefix is preserved.
+  async function composeInEditor(ctx: ExtensionContext, base: Note | null): Promise<void> {
+    if (!ctx.hasUI) {
+      ctx.ui.notify("Usage: /note [:prefix:] <content>", "warning");
+      return;
+    }
+    const prefix = base?.prefix ?? DEFAULT_PREFIX;
+    const title = `${base ? "Edit" : "New"} note (:${prefix}:) — Enter submit, Shift+Enter newline, Esc cancel`;
+    const result = await ctx.ui.editor(title, base?.text ?? "");
+    if (result === undefined) {
+      ctx.ui.notify("Note unchanged", "info");
+      return;
+    }
+    const text = result.trim();
+    if (text === "") {
+      ctx.ui.notify("Note content required", "warning");
+      return;
+    }
+    setNote(ctx, text, prefix);
   }
 
   function renderShelf(ctx: ExtensionContext): void {
@@ -243,36 +392,61 @@ export default function (pi: ExtensionAPI) {
     handler: async (args, ctx) => {
       const trimmed = (args ?? "").trim();
 
+      // Bare `/note` → open the multi-line editor (edit current note if any,
+      // otherwise compose a fresh one).
       if (trimmed === "") {
-        // Edit mode: prefill the editor with the current note's command
-        // so the user can edit it and re-submit. If there is no note,
-        // show usage.
-        if (currentNote !== null) {
-          if (ctx.hasUI) {
-            ctx.ui.setEditorText(buildPrefill(currentNote));
-          } else {
-            ctx.ui.notify(`Current note (${currentNote.prefix}): ${currentNote.text}`, "info");
-          }
-          return;
-        }
-        ctx.ui.notify("Usage: /note [:prefix:] <content>", "warning");
+        await composeInEditor(ctx, currentNote);
         return;
       }
 
+      // `/note [:prefix:] <content>` → set directly, no editor.
       const parsed = parseArgs(trimmed);
       if (parsed === null) {
         ctx.ui.notify("Note content required", "warning");
         return;
       }
+      setNote(ctx, parsed.text, parsed.prefix);
+    },
+  });
 
-      const data: NoteEntryData = {
-        text: parsed.text,
-        prefix: parsed.prefix,
-        createdAt: Date.now(),
-      };
-      pi.appendEntry(ENTRY_TYPE, data);
-      currentNote = { text: parsed.text, prefix: parsed.prefix };
-      renderShelf(ctx);
+  pi.registerCommand("notes", {
+    description: "Browse/restore notes. Toggle scope: session / project / all.",
+    handler: async (_args, ctx) => {
+      if (!ctx.hasUI) {
+        const notes = await gatherNotes(ctx, "session");
+        if (notes.length === 0) {
+          ctx.ui.notify("No notes saved in this session", "info");
+          return;
+        }
+        const latest = notes[0]!;
+        ctx.ui.notify(`${notes.length} note(s). Latest (${latest.prefix}): ${latest.text}`, "info");
+        return;
+      }
+
+      // notesScope persists for the rest of this session (declared in closure).
+      while (true) {
+        const notes = await gatherNotes(ctx, notesScope);
+        const toggleRow = `↹ Scope: ${SCOPE_LABEL[notesScope]} — select to cycle`;
+        // Index-prefixed labels keep options unique so we can map the chosen
+        // string back to its note even if two notes share a snippet.
+        const noteLabels = notes.map((n, i) => `${i + 1}. ${formatNoteLabel(n, notesScope)}`);
+        const title =
+          notes.length === 0
+            ? `Notes (${SCOPE_LABEL[notesScope]}) — none found`
+            : `Notes (${SCOPE_LABEL[notesScope]})`;
+        const choice = await ctx.ui.select(title, [toggleRow, ...noteLabels]);
+        if (choice === undefined) return;
+        if (choice === toggleRow) {
+          notesScope = nextScope(notesScope);
+          continue;
+        }
+        const idx = noteLabels.indexOf(choice);
+        if (idx < 0) return;
+        // Restores into the CURRENT session (setNote appends here), preserving
+        // the chosen note's prefix — even when it came from another session.
+        await composeInEditor(ctx, notes[idx]!);
+        return;
+      }
     },
   });
 

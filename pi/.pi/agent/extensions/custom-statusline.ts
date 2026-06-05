@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
@@ -24,34 +23,9 @@ let currentSessionName: string | undefined;
 let latestCtx: ExtensionContext | undefined;
 const dirLabelCache = new Map<string, string>();
 
-const FAST_CONFIG_PATH = `${process.env.HOME}/.pi/agent/fast.json`;
-
-type FastState = {
-	enabled?: boolean;
-	models?: string[];
-};
-
-let fastState: FastState = loadFastState();
-
-function loadFastState(): FastState {
-	try {
-		if (!existsSync(FAST_CONFIG_PATH)) return { enabled: true, models: ["openai/gpt-5.5", "openai-codex/gpt-5.5"] };
-		const parsed = JSON.parse(readFileSync(FAST_CONFIG_PATH, "utf8"));
-		return {
-			enabled: parsed.enabled !== false,
-			models: Array.isArray(parsed.models) ? parsed.models : ["openai/gpt-5.5", "openai-codex/gpt-5.5"],
-		};
-	} catch {
-		return { enabled: true, models: ["openai/gpt-5.5", "openai-codex/gpt-5.5"] };
-	}
-}
-
-function isFastActiveForModel(ctx: ExtensionContext) {
-	const model = ctx.model;
-	if (!model || fastState.enabled !== true) return false;
-	const models = fastState.models ?? ["openai/gpt-5.5", "openai-codex/gpt-5.5"];
-	return models.includes(`${model.provider}/${model.id}`) || models.includes(model.id);
-}
+// Fast-mode status is pushed by the `fast` extension via the "fast:state" event.
+// Single ephemeral boolean = always accurate, no disk reads.
+let fastActive = false;
 
 function fallbackDir(cwd: string) {
 	const parent = path.basename(path.dirname(cwd));
@@ -160,7 +134,7 @@ function renderStatusline(ctx: ExtensionContext, width: number) {
 	const model = modelName(ctx);
 	const context = tokenStats(ctx).context;
 	const thinking = ctx.model?.reasoning ? `${dimBold("[")}${yellowBoldText(currentThinkingLevel)}${dimBold("]")}` : "";
-	const fastPrefix = isFastActiveForModel(ctx) ? yellowBoldText("⚡") : "";
+	const fastPrefix = fastActive ? yellowBoldText("⚡") : "";
 	const modelWithThinking = `${fastPrefix}${blueBold(model)}${thinking}`;
 	const contextDisplay = context
 		? (() => {
@@ -232,18 +206,13 @@ export default function customStatusline(pi: ExtensionAPI) {
 
 	const refreshStatusline = (ctx: ExtensionContext) => {
 		latestCtx = ctx;
-		fastState = loadFastState();
 		refreshThinkingLevel();
 		refreshSessionName(ctx);
 		installStatusline(ctx);
 	};
 
 	pi.events.on("fast:state", (data) => {
-		const state = data as FastState;
-		fastState = {
-			enabled: state.enabled === true,
-			models: Array.isArray(state.models) ? state.models : ["openai/gpt-5.5", "openai-codex/gpt-5.5"],
-		};
+		fastActive = !!(data as { active?: boolean }).active;
 		if (latestCtx) installStatusline(latestCtx);
 	});
 

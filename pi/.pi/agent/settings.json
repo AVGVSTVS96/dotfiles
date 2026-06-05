@@ -1,11 +1,12 @@
 {
-  "lastChangelogVersion": "0.75.4",
+  "lastChangelogVersion": "0.78.1",
   "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-7",
-  "defaultThinkingLevel": "medium",
+  "defaultModel": "claude-opus-4-8",
+  "defaultThinkingLevel": "high",
   "enabledModels": [
     "openai-codex/gpt-5.5",
-    "anthropic/claude-opus-4-7"
+    "anthropic/claude-opus-4-7",
+    "anthropic/claude-opus-4-8"
   ],
   "hideThinkingBlock": false,
   "packages": [
@@ -15,7 +16,8 @@
     "npm:pi-bash-live-view",
     "npm:@grayolson/pi-treebase",
     "npm:pi-autoresearch",
-    "npm:pi-web-access"
+    "npm:pi-web-access",
+    "../../Documents/GitHub/side-projects/pi-treebase"
   ],
   "theme": "tokyo-night"
 }
