@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "target": "node_modules/@earendil-works/pi-ai/dist/providers/anthropic.js",
+      "replacements": [
+        {
+          "anchorHint": "the mergeHeaders helper that Object.assigns each header source into a merged object",
+          "oldText": "function mergeHeaders(...headerSources) {\n    const merged = {};\n    for (const headers of headerSources) {\n        if (headers) {\n            Object.assign(merged, headers);\n        }\n    }\n    return merged;\n}",
+          "newText": "function mergeHeaders(...headerSources) {\n    const merged = {};\n    for (const headers of headerSources) {\n        if (!headers)\n            continue;\n        for (const [key, value] of Object.entries(headers)) {\n            // Append+dedupe anthropic-beta instead of overwriting, so callers can add\n            // betas (e.g. fast-mode) without clobbering oauth/interleaved-thinking.\n            if (key.toLowerCase() === \"anthropic-beta\" && merged[key] && value) {\n                const betas = new Set(String(merged[key]).split(\",\").map((s) => s.trim()).filter(Boolean));\n                for (const b of String(value).split(\",\").map((s) => s.trim()).filter(Boolean))\n                    betas.add(b);\n                merged[key] = [...betas].join(\",\");\n            }\n            else {\n                merged[key] = value;\n            }\n        }\n    }\n    return merged;\n}"
+        }
+      ]
+    }
+  ]
+}
