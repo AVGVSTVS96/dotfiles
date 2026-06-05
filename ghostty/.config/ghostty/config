@@ -1,0 +1,20 @@
+theme = tokyonight
+background-opacity = 0.9
+background-blur-radius = 20
+# background-blur = macos-glass-clear
+font-family = MonaspiceKr Nerd Font Propo
+shell-integration = zsh
+macos-titlebar-style = tabs
+cursor-style = block
+window-colorspace = display-p3
+unfocused-split-opacity = 1
+
+# commenting this made everything work - pi newlines
+# keybind = shift+enter=text:\x1b\r
+
+# Option+Arrow keys: send proper escape sequences for tmux M-Arrow bindings
+keybind = alt+left=text:\x1b[1;3D
+keybind = alt+right=text:\x1b[1;3C
+
+clipboard-paste-protection = false
+
