@@ -25,9 +25,7 @@ cached_eval() {
     fi
 }
 
-# ----------------
 # --- Check OS ---
-# ----------------
 OS_TYPE="$(uname)"
 darwin=false
 linux=false
@@ -45,27 +43,16 @@ export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 
 export AGENT_BROWSER_CONFIG="$XDG_CONFIG_HOME/agent-browser/config.json"
 
-# -----------
-# --- NPM ---
-# -----------
+# --- PATH ---
 export PATH="$PATH:./node_modules/.bin"
 
-
-# -----------------------
 # --- Cursor ---
-# -----------------------
 export PATH="$PATH:/Applications/Cursor.app/Contents/Resources/app/bin"
 
-
-# -------------
 # --- Cargo ---
-# -------------
 export PATH="$PATH:/Users/bassimshahidy/.cargo/bin"
 
-
-# ----------------
 # --- Homebrew ---
-# ----------------
 if $darwin; then
   export HOMEBREW_PREFIX="/opt/homebrew"
   export HOMEBREW_CELLAR="/opt/homebrew/Cellar"
@@ -90,16 +77,12 @@ _brew_prefix="$HOMEBREW_PREFIX"
 FPATH="$_brew_prefix/share/zsh/site-functions:${FPATH}"
 
 
-# -----------------
 # --- oh-my-zsh ---
-# -----------------
 export ZSH="$HOME/.oh-my-zsh"
 ZSH_DISABLE_COMPFIX=false
 ZSH_COMPDUMP="${ZDOTDIR:-$HOME}/.zcompdump-${HOST/.*/}-${ZSH_VERSION}"
 
-# -------------------
 # --- zsh plugins ---
-# -------------------
 plugins=(git)
 
 source "$_brew_prefix/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
@@ -110,43 +93,29 @@ unset _brew_prefix
 source $ZSH/oh-my-zsh.sh
 
 
-# ------------------
 # --- oh-my-posh ---
-# ------------------
 eval "$(oh-my-posh init zsh --config ~/.config/oh-my-posh/tokyonight_storm-customized.omp.json)"
 
-# -----------
 # --- bat ---
-# -----------
 #  Install theme:
 #   curl -O https://raw.githubusercontent.com/folke/tokyonight.nvim/main/extras/sublime/tokyonight_night.tmTheme
 #   bat cache --build
 export BAT_THEME=tokyonight_night
 
 
-# ---------------
 # --- lazygit ---
-# ---------------
 export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml"
 
 
-# -----------
 # --- fnm ---
-# -----------
 export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
 cached_eval fnm fnm env --use-on-cd --shell zsh
 
 
-# -----------
-#
 # --- fzf ---
-#
-# -----------
 cached_eval fzf fzf --zsh
 
-# ---------------------------
 # -- Use fd instead of fzf --
-# ---------------------------
 export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd --type=d --hidden --strip-cwd-prefix --exclude .git"
@@ -163,14 +132,10 @@ _fzf_compgen_dir() {
   fd --type=d --hidden --exclude .git . "$1"
 }
 
-# --------------------
 # -- fzf-git script --
-# --------------------
 [[ -f ~/fzf-git.sh ]] && source ~/fzf-git.sh
 
-# ------------------
 # -- fzf previews --
-# ------------------
 # Use bat for files, eza for directories
 show_file_or_dir_preview='if [ -d {} ]; then eza --tree --all --level=3 --color=always {} | head -200; else bat -n --color=always --line-range :500 {}; fi'
 
@@ -192,33 +157,24 @@ _fzf_comprun() {
     *)            fzf --preview "bat -n --color=always --line-range :500 {}" "$@" ;;
   esac
 }
-# ---------------
-# --- end fzf ---
-# ---------------
 
 
-# ---------------
 # --- thefuck ---
-# ---------------
 cached_eval thefuck thefuck --alias
 
 
-# --------------------------
-# --- Zoxide (better cd) ---
-# --------------------------
+# --- zoxide (better cd) ---
 if [[ "$CLAUDECODE" != "1" ]]; then
     eval "$(zoxide init --cmd cd zsh)"
 fi
 
 
-# ---------------
-#
-# --- Aliases ---
-#
-# ---------------
-# For a full list of active aliases, run `alias`.
+# -- named directory --
+# TODO maybe revert to symlink
+hash -d iCloud="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
 
-# -- zsh aliases --
+# --- aliases ---
+# -- zsh --
 alias br="bun run"
 alias xr="xpm run"
 alias pr="pnpm run"
@@ -233,10 +189,7 @@ alias szrc="source ~/.zshrc"
 alias exz="exec zsh"
 alias cl="clear"
 
-# -- named directories --
-hash -d iCloud="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
-
-# -- git aliases --
+# -- git --
 alias aga="add_git_alias"
 alias g="git"
 alias ga="git add -A"
@@ -253,7 +206,6 @@ alias gpf="git push --force-with-lease origin"
 alias gd="git diff"
 alias bsy="git fetch -p | git branch -vv | grep ': gone]' | awk '{print }' | xargs -n 1 git branch -d"
 alias conv-commit="zsh ~/commit.sh"
-# alias yolo-commit="git commit -m "$(curl -s https://whatthecommit.com/index.txt)""
 alias update-last-commit="git commit -a --amend --no-edit && git push --force-with-lease origin"
 alias prc="gh pr create"
 alias devs='lsof -nP -iTCP -sTCP:LISTEN | grep -E "(node|next|astro|vite|webpack|parcel)" | awk "{split(\$9, addr, \":\"); port = addr[length(addr)]; process = \$1; printf \"\\033[1;36m%-6s\\033[0m \\033[1;33m%s\\033[0m\\n\", process, port}" | sort -k2 -n'
@@ -262,13 +214,15 @@ alias pbc="pbcopy"
 
 unalias gcb
 unalias gcl
-# -- lazygit aliases --
+
+# -- lazygit --
 alias lg="lazygit"
 
-# -- yazi aliases --
+# -- yazi --
 alias yz="yazi"
 
 # -- zoxide instead of cd --
+# `zoxide init --cmd cd zsh` applies alias automatically
 # alias cd="z"
 
 eza='eza --git --icons=always --color=always'
@@ -291,24 +245,28 @@ alias ltg="$eza $long --tree --git-ignore"
 alias lspe="fzf --preview '$show_file_or_dir_preview'"
 alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
 
-
 # -- claude --
-alias c="ai-tmux --agent claude"
-alias oc="ai-tmux --agent opencode"
-alias cx="ai-tmux --agent codex"
-alias aic="ai-tmux -c"
-alias air="ai-tmux -s"
-alias aip="ai-tmux --pick"
+alias c="claude --dangerously-skip-permissions"
 
-# -------------------
-# --- end aliases ---
-# -------------------
-
-# -----------------
-# --- Functions ---
-# -----------------
+# -- ai-tmux: my cli agent wrapper for tmux-based session persistence and restoration --
 #
-# ── nvim config switcher ──
+# NOTE ai-tmux is flaky, my persistence startegy is more minmal and reliable now:
+#   1. use tmux-resurrect with restore-pane-contents enabled
+#   2. use tmux-continuum to auto-save tmux sessions every 5 minutes
+#   3. set coding agent statuslines to display session-id
+#
+# when tmux server is killed or crashed, tmux-resurrect restores all panes, windows, and sessions.
+# restore-pane-contents ensures each pane is restored with content intact --> copy session-id from statusline to restore
+#
+# alias oc="ai-tmux --agent opencode"
+# alias cx="ai-tmux --agent codex"
+# alias aic="ai-tmux -c"
+# alias air="ai-tmux -s"
+# alias aip="ai-tmux --pick"
+
+
+# --- functions ---
+# -- nvim config switcher --
 function nvims() {
   items=("default" "kickstart" "LazyVim" "NvChad" "AstroNvim")
   config=$(printf "%s\n" "${items[@]}" | fzf --prompt=" Neovim Config  " --height=~50% --layout=reverse --border --exit-0)
@@ -325,19 +283,6 @@ vv() {
   local config=$(fd --max-depth 1 --glob '{nvim*,LazyVim*}' ~/.config | fzf --prompt="Neovim Configs > " --height=~50% --layout=reverse --border --exit-0)
   [[ -z $config ]] && echo "No config selected" && return
   NVIM_APPNAME=$(basename $config) nvim $@
-}
-
-# ── helper to add git aliases in the correct location ──
-add_git_alias(){
-  local name=$1 cmd=$2 file="$HOME/dotfiles/zsh/.zshrc"
-
-  sd \
-    '(# -- git aliases --\n(?:alias .+\n)+)' \
-    "\${1}alias ${name}=\"${cmd}\"\n" \
-    "$file"
-
-  echo "✔️  Added git alias ${name}"
-  source "$HOME/.zshrc" || true
 }
 
 # -- add brewfile creation commands to brew --
@@ -399,20 +344,14 @@ fkill() {
   fi
 }
 
-
-# -----------
 # --- bun ---
-# -----------
-# bun path
 export PATH="$PATH:/Users/bassimshahidy/.cache/.bun/bin"
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 
-# ------------
 # --- pnpm ---
-# ------------
 export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
@@ -420,14 +359,9 @@ case ":$PATH:" in
 esac
 
 [[ -f ~/completion-for-pnpm.zsh ]] && source ~/completion-for-pnpm.zsh
-# ----------------
-# --- end pnpm ---
-# ----------------
 
 
-# ----------------------------
 # --- graphite completions ---
-#-----------------------------
 # yargs command completion script
 #
 # Installation: gt completion >> ~/.zshrc
@@ -443,33 +377,24 @@ _gt_yargs_completions()
   _describe 'values' reply
 }
 compdef _gt_yargs_completions gt
-#---------------------------------
-# --- end graphite completions ---
-# --------------------------------
 
 
-
-# ------------
 # --- misc ---
-# ------------
 export EDITOR='nvim'
 export VISUAL='nvim'
 
 # -- fastfetch --
 # fastfetch
 
-# -----------------------------------------
 # --- misc oh-my-zsh user configuration ---
-# -----------------------------------------
 # Uncomment the following line if pasting URLs and other text is messed up.
 # DISABLE_MAGIC_FUNCTIONS="true"
 
-
+# TODO figure out what this is and why i added it
 . "$HOME/.local/share/../bin/env"
 
 # Added by CodeRabbit CLI installer
 export PATH="/Users/bassimshahidy/.local/bin:$PATH"
-export CLAUDE_BASH_NO_LOGIN=1
 
 # OpenClaw
 export OPENCLAW_IMAGE_BACKEND=sips
