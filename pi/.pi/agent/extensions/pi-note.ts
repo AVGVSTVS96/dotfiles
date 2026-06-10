@@ -5,12 +5,22 @@
  *
  * Commands:
  *   /note <content>             Set/replace the session note (default prefix "note").
- *   /note :recap: <content>     Set a note with a custom prefix word.
+ *   /note :recap: <content>     Set a note with a prefix word. Brackets also work:
+ *   /note [recap] <content>     same thing. Known prefixes are colored (see below).
+ *   /note [recap:orange] <c>    Override the color. Color is bracket-only; pick from
+ *                               magenta/purple/cyan/orange/yellow/blue/green/red/gray.
  *   /note                       Open a multi-line editor to compose/edit the note.
+ *   /note [recap]               Open the editor pre-set to that prefix (no body).
  *   /notes                      Browse notes; pick one to open it in the editor and
  *                               restore it. Cycle scope (this session / this project /
  *                               all projects) by selecting the top “Scope:…” row.
+ *   /note-pop                   Drop the current note's text into the input as a
+ *                               prompt (strips the prefix/syntax). No note = no-op.
  *   /note-clear                 Clear the note in this session only.
+ *
+ * Default colored prefixes (follow the active pi theme): prompt=magenta,
+ * recap=cyan, important=orange, TODO=yellow. Any other prefix renders dim.
+ * Prefix matching is case-insensitive and canonicalized (e.g. [todo] → TODO).
  *
  * The note is stored via pi.appendEntry, so it never enters the LLM context.
  * The PINNED note is SESSION-scoped: reconstruction scans all entries of the
@@ -23,7 +33,7 @@
  *     lines with a 2-space hanging indent
  */
 
-import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme, ThemeColor } from "@earendil-works/pi-coding-agent";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type { Component } from "@earendil-works/pi-tui";
 import { visibleWidth } from "@earendil-works/pi-tui";
@@ -31,9 +41,11 @@ import { readFileSync } from "node:fs";
 
 // ----- types ---------------------------------------------------------------
 
-type NoteEntryData = { text: string; prefix: string; createdAt: number } | { deleted: true };
+type NoteEntryData =
+  | { text: string; prefix: string; color?: string; createdAt: number }
+  | { deleted: true };
 
-type Note = { text: string; prefix: string };
+type Note = { text: string; prefix: string; color?: string };
 
 // ----- constants -----------------------------------------------------------
 
@@ -45,27 +57,68 @@ const ICON = "※";
 // align under the start of the prefix word.
 const CONT_INDENT = "  ";
 
+// Friendly color names → theme slot. These slots resolve to the right hue in
+// the active pi theme (tokyo-night values noted below; other themes map to
+// their own equivalents). Used both for the default prefix colors and for
+// inline `[prefix:color]` overrides. Unknown names fall back gracefully.
+const COLORS: Record<string, ThemeColor> = {
+  magenta: "syntaxKeyword",
+  purple: "syntaxKeyword",
+  cyan: "syntaxType",
+  orange: "syntaxNumber",
+  yellow: "warning",
+  blue: "accent",
+  green: "success",
+  red: "error",
+  gray: "dim",
+};
+
+// Default prefixes → built-in color. Unknown prefixes fall back to "dim".
+const PREFIX_COLORS: Record<string, ThemeColor> = {
+  prompt: COLORS.magenta,
+  recap: COLORS.cyan,
+  important: COLORS.orange,
+  TODO: COLORS.yellow,
+};
+
+// Case-insensitive lookup → canonical spelling ("todo" → "TODO").
+const CANONICAL = new Map(Object.keys(PREFIX_COLORS).map((p) => [p.toLowerCase(), p]));
+const canonicalPrefix = (raw: string): string => CANONICAL.get(raw.toLowerCase()) ?? raw;
+
+// Resolve the slot for a note: explicit color name → prefix default → dim.
+const resolveColor = (prefix: string, color?: string): ThemeColor =>
+  (color ? COLORS[color.toLowerCase()] : undefined) ?? PREFIX_COLORS[prefix] ?? "dim";
+
 // ----- parsing -------------------------------------------------------------
 
-/**
- * Parse the raw `/note` argument string.
- *
- *   ":recap: we picked postgres" → { prefix: "recap", text: "we picked postgres" }
- *   "remember to bump changeset" → { prefix: "note",  text: "remember to bump changeset" }
- *
- * Returns null if there is no usable content.
- */
-function parseArgs(raw: string): { prefix: string; text: string } | null {
-  const trimmed = raw.trim();
-  if (trimmed === "") return null;
+// A prefix token in either syntax (`:word:` or `[word]`), optionally
+// followed by body text. Capture groups: 1 = colon prefix, 2 = bracket
+// token (may be `prefix` or `prefix:color`), 3 = body (may be absent).
+const NOTE_ARG_RE = /^(?::([^\s:]+):|\[([^\]\s]+)\])(?:\s+([\s\S]*\S))?\s*$/;
 
-  // `:word: <content>` — word has no whitespace and no inner colons.
-  // Content must contain at least one non-whitespace character.
-  const match = trimmed.match(/^:([^\s:]+):\s+([\s\S]*\S)\s*$/);
-  if (match) {
-    return { prefix: match[1]!, text: match[2]! };
-  }
-  return { prefix: DEFAULT_PREFIX, text: trimmed };
+/**
+ * Parse the raw `/note` argument string. Color is only available in the
+ * bracket form `[prefix:color]`; the colon form `:prefix:` is prefix-only.
+ *
+ *   ":recap: picked postgres"  → { prefix: "recap", text: "picked postgres" }
+ *   "[recap:orange] picked…"   → { prefix: "recap", color: "orange", text: "picked…" }
+ *   "[last-prompt:blue]"       → { prefix: "last-prompt", color: "blue", text: "" }
+ *   "bump the changeset"       → { prefix: null, text: "bump the changeset" }
+ *
+ * `prefix` is null when none was typed; `text` is "" when no body was given.
+ */
+function parseArgs(raw: string): { prefix: string | null; color?: string; text: string } {
+  const trimmed = raw.trim();
+  const m = trimmed.match(NOTE_ARG_RE);
+  if (!m) return { prefix: null, text: trimmed };
+  const text = (m[3] ?? "").trim();
+  // Colon form `:prefix:` is prefix-only.
+  if (m[1] !== undefined) return { prefix: canonicalPrefix(m[1]), text };
+  // Bracket form `[prefix]` or `[prefix:color]` — split on the first colon.
+  const i = m[2]!.indexOf(":");
+  const prefix = i === -1 ? m[2]! : m[2]!.slice(0, i);
+  const color = i === -1 ? undefined : m[2]!.slice(i + 1);
+  return { prefix: canonicalPrefix(prefix), color, text };
 }
 
 // ----- word-wrap -----------------------------------------------------------
@@ -149,6 +202,7 @@ class NoteShelf implements Component {
     private readonly prefix: string,
     private readonly text: string,
     private readonly theme: Theme,
+    private readonly color?: string,
   ) {}
 
   render(width: number): string[] {
@@ -176,10 +230,11 @@ class NoteShelf implements Component {
         const raw = wrapped[j] ?? "";
         if (isFirstParagraph && j === 0) {
           // First line: ※  +  bold "<prefix>:"  +  text
-          // Everything is dim grey; only the prefix word is also bold.
+          // Icon + prefix take the note's color; the body stays dim.
+          const slot = resolveColor(this.prefix, this.color);
           const styled =
-            th.fg("dim", `${ICON} `) +
-            th.fg("dim", th.bold(`${this.prefix}:`)) +
+            th.fg(slot, `${ICON} `) +
+            th.fg(slot, th.bold(`${this.prefix}:`)) +
             th.fg("dim", ` ${raw}`);
           lines.push(styled);
         } else {
@@ -215,7 +270,8 @@ export default function (pi: ExtensionAPI) {
       const data = entry.data as NoteEntryData | undefined;
       if (!data) continue;
       if ("deleted" in data && data.deleted) currentNote = null;
-      else if ("text" in data) currentNote = { text: data.text, prefix: data.prefix };
+      else if ("text" in data)
+        currentNote = { text: data.text, prefix: data.prefix, color: data.color };
     }
   }
 
@@ -224,6 +280,7 @@ export default function (pi: ExtensionAPI) {
   type SavedNote = {
     text: string;
     prefix: string;
+    color?: string;
     createdAt: number;
     sessionId?: string;
     sessionName?: string;
@@ -256,6 +313,7 @@ export default function (pi: ExtensionAPI) {
       out.push({
         text: data.text,
         prefix: data.prefix,
+        color: data.color,
         createdAt: data.createdAt,
         ...meta,
       });
@@ -332,27 +390,29 @@ export default function (pi: ExtensionAPI) {
   }
 
   /** Persist a note and refresh the pinned shelf. */
-  function setNote(ctx: ExtensionContext, text: string, prefix: string): void {
+  function setNote(ctx: ExtensionContext, text: string, prefix: string, color?: string): void {
     pi.appendEntry(ENTRY_TYPE, {
       text,
       prefix,
+      color,
       createdAt: Date.now(),
     } as NoteEntryData);
-    currentNote = { text, prefix };
+    currentNote = { text, prefix, color };
     renderShelf(ctx);
   }
 
   // Open the multi-line editor to compose or edit a note. `base` seeds the
-  // editor text + prefix (null = brand-new note with the default prefix).
-  // On submit, the edited body becomes the note; the prefix is preserved.
-  async function composeInEditor(ctx: ExtensionContext, base: Note | null): Promise<void> {
+  // editor text + prefix. On submit, the edited body becomes the note; the
+  // prefix is preserved.
+  async function composeInEditor(ctx: ExtensionContext, base: Note): Promise<void> {
     if (!ctx.hasUI) {
       ctx.ui.notify("Usage: /note [:prefix:] <content>", "warning");
       return;
     }
-    const prefix = base?.prefix ?? DEFAULT_PREFIX;
-    const title = `${base ? "Edit" : "New"} note (:${prefix}:) — Enter submit, Shift+Enter newline, Esc cancel`;
-    const result = await ctx.ui.editor(title, base?.text ?? "");
+    const { prefix, color, text: seed } = base;
+    const verb = seed === "" ? "New" : "Edit";
+    const title = `${verb} note (:${prefix}:) — Enter submit, Shift+Enter newline, Esc cancel`;
+    const result = await ctx.ui.editor(title, seed);
     if (result === undefined) {
       ctx.ui.notify("Note unchanged", "info");
       return;
@@ -362,7 +422,7 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.notify("Note content required", "warning");
       return;
     }
-    setNote(ctx, text, prefix);
+    setNote(ctx, text, prefix, color);
   }
 
   function renderShelf(ctx: ExtensionContext): void {
@@ -371,8 +431,8 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.setWidget(WIDGET_KEY, undefined);
       return;
     }
-    const { prefix, text } = currentNote;
-    ctx.ui.setWidget(WIDGET_KEY, (_tui, theme) => new NoteShelf(prefix, text, theme), {
+    const { prefix, text, color } = currentNote;
+    ctx.ui.setWidget(WIDGET_KEY, (_tui, theme) => new NoteShelf(prefix, text, theme, color), {
       placement: "aboveEditor",
     });
   }
@@ -390,22 +450,19 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("note", {
     description: "Pin a note above the input. Usage: /note [:prefix:] <content>",
     handler: async (args, ctx) => {
-      const trimmed = (args ?? "").trim();
-
-      // Bare `/note` → open the multi-line editor (edit current note if any,
-      // otherwise compose a fresh one).
-      if (trimmed === "") {
-        await composeInEditor(ctx, currentNote);
-        return;
+      const { prefix, color, text } = parseArgs(args ?? "");
+      if (text === "") {
+        // No body → edit in the editor, keeping the note's text. A typed
+        // prefix wins; otherwise keep the current note's prefix + color.
+        await composeInEditor(ctx, {
+          text: currentNote?.text ?? "",
+          prefix: prefix ?? currentNote?.prefix ?? DEFAULT_PREFIX,
+          color: prefix ? color : currentNote?.color,
+        });
+      } else {
+        // Body present → set directly, no editor.
+        setNote(ctx, text, prefix ?? DEFAULT_PREFIX, color);
       }
-
-      // `/note [:prefix:] <content>` → set directly, no editor.
-      const parsed = parseArgs(trimmed);
-      if (parsed === null) {
-        ctx.ui.notify("Note content required", "warning");
-        return;
-      }
-      setNote(ctx, parsed.text, parsed.prefix);
     },
   });
 
@@ -447,6 +504,15 @@ export default function (pi: ExtensionAPI) {
         await composeInEditor(ctx, notes[idx]!);
         return;
       }
+    },
+  });
+
+  pi.registerCommand("note-pop", {
+    description: "Drop the current note's text into the input as a prompt.",
+    handler: async (_args, ctx) => {
+      // No note (or no UI) → fail quietly.
+      if (currentNote === null || !ctx.hasUI) return;
+      ctx.ui.setEditorText(currentNote.text);
     },
   });
 
