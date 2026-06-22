@@ -1,3 +1,5 @@
+local in_herdr = vim.env.HERDR_ENV == "1" or vim.env.HERDR_SOCKET_PATH ~= nil
+
 -- Define nav keys once at module level
 local nav_keys = {
   { "<c-h>", "Left" },
@@ -12,7 +14,7 @@ local nav_keys = {
 
 return {
   "christoomey/vim-tmux-navigator",
-  enabled = true,
+  enabled = not in_herdr,
   cmd = {
     "TmuxNavigateLeft",
     "TmuxNavigateDown",
