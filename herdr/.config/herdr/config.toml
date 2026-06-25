@@ -1,0 +1,145 @@
+onboarding = false
+[ui.toast]
+delivery = "herdr"
+
+[ui]
+show_agent_labels_on_pane_borders = true
+
+[theme]
+name = "tokyo-night"
+
+[update]
+channel = "preview"
+
+[keys]
+# Tmux muscle memory
+prefix = "ctrl+space"
+reload_config = "prefix+r"
+resize_mode = "prefix+shift+r"
+
+# Tabs ~= tmux windows
+new_tab = "prefix+c"
+rename_tab = "prefix+comma"
+previous_tab = ["prefix+p", "shift+left"]
+next_tab = ["prefix+n", "shift+right"]
+switch_tab = "prefix+1..9"
+close_tab = "prefix+shift+x"
+
+# Workspaces ~= tmux sessions
+workspace_picker = "prefix+w"
+goto = "prefix+g"
+new_workspace = "prefix+shift+s"
+rename_workspace = "prefix+shift+w"
+close_workspace = "prefix+shift+d"
+previous_workspace = "shift+up"
+next_workspace = "shift+down"
+switch_workspace = "prefix+shift+1..9"
+
+# Prefix pane movement stays as a reliable fallback.
+focus_pane_left = "prefix+h"
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+split_vertical = "prefix+v"
+split_horizontal = "prefix+minus"
+close_pane = "prefix+x"
+zoom = "prefix+z"
+toggle_sidebar = "prefix+b"
+
+# Copy/scrollback and editing
+edit_scrollback = "prefix+e"
+
+# Vim-aware Herdr pane navigation. The helper forwards into Neovim when the
+# active pane is vim-like, otherwise it focuses the adjacent Herdr pane.
+[[keys.command]]
+key = "ctrl+left"
+type = "shell"
+command = "herdr-vim-navigator dispatch left"
+description = "vim-aware pane left"
+
+[[keys.command]]
+key = "ctrl+down"
+type = "shell"
+command = "herdr-vim-navigator dispatch down"
+description = "vim-aware pane down"
+
+[[keys.command]]
+key = "ctrl+up"
+type = "shell"
+command = "herdr-vim-navigator dispatch up"
+description = "vim-aware pane up"
+
+[[keys.command]]
+key = "ctrl+right"
+type = "shell"
+command = "herdr-vim-navigator dispatch right"
+description = "vim-aware pane right"
+
+[[keys.command]]
+key = "ctrl+h"
+type = "shell"
+command = "herdr-vim-navigator dispatch left"
+description = "vim-aware pane left"
+
+[[keys.command]]
+key = "ctrl+j"
+type = "shell"
+command = "herdr-vim-navigator dispatch down"
+description = "vim-aware pane down"
+
+[[keys.command]]
+key = "ctrl+k"
+type = "shell"
+command = "herdr-vim-navigator dispatch up"
+description = "vim-aware pane up"
+
+[[keys.command]]
+key = "ctrl+l"
+type = "shell"
+command = "herdr-vim-navigator dispatch right"
+description = "vim-aware pane right"
+
+# Tmux split keys: prefix+% (right) and prefix+\" (down), routed through the
+# helper so they share the same cwd behavior as the navigator.
+[[keys.command]]
+key = "prefix+percent"
+type = "shell"
+command = "herdr-vim-navigator split right"
+description = "split pane right"
+
+[[keys.command]]
+key = "prefix+double_quote"
+type = "shell"
+command = "herdr-vim-navigator split down"
+description = "split pane down"
+
+# Tmux popup-like utility panes. Herdr command panes close when the command exits.
+[[keys.command]]
+key = "prefix+backslash"
+type = "pane"
+command = "zsh"
+description = "shell pane"
+
+[[keys.command]]
+key = "prefix+semicolon"
+type = "pane"
+command = "yazi"
+description = "yazi"
+
+[[keys.command]]
+key = "prefix+shift+c"
+type = "pane"
+command = "cd ~/.claude && nvim"
+description = "edit Claude config"
+
+[[keys.command]]
+key = "prefix+shift+z"
+type = "pane"
+command = "cd ~/dotfiles && nvim"
+description = "edit dotfiles"
+
+[[keys.command]]
+key = "prefix+shift+n"
+type = "pane"
+command = "cd ~/Documents/GitHub/nvim && nvim"
+description = "edit Neovim config"
