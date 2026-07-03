@@ -54,64 +54,50 @@ edit_scrollback = "prefix+e"
 [[keys.command]]
 key = "ctrl+left"
 type = "shell"
-command = "herdr-vim-navigator dispatch left"
+command = "vim-herdr-navigator dispatch left"
 description = "vim-aware pane left"
 
 [[keys.command]]
 key = "ctrl+down"
 type = "shell"
-command = "herdr-vim-navigator dispatch down"
+command = "vim-herdr-navigator dispatch down"
 description = "vim-aware pane down"
 
 [[keys.command]]
 key = "ctrl+up"
 type = "shell"
-command = "herdr-vim-navigator dispatch up"
+command = "vim-herdr-navigator dispatch up"
 description = "vim-aware pane up"
 
 [[keys.command]]
 key = "ctrl+right"
 type = "shell"
-command = "herdr-vim-navigator dispatch right"
+command = "vim-herdr-navigator dispatch right"
 description = "vim-aware pane right"
 
 [[keys.command]]
 key = "ctrl+h"
 type = "shell"
-command = "herdr-vim-navigator dispatch left"
+command = "vim-herdr-navigator dispatch left"
 description = "vim-aware pane left"
 
 [[keys.command]]
 key = "ctrl+j"
 type = "shell"
-command = "herdr-vim-navigator dispatch down"
+command = "vim-herdr-navigator dispatch down"
 description = "vim-aware pane down"
 
 [[keys.command]]
 key = "ctrl+k"
 type = "shell"
-command = "herdr-vim-navigator dispatch up"
+command = "vim-herdr-navigator dispatch up"
 description = "vim-aware pane up"
 
 [[keys.command]]
 key = "ctrl+l"
 type = "shell"
-command = "herdr-vim-navigator dispatch right"
+command = "vim-herdr-navigator dispatch right"
 description = "vim-aware pane right"
-
-# Tmux split keys: prefix+% (right) and prefix+\" (down), routed through the
-# helper so they share the same cwd behavior as the navigator.
-[[keys.command]]
-key = "prefix+percent"
-type = "shell"
-command = "herdr-vim-navigator split right"
-description = "split pane right"
-
-[[keys.command]]
-key = "prefix+double_quote"
-type = "shell"
-command = "herdr-vim-navigator split down"
-description = "split pane down"
 
 # Tmux popup-like utility panes. Herdr command panes close when the command exits.
 [[keys.command]]
