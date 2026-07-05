@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# ghrc [name] — publish the current local git repo to GitHub.
+# Asks only owner, description, visibility. Everything else is assumed:
+# source is the repo you're in, name defaults to its directory name,
+# remote is origin, and the current branch is pushed.
+set -euo pipefail
+
+if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+  cat <<'EOF'
+ghrc [name] — publish the current local git repo to GitHub
+
+Prompts for owner, description, visibility (Enter accepts defaults).
+Assumes the rest: source is the current repo, name defaults to its
+directory name, remote is origin, current branch is pushed.
+If origin already exists, just pushes and sets upstream if needed.
+EOF
+  exit 0
+fi
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "ghrc: not inside a git repo" >&2; exit 1; }
+git rev-parse -q --verify HEAD >/dev/null || { echo "ghrc: no commits yet — commit something first" >&2; exit 1; }
+# origin already set up: just finish the job — push and set upstream if needed
+if url=$(git remote get-url origin 2>/dev/null); then
+  if git rev-parse -q --verify '@{upstream}' >/dev/null 2>&1; then
+    echo "ghrc: origin exists ($url) and branch has an upstream — nothing to do"
+    exit 0
+  fi
+  echo "ghrc: origin exists ($url), pushing current branch"
+  exec git push -u origin HEAD
+fi
+
+name=${1:-$(basename "$root")}
+me=$(gh api user -q .login)
+
+read -rp "owner [$me]: " owner
+owner=${owner:-$me}
+
+read -rp "description: " desc
+
+read -rp "visibility (pub/priv) [pub]: " vis
+case ${vis:-pub} in
+  priv*|Priv*) vis=private ;;
+  *)           vis=public ;;
+esac
+
+gh repo create "$owner/$name" --source="$root" --remote=origin --push \
+  --"$vis" ${desc:+--description "$desc"}
