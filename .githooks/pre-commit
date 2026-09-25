@@ -1,0 +1,13 @@
+#!/bin/sh
+# Block committing agent secrets/runtime state (defense in depth vs `git add -f`
+# and ignore-rule mistakes). Bypass, if ever truly intentional: git commit --no-verify
+
+blocked='(^|/)(auth\.json|\.credentials\.json|history\.jsonl|settings\.local\.json|installation_id)$|\.sqlite|(^|/)(sessions|archived_sessions|shell-snapshots|shell_snapshots|projects|telemetry|cache)/'
+
+staged=$(git diff --cached --name-only --diff-filter=ACR | grep -E "$blocked")
+if [ -n "$staged" ]; then
+  echo "BLOCKED: staged files match agent secret/state patterns:" >&2
+  echo "$staged" | sed 's/^/  /' >&2
+  echo "These should never be committed. Bypass only if certain: git commit --no-verify" >&2
+  exit 1
+fi

@@ -1,7 +1,7 @@
 {
   "patches": {
     "bootstrap-hook": {
-      "lastAppliedAt": "2026-06-25T01:31:50.181Z",
+      "lastAppliedAt": "2026-07-17T02:49:08.419Z",
       "lastTargetSha": "e5bfdab1e21264c1a12f99130f94d783b87c491e1ecd1ecd62682603fb0c0078",
       "removed": false,
       "lastSessions": [
@@ -15,18 +15,20 @@
       "removed": false
     },
     "anthropic-fast-mode": {
-      "lastAppliedAt": "2026-06-22T23:34:19.670Z",
+      "lastAppliedAt": "2026-07-17T02:49:08.383Z",
       "lastTargetSha": "6ab31524bde533b30e0e42b1ba99340a060b2610330baa9391921b2c98ec062e",
       "lastSessions": [
+        "b50f8d5f-475f-4e23-90d5-16118bfa8d8a",
+        "22f39681-ec19-4164-a2ed-c65d4e9f276f",
         "e929c3ba-582e-4c85-b2a4-6e6fd7b6eaed",
         "1263ca87-5a50-4b1e-be1b-693e9b9bb73a",
         "/Users/bassimshahidy/.pi/pi-patcher/heal-sessions/anthropic-fast-mode-2026-06-25T01-31-32-222Z/2026-06-25T01-31-33-117Z_019efc67-5d7d-75f1-b395-62e7ccc0eda0.jsonl"
       ],
-      "lastError": "The target file no longer contains `mergeHeaders` or header-merging logic; it now only wires `anthropicMessagesApi()` into the provider, so restoring the intent would require changing a different file or redesigning the patch beyond re-anchoring."
+      "lastHealedAt": "2026-07-04T00:46:58.650Z"
     }
   },
   "piRoot": "/Users/bassimshahidy/.local/share/fnm/node-versions/v25.6.1/installation/lib/node_modules/@earendil-works/pi-coding-agent",
-  "lastRunAt": "2026-06-25T09:44:28.048Z",
+  "lastRunAt": "2026-07-17T02:49:08.335Z",
   "piVersion": "0.75.4",
   "internalBaseShas": {
     "bootstrap-hook": "0f9a1bea5e0b3ce142553137891586446c4a35bb1559d42c2378632f6cd90b45"

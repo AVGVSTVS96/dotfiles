@@ -2,7 +2,7 @@
   "version": 1,
   "files": [
     {
-      "target": "node_modules/@earendil-works/pi-ai/dist/providers/anthropic.js",
+      "target": "node_modules/@earendil-works/pi-ai/dist/api/anthropic-messages.js",
       "replacements": [
         {
           "anchorHint": "the mergeHeaders helper that Object.assigns each header source into a merged object",

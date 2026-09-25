@@ -1,21 +1,51 @@
 #!/usr/bin/env bash
-# ghrc [name] — publish the current local git repo to GitHub.
-# Asks only owner, description, visibility. Everything else is assumed:
-# source is the repo you're in, name defaults to its directory name,
-# remote is origin, and the current branch is pushed.
+# ghrc [options] [name] — publish the current local git repo to GitHub.
+# Flags pre-answer the prompts; anything missing is asked interactively.
+# With -y (or no TTY) nothing is asked and defaults fill the gaps, so
+# machines can run it non-interactively. Everything else is assumed:
+# source is the repo you're in, remote is origin, current branch is pushed.
 set -euo pipefail
 
-if [[ ${1:-} == -h || ${1:-} == --help ]]; then
+usage() {
   cat <<'EOF'
-ghrc [name] — publish the current local git repo to GitHub
+ghrc [options] [name] — publish the current local git repo to GitHub
 
-Prompts for owner, description, visibility (Enter accepts defaults).
-Assumes the rest: source is the current repo, name defaults to its
-directory name, remote is origin, current branch is pushed.
-If origin already exists, just pushes and sets upstream if needed.
+Name defaults to the repo's directory name. Flags pre-answer the
+prompts; whatever is missing is asked interactively (Enter accepts
+defaults). With -y, or when stdin is not a TTY, nothing is asked and
+defaults are used instead. If origin already exists, just pushes and
+sets upstream if needed.
+
+Options:
+  -o, --owner OWNER   repo owner (default: your gh login)
+  -d, --desc TEXT     repo description (default: none)
+  -p, --private       create a private repo
+      --public        create a public repo (default)
+  -y, --yes           non-interactive: use defaults for anything not given
+  -h, --help          show this help
+
+Examples:
+  ghrc                          interactive, name from directory
+  ghrc -p my-tool               private repo named my-tool, prompts for the rest
+  ghrc -y -p -d "scratch repo"  fully non-interactive
 EOF
-  exit 0
-fi
+}
+
+owner='' desc='' vis='' name='' yes=0
+while (($#)); do
+  case $1 in
+    -o|--owner)   owner=${2:?"ghrc: $1 needs a value"}; shift ;;
+    -d|--desc)    desc=${2:?"ghrc: $1 needs a value"}; shift ;;
+    -p|--private) vis=private ;;
+    --public)     vis=public ;;
+    -y|--yes)     yes=1 ;;
+    -h|--help)    usage; exit 0 ;;
+    -*)           echo "ghrc: unknown option: $1" >&2; usage >&2; exit 2 ;;
+    *)            name=$1 ;;
+  esac
+  shift
+done
+[[ -t 0 ]] || yes=1
 
 root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "ghrc: not inside a git repo" >&2; exit 1; }
 git rev-parse -q --verify HEAD >/dev/null || { echo "ghrc: no commits yet — commit something first" >&2; exit 1; }
@@ -29,19 +59,33 @@ if url=$(git remote get-url origin 2>/dev/null); then
   exec git push -u origin HEAD
 fi
 
-name=${1:-$(basename "$root")}
-me=$(gh api user -q .login)
+name=${name:-$(basename "$root")}
 
-read -rp "owner [$me]: " owner
-owner=${owner:-$me}
+if [[ -z $owner ]]; then
+  me=$(gh api user -q .login)
+  if ((yes)); then
+    owner=$me
+  else
+    read -rp "owner [$me]: " owner
+    owner=${owner:-$me}
+  fi
+fi
 
-read -rp "description: " desc
+if [[ -z $desc ]] && ((!yes)); then
+  read -rp "description: " desc
+fi
 
-read -rp "visibility (pub/priv) [pub]: " vis
-case ${vis:-pub} in
-  priv*|Priv*) vis=private ;;
-  *)           vis=public ;;
-esac
+if [[ -z $vis ]]; then
+  if ((yes)); then
+    vis=public
+  else
+    read -rp "visibility (pub/priv) [pub]: " vis
+    case ${vis:-pub} in
+      priv*|Priv*) vis=private ;;
+      *)           vis=public ;;
+    esac
+  fi
+fi
 
 gh repo create "$owner/$name" --source="$root" --remote=origin --push \
   --"$vis" ${desc:+--description "$desc"}

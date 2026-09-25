@@ -16,7 +16,7 @@ config.keys = {
 	},
 }
 
-config.font = wezterm.font_with_fallback({ "MonaspiceKr Nerd Font", "Monaspace Krypton" })
+config.font = wezterm.font_with_fallback({ "MonaspiceKr Nerd Font", "Menlo" })
 config.font_size = 13
 config.color_scheme = "Tokyo Night"
 

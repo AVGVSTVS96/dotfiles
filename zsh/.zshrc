@@ -6,23 +6,51 @@ zmodload zsh/stat 2>/dev/null
 zmodload zsh/datetime 2>/dev/null
 
 cached_eval() {
-    local name="$1"; shift
+    local name="$1"
+    shift
+
     local cache_file="$HOME/.cache/${name}.zsh"
-    local refresh_cache=0
-    if [[ -f "$cache_file" ]]; then
+    local lock_file="${cache_file}.lock"
+    local log_file="${cache_file}.refresh.log"
+    local max_age=86400
+    local -a cache_stat
+    local stale=1
+
+    if [[ -r "$cache_file" ]]; then
         source "$cache_file"
-        local -a stat_out
-        if zstat -A stat_out +mtime -- "$cache_file" 2>/dev/null; then
-            (( EPOCHSECONDS - stat_out[1] > 86400 )) && refresh_cache=1
-        else
-            refresh_cache=1
+
+        if zstat -A cache_stat +mtime -- "$cache_file" 2>/dev/null; then
+            (( EPOCHSECONDS - cache_stat[1] <= max_age )) && stale=0
         fi
-        if (( refresh_cache )); then
-            ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &!
-        fi
-    else
-        ("$@" > "${cache_file}.tmp" && mv "${cache_file}.tmp" "$cache_file" && zcompile "$cache_file") &!
     fi
+
+    (( stale )) || return
+
+    [[ -d "${cache_file:h}" ]] || command mkdir -p -- "${cache_file:h}" || return
+    : >> "$lock_file"
+
+    (
+        zmodload zsh/system || return
+        zsystem flock -t 0 "$lock_file" 2>/dev/null || return
+
+        # Another shell may have refreshed it between our stale check and lock.
+        local -a current_stat
+        if [[ -r "$cache_file" ]] &&
+           zstat -A current_stat +mtime -- "$cache_file" 2>/dev/null &&
+           (( EPOCHSECONDS - current_stat[1] <= max_age )); then
+            return
+        fi
+
+        local tmp="${cache_file}.tmp.$$.${RANDOM}"
+        trap 'command rm -f -- "$tmp" "$tmp.zwc"' EXIT
+
+        "$@" >| "$tmp" || return
+        zcompile "$tmp" || return
+
+        # Atomic replacements keep readers from seeing partial cache files.
+        command mv -f -- "$tmp" "$cache_file" || return
+        command mv -f -- "$tmp.zwc" "$cache_file.zwc"
+    ) >> "$log_file" 2>&1 &!
 }
 
 # --- Check OS ---
@@ -107,11 +135,6 @@ export BAT_THEME=tokyonight_night
 export LG_CONFIG_FILE="$HOME/.config/lazygit/config.yml"
 
 
-# --- fnm ---
-export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
-cached_eval fnm fnm env --use-on-cd --shell zsh
-
-
 # --- fzf ---
 cached_eval fzf fzf --zsh
 
@@ -188,6 +211,7 @@ alias zrc="nvim ~/.zshrc"
 alias szrc="source ~/.zshrc"
 alias exz="exec zsh"
 alias cl="clear"
+alias add-skill="skills add -g -a universal claude-code -y"
 
 # -- git --
 alias aga="add_git_alias"
@@ -246,11 +270,12 @@ alias lspe="fzf --preview '$show_file_or_dir_preview'"
 alias lsp="fd --max-depth 1 --hidden --follow --exclude .git | fzf --preview '$show_file_or_dir_preview'"
 
 # -- claude --
-alias c="claude --dangerously-skip-permissions"
+alias claude="claude --dangerously-skip-permissions"
+alias c="claude" # NO LONGER WORKS: in ~/.claude/settings.json → "permissions.defaultMode": "bypassPermissions"
+alias cx="codex" # in ~/.codex/config.toml → approval_policy = "never", sandbox_mode = "danger-full-access"
 
 # -- ai-tmux: my cli agent wrapper for tmux-based session persistence and restoration --
-#
-# NOTE ai-tmux is flaky, my persistence startegy is more minmal and reliable now:
+# WARN ai-tmux is flaky, my persistence startegy is more minmal and reliable now:
 #   1. use tmux-resurrect with restore-pane-contents enabled
 #   2. use tmux-continuum to auto-save tmux sessions every 5 minutes
 #   3. set coding agent statuslines to display session-id
@@ -263,6 +288,9 @@ alias c="claude --dangerously-skip-permissions"
 # alias aic="ai-tmux -c"
 # alias air="ai-tmux -s"
 # alias aip="ai-tmux --pick"
+#
+# NOTE I now use Herdr as a multiplexer instead of tmux w/ custom agent persistence, Herdr does it better,
+#      it's incredibly good software; fast, polished, capable, and oozes quality from the start.
 
 
 # --- functions ---
@@ -400,3 +428,11 @@ export PATH="/Users/bassimshahidy/.local/bin:$PATH"
 export OPENCLAW_IMAGE_BACKEND=sips
 cached_eval openclaw openclaw completion --shell zsh
 cached_eval but-completions but completions zsh
+
+# Vite+ bin (https://viteplus.dev)
+. "$HOME/.vite-plus/env"
+
+# --- fnm ---
+export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
+cached_eval fnm fnm env --use-on-cd --shell zsh
+export PATH=$PATH:$HOME/.maestro/bin

@@ -1,12 +1,13 @@
 {
-  "lastChangelogVersion": "0.78.1",
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-opus-4-8",
+  "lastChangelogVersion": "0.80.10",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.6-sol",
   "defaultThinkingLevel": "high",
   "enabledModels": [
     "openai-codex/gpt-5.5",
-    "anthropic/claude-opus-4-7",
-    "anthropic/claude-opus-4-8"
+    "anthropic/claude-opus-4-8",
+    "openai-codex/gpt-5.6-sol",
+    "anthropic/claude-fable-5"
   ],
   "hideThinkingBlock": false,
   "packages": [
@@ -17,7 +18,8 @@
     "npm:@grayolson/pi-treebase",
     "npm:pi-autoresearch",
     "npm:pi-web-access",
-    "../../Documents/GitHub/side-projects/pi-treebase"
+    "../../Documents/GitHub/side-projects/pi-treebase",
+    "../../Documents/GitHub/side-projects/pi-context-control"
   ],
   "theme": "tokyo-night"
 }
