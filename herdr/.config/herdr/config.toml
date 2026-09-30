@@ -116,50 +116,61 @@ type = "plugin_action"
 command = "drovr.move-pane"
 description = "move pane to tab"
 
-# Tmux popup-like utility panes. Herdr command panes close when the command exits.
+# Utility popups: float over the current layout, close when the command exits.
 [[keys.command]]
 key = "prefix+backslash"
-type = "pane"
+type = "popup"
+width = "90%"
+height = "90%"
 command = "zsh"
-description = "shell pane"
+description = "shell popup"
 
 [[keys.command]]
 key = "prefix+semicolon"
-type = "pane"
+type = "popup"
+width = "90%"
+height = "90%"
 command = "yazi"
 description = "yazi"
 
 [[keys.command]]
-key = "prefix+shift+c"
-type = "pane"
-command = "cd ~/.claude && nvim"
-description = "edit Claude config"
+key = "prefix+ctrl+c"
+type = "popup"
+width = "90%"
+height = "90%"
+command = "claude"
+description = "Claude"
 
 [[keys.command]]
 key = "prefix+shift+z"
-type = "pane"
+type = "popup"
+width = "90%"
+height = "90%"
 command = "cd ~/dotfiles && nvim"
 description = "edit dotfiles"
 
 [[keys.command]]
 key = "prefix+shift+n"
-type = "pane"
+type = "popup"
+width = "90%"
+height = "90%"
 command = "cd ~/Documents/GitHub/nvim && nvim"
 description = "edit Neovim config"
 
 [[keys.command]]
 key = "prefix+l"
-type = "pane"
+type = "popup"
+width = "90%"
+height = "90%"
 command = "lazygit"
 description = "open lazygit"
 
-# Popup = tmux display-popup: floats over the current layout, closes on exit.
 [[keys.command]]
 key = "prefix+n"
 type = "popup"
+width = "90%"
+height = "90%"
 command = "nvim"
-width = "85%"
-height = "85%"
 description = "nvim in cwd"
 
 [advanced]
@@ -167,3 +178,6 @@ scrollback_limit_bytes = 100000000
 
 [experimental]
 pane_history = true
+
+[ui.sound]
+enabled = true
