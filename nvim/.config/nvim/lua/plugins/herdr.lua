@@ -4,12 +4,13 @@ end
 
 return {
   {
-    dir = "~/Documents/GitHub/side-projects/herdr-vim-navigator.nvim",
-    name = "herdr-vim-navigator.nvim",
+    dir = "~/Documents/GitHub/side-projects/vim-herdr-navigator",
+    name = "vim-herdr-navigator",
     cond = in_herdr,
     lazy = false,
     opts = {
-      helper = "~/Documents/GitHub/side-projects/herdr-vim-navigator/bin/herdr-vim-navigator",
+      -- Helper is resolved from PATH (~/.local/bin/vim-herdr-navigator -> the
+      -- Rust release build). Omitting `helper` uses the same default.
       keymaps = {
         left = { "<C-h>", "<C-Left>" },
         down = { "<C-j>", "<C-Down>" },
