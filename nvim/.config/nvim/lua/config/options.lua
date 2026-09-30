@@ -24,7 +24,7 @@ opt.linebreak = true
 opt.swapfile = false
 
 -- LazyVim
-g.snacks_animate = false
+g.snacks_animate = true
 g.lazyvim_picker = "snacks"
 
 -- Only run prettier in projects that have a prettier config file
@@ -40,9 +40,21 @@ vim.treesitter.language.register("markdown", "markdown.mdx")
 -- Visual
 o.winborder = "rounded"
 
+-- Terminal title (herdr popup borders, tmux, kitty): cwd with ~ for home and
+-- distant parents abbreviated, e.g. ~/D/GitHub/nvim
+function _G.pretty_cwd()
+  local parts = vim.split(vim.fn.fnamemodify(vim.fn.getcwd(), ":~"), "/")
+  for i = 1, #parts - 2 do
+    parts[i] = parts[i]:sub(1, 1)
+  end
+  return table.concat(parts, "/")
+end
+o.title = true
+o.titlestring = "%{v:lua.pretty_cwd()}"
+
 -- MacOS
 if jit.os == "OSX" then
-  o.mousescroll = "ver:1"
+  o.mousescroll = "ver:3"
 end
 
 -- Prefer nearest subproject first, then fall back to lsp -> monorepo git -> cwd

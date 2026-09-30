@@ -26,6 +26,7 @@ return {
     },
   },
   opts = {
+    scroll = { enabled = true },
     zen = {
       toggles = {
         dim = false,
