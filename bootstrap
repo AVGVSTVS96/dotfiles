@@ -50,8 +50,10 @@ case "$(uname -s)" in
     brew bundle --no-upgrade --file brew/Brewfile
     ;;
   Linux)
-    sudo pacman -Syu --needed - < arch/pacman.txt
-    if have paru; then paru -S --needed - < arch/aur.txt; else echo "paru not found: skipped arch/aur.txt"; fi
+    xargs pacman -T < arch/pacman.txt >/dev/null || sudo pacman -Syu --needed - < arch/pacman.txt
+    if ! xargs pacman -T < arch/aur.txt >/dev/null; then
+      if have paru; then paru -S --needed - < arch/aur.txt; else echo "paru not found: skipped arch/aur.txt"; fi
+    fi
     ensure claude https://claude.ai/install.sh bash
     ensure codex https://chatgpt.com/codex/install.sh sh
     ensure herdr https://herdr.dev/install.sh sh

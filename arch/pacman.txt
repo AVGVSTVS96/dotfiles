@@ -9,6 +9,7 @@ fastfetch
 fd
 ffmpeg
 ffmpegthumbnailer
+fish
 fnm
 fzf
 ghostty
@@ -40,6 +41,7 @@ sops
 sqlcipher
 stow
 superfile
+tealdeer
 thefuck
 tmux
 tree-sitter-cli
@@ -52,5 +54,3 @@ yazi
 yt-dlp
 zoxide
 zsh
-zsh-autosuggestions
-zsh-syntax-highlighting
