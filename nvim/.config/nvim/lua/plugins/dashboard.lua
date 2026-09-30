@@ -44,7 +44,7 @@ return {
             icon = " ",
             key = "s",
             desc = "Restore Session",
-            action = ":lua require('persistence').load_tmux_fallback()",
+            action = ":lua require('persistence_scope').restore()",
           },
           { icon = " ", key = "S", desc = "Select Session", action = ":lua require('persistence').select()" },
           { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy", enabled = package.loaded.lazy ~= nil },
