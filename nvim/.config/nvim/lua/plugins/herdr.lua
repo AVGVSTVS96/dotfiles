@@ -4,8 +4,9 @@ end
 
 return {
   {
-    dir = "~/Documents/GitHub/side-projects/vim-herdr-navigator",
-    name = "vim-herdr-navigator",
+    "AVGVSTVS96/vim-herdr-navigator",
+    dev = true,
+    build = "./install.sh",
     cond = in_herdr,
     lazy = false,
     opts = {
