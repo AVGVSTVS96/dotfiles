@@ -1,0 +1,20 @@
+{
+  "name": "claude-plugins-official",
+  "owner": {
+    "name": "Anthropic"
+  },
+  "plugins": [
+    {
+      "name": "code-simplifier",
+      "source": "./plugins/code-simplifier"
+    },
+    {
+      "name": "frontend-design",
+      "source": "./plugins/frontend-design"
+    },
+    {
+      "name": "plugin-dev",
+      "source": "./plugins/plugin-dev"
+    }
+  ]
+}

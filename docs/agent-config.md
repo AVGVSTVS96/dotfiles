@@ -23,3 +23,7 @@ The Codex source disables hatch-pet and four GitHub skills; the helper preserves
 The heterogeneous `~/.claude.json` cache/account store is never tracked. Apart from the source-backed Onshape MCP entry, its existing keys remain untouched. Additional user preferences mixed into that store require confirmed schema/provenance rather than transplanting cache flags.
 
 GitButler skill source files carry the Mac immutable flag. The helper preserves those originals in place and manages byte-identical copies from protected-skills instead of changing their links/flags. Linux receives the same content without imposing Mac file flags.
+
+## Enabled portable Claude plugins
+
+The three source-enabled portable plugins (code-simplifier, frontend-design and plugin-dev) are installed on Linux through Claude's native plugin CLI from an exact source-only marketplace snapshot. `claude-plugin-sources.json` records origins, observed versions/commit metadata and file SHA256 values. Cache leases, installation registries, auth and runtime state are excluded. Linux owns the generated local marketplace/installed registry; the Mac marketplace and installed plugins stay unchanged. Installation is skipped when the recorded source files already match. Existing conflicting marketplace sources stop installation for coordination.

@@ -5,6 +5,7 @@
 import argparse
 import copy
 import datetime
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -148,5 +149,37 @@ for link in json.loads((repo / "agent-preferences/skill-links.json").read_text()
             destination.unlink()
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.symlink_to(link["target"])
+
+if os.uname().sysname != "Darwin":
+    plugin_sources = json.loads((repo / "agent-preferences/claude-plugin-sources.json").read_text())
+    registry = home / ".claude/plugins/installed_plugins.json"
+    installed = json.loads(registry.read_text()).get("plugins", {}) if registry.exists() else {}
+    missing = []
+    for plugin in plugin_sources:
+        records = installed.get(plugin["name"], [])
+        def matches(record):
+            root = Path(record.get("installPath", ""))
+            return record.get("scope") == "user" and all(
+                (root / path).is_file() and hashlib.sha256((root / path).read_bytes()).hexdigest() == digest
+                for path, digest in plugin["source_file_sha256"].items()
+            )
+        if not any(matches(record) for record in records):
+            missing.append(plugin["name"])
+    if missing:
+        changes.extend("plugin:" + name for name in missing)
+        if not args.dry_run:
+            if home != Path.home().resolve():
+                raise RuntimeError("Plugin installation requires the real home")
+            catalog = repo / "agent-preferences/plugin-sources/claude-plugins-official"
+            known_path = home / ".claude/plugins/known_marketplaces.json"
+            known = json.loads(known_path.read_text()) if known_path.exists() else {}
+            existing = known.get("claude-plugins-official", {}).get("source")
+            if existing and existing != {"source": "directory", "path": str(catalog)}:
+                raise RuntimeError("Preserve existing official marketplace; coordinate its source before replacing it")
+            cli = home / ".local/bin/claude"
+            if not existing:
+                subprocess.run([str(cli), "plugin", "marketplace", "add", str(catalog)], check=True, stdout=subprocess.DEVNULL)
+            for name in missing:
+                subprocess.run([str(cli), "plugin", "install", "--scope", "user", name], check=True, stdout=subprocess.DEVNULL)
 
 print(json.dumps({"dry_run": args.dry_run, "changed": changes, "backup": str(backup) if changes and not args.dry_run else None}, indent=2))
