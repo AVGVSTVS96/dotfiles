@@ -1,0 +1,18 @@
+#!/bin/sh
+# Stow the shared packages plus this OS's packages into $HOME.
+# Stow flags pass through: ./install -nv previews, -R restows, -D unlinks.
+set -eu
+cd "$(dirname "$0")"
+
+# Real directories, so stow links into them instead of folding installers' and
+# restore-secrets' writes into this repo.
+mkdir -p "$HOME/.local/bin"
+[ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
+
+case "$(uname -s)" in
+  Darwin) set -- "$@" brew fish nushell pi zed ;;
+esac
+
+exec stow --target="$HOME" "$@" \
+  agent-browser bat completions fastfetch gh gh-dash ghostty git graphite herdr \
+  lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi zsh

@@ -63,7 +63,7 @@ Sops handles all the encryption/decryption. You edit plain text, it saves encryp
 ```
 1. Restore master key from backup → ~/.config/sops/age/key.txt
 2. Clone this repo
-3. Run: stow */
+3. Run: ./install
 4. Run: restore-secrets
 5. Restart shell
 ```
