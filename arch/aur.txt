@@ -1,0 +1,4 @@
+crush-bin
+evil-helix-bin
+oh-my-posh-bin
+tlrc-bin
