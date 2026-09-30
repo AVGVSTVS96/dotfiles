@@ -1,0 +1,80 @@
+{
+  "cleanupPeriodDays": 2000,
+  "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-5[1m]",
+    "ANTHROPIC_SMALL_FAST_MODEL": "claude-sonnet-5",
+    "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": "1",
+    "DISABLE_ZOXIDE": "1"
+  },
+  "includeGitInstructions": false,
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": [],
+    "defaultMode": "bypassPermissions",
+    "disableAutoMode": "disable"
+  },
+  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "enabledPlugins": {
+    "claude-md-management@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
+    "swift-lsp@claude-plugins-official": false,
+    "paper-desktop@paper": true
+  },
+  "extraKnownMarketplaces": {
+    "paper": {
+      "source": {
+        "source": "github",
+        "repo": "paper-design/agent-plugins"
+      }
+    }
+  },
+  "outputStyle": "visual",
+  "feedbackDrafts": "off",
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "xhigh"
+    }
+  },
+  "autoCompactWindow": 800000,
+  "fastModePerSessionOptIn": true,
+  "showClearContextOnPlanAccept": true,
+  "askUserQuestionTimeout": "10m",
+  "pluginConfigs": {
+    "agents-md@builtin": {
+      "options": {
+        "instructionFiles": "claude-md-or-agents-md"
+      }
+    }
+  },
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
+  "autoMemoryEnabled": false,
+  "skipDangerousModePermissionPrompt": true,
+  "editorMode": "normal",
+  "preferredNotifChannel": "auto",
+  "autoCompactEnabled": true,
+  "switchModelsOnFlag": false,
+  "remoteControlAtStartup": true,
+  "crossSessionInbound": "accept",
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": false,
+  "voiceEnabled": true,
+  "compactingEnabled": true
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "path": ".claude/skills/gitbutler",
+    "target": "../../.agents/skills/gitbutler"
+  },
+  {
+    "path": ".claude/skills/better-github-skill",
+    "target": "../../.agents/skills/better-github-skill"
+  },
+  {
+    "path": ".claude/skills/codex-orchestration",
+    "target": "../../.agents/skills/codex-orchestration"
+  },
+  {
+    "path": ".claude/skills/download-web-video",
+    "target": "../../.agents/skills/download-web-video"
+  },
+  {
+    "path": ".codex/skills/gitbutler",
+    "target": "../../.agents/skills/gitbutler"
+  }
+]

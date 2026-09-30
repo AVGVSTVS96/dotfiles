@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Session Recovery"
+  short_description: "Recover crashed Claude tmux sessions"
+  default_prompt: "Use $claude-session-recovery to map tmux panes to the correct Claude session IDs and safely resume each pane."

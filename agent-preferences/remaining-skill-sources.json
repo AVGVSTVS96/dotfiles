@@ -1,0 +1,282 @@
+[
+  {
+    "source": "~/.claude/skills/agent-browser",
+    "symlink_target": "../../.agents/skills/agent-browser",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/animation-vocabulary",
+    "symlink_target": "../../.agents/skills/animation-vocabulary",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/apple-design",
+    "symlink_target": "../../.agents/skills/apple-design",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/assistant-ui",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/better-github-skill",
+    "symlink_target": "../../.agents/skills/better-github-skill",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/building-components",
+    "symlink_target": "../../.agents/skills/building-components",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/cloud",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/codex-orchestration",
+    "symlink_target": "../../.agents/skills/codex-orchestration",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/comet-kvm",
+    "symlink_target": "~/Developer/comet-kvm",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/create-evlog-adapter",
+    "symlink_target": "../../.agents/skills/create-evlog-adapter",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/create-evlog-enricher",
+    "symlink_target": "../../.agents/skills/create-evlog-enricher",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/dogfood",
+    "symlink_target": "../../.agents/skills/dogfood",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/download-web-video",
+    "symlink_target": "../../.agents/skills/download-web-video",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/electron",
+    "symlink_target": "../../.agents/skills/electron",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/emil-design-eng",
+    "symlink_target": "../../.agents/skills/emil-design-eng",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/find-animation-opportunities",
+    "symlink_target": "../../.agents/skills/find-animation-opportunities",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/find-skills",
+    "symlink_target": "../../.agents/skills/find-skills",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/gitbutler",
+    "symlink_target": "../../.agents/skills/gitbutler",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/grill-me",
+    "symlink_target": "../../.agents/skills/grill-me",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/grill-with-docs",
+    "symlink_target": "../../.agents/skills/grill-with-docs",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/handoff",
+    "symlink_target": "../../.agents/skills/handoff",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/herdr",
+    "symlink_target": "../../.agents/skills/herdr",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/improve",
+    "symlink_target": "../../.agents/skills/improve",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/improve-animations",
+    "symlink_target": "../../.agents/skills/improve-animations",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/improve-codebase-architecture",
+    "symlink_target": "../../.agents/skills/improve-codebase-architecture",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/machines",
+    "symlink_target": "../../.agents/skills/machines",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/next-best-practices",
+    "symlink_target": "../../.agents/skills/next-best-practices",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/pick-ui-library",
+    "symlink_target": "../../.agents/skills/pick-ui-library",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/primitives",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/prototype",
+    "symlink_target": "../../.agents/skills/prototype",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/remotion-best-practices",
+    "symlink_target": "../../.agents/skills/remotion-best-practices",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/review-animations",
+    "symlink_target": "../../.agents/skills/review-animations",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/review-logging-patterns",
+    "symlink_target": "../../.agents/skills/review-logging-patterns",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/runtime",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/setup",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/setup-matt-pocock-skills",
+    "symlink_target": "../../.agents/skills/setup-matt-pocock-skills",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/slack",
+    "symlink_target": "../../.agents/skills/slack",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/streaming",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/synced",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/tdd",
+    "symlink_target": "../../.agents/skills/tdd",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/thread-list",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/to-issues",
+    "symlink_target": "../../.agents/skills/to-issues",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/to-prd",
+    "symlink_target": "../../.agents/skills/to-prd",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/tools",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/triage",
+    "symlink_target": "../../.agents/skills/triage",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/typesafe-ai",
+    "symlink_target": "../../.agents/skills/typesafe-ai",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/update",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/vercel-composition-patterns",
+    "symlink_target": "../../.agents/skills/vercel-composition-patterns",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/vercel-react-best-practices",
+    "symlink_target": "../../.agents/skills/vercel-react-best-practices",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/vercel-sandbox",
+    "symlink_target": "../../.agents/skills/vercel-sandbox",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/web-design-guidelines",
+    "symlink_target": "../../.agents/skills/web-design-guidelines",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/write-a-skill",
+    "symlink_target": "../../.agents/skills/write-a-skill",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.claude/skills/zoom-out",
+    "symlink_target": "../../.agents/skills/zoom-out",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.codex/skills/.system",
+    "symlink_target": null,
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.codex/skills/gitbutler",
+    "symlink_target": "../../.agents/skills/gitbutler",
+    "state": "existing-source dependency not imported by this helper"
+  },
+  {
+    "source": "~/.codex/skills/machines",
+    "symlink_target": "../../.agents/skills/machines",
+    "state": "existing-source dependency not imported by this helper"
+  }
+]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "tmux CLI Control"
+  short_description: "Control tmux panes safely via CLI workflows."
+  default_prompt: "Inspect tmux targets, send commands, and verify pane output."

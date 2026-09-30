@@ -3,6 +3,14 @@
 # Stow flags pass through: ./install -nv previews, -R restows, -D unlinks.
 set -eu
 cd "$(dirname "$0")"
+agent_dry=
+agent_delete=
+for flag in "$@"; do
+  case "$flag" in
+    -D|--delete) agent_delete=1 ;;
+    -*n*|--simulate) agent_dry=--dry-run ;;
+  esac
+done
 
 # Real directories, so stow links into them instead of folding the writes of
 # installers, herdr's runtime state and restore-secrets into this repo.
@@ -18,6 +26,10 @@ case "$(uname -s)" in
     ;;
 esac
 
-exec stow --target="$HOME" "$@" \
+stow --target="$HOME" "$@" \
   agent-browser bat fastfetch fish gh gh-dash git graphite herdr \
   lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi
+if [ -n "$agent_delete" ]; then
+  exec stow --no-folding --target="$HOME" -D claude codex agent-skills
+fi
+exec ./install-agents ${agent_dry:+"$agent_dry"}
