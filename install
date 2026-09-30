@@ -10,7 +10,7 @@ mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
 
 case "$(uname -s)" in
-  Darwin) set -- "$@" brew fish ghostty nushell pi zed ;;
+  Darwin) set -- "$@" brew completions ghostty nushell pi zed zsh ;;
   Linux)
     # Wallpaper downloads stay out of the repo; the machine's SSH access list stays its own.
     mkdir -p "$HOME/Pictures/Wallpapers"
@@ -19,5 +19,5 @@ case "$(uname -s)" in
 esac
 
 exec stow --target="$HOME" "$@" \
-  agent-browser bat completions fastfetch gh gh-dash git graphite herdr \
-  lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi zsh
+  agent-browser bat fastfetch fish gh gh-dash git graphite herdr \
+  lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi

@@ -63,8 +63,12 @@ esac
 
 link
 
-[ -d "$HOME/.oh-my-zsh" ] ||
-  run_installer https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh sh -s -- --unattended --keep-zshrc
+case "$SHELL" in
+  */zsh)
+    [ -d "$HOME/.oh-my-zsh" ] ||
+      run_installer https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh sh -s -- --unattended --keep-zshrc
+    ;;
+esac
 [ -e "$HOME/.local/share/fnm/aliases/default" ] || { fnm install --lts && fnm default lts-latest; }
 if have rustup; then
   rustup default >/dev/null 2>&1 || rustup default stable
@@ -85,10 +89,7 @@ else
   echo "Copy the existing age key to ~/.config/sops/age/key.txt, then run restore-secrets"
 fi
 
-case "$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)" in
-  "" | */zsh) ;;
-  *) chsh -s "$(command -v zsh)" ;;
-esac
-
-echo "Agent CLIs seen by non-interactive zsh (ssh commands, T3 Code):"
-zsh -c 'for c in claude codex herdr t3; do print -r -- "  $c: $(whence -p $c || print missing)"; done'
+echo "Agent CLIs seen by non-interactive $(basename "$SHELL") (ssh commands, T3 Code):"
+for c in claude codex herdr t3; do
+  printf '  %s: %s\n' "$c" "$("$SHELL" -c "command -v $c" 2>/dev/null || echo missing)"
+done
