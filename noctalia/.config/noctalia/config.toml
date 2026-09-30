@@ -1,2 +1,114 @@
 [shell]
 polkit_agent = true
+setup_wizard_enabled = false
+corner_radius_scale = 0.0
+app_icon_colorize = false
+offline_mode = false
+
+[shell.panel]
+launcher_placement = "floating"
+launcher_position = "center"
+clipboard_placement = "attached"
+wallpaper_placement = "attached"
+control_center_placement = "attached"
+
+[shell.launcher]
+categories = false
+show_icons = false
+show_app_origin_indicator = false
+compact = true
+app_grid = false
+show_app_actions = false
+
+[accessibility]
+ui_scale = 1.0
+high_contrast = false
+
+[theme]
+mode = "dark"
+shell_mode = "follow"
+source = "community"
+community_palette = "Monochrome"
+pure_black_dark = false
+
+[bar]
+order = ["main"]
+
+[bar.main]
+position = "right"
+enabled = true
+auto_hide = true
+smart_auto_hide = false
+show_on_workspace_switch = true
+reserve_space = false
+layer = "top"
+thickness = 46
+background_opacity = 0.92
+border = "outline"
+border_width = 1.0
+shadow = true
+radius = 0
+margin_ends = 330
+margin_edge = 8
+padding = 10
+widget_spacing = 8
+scale = 1.0
+font_scale = 1.0
+capsule = false
+start = ["workspaces"]
+center = ["wallhaven", "wallpaper", "clipboard"]
+end = ["volume", "control-center"]
+
+[widget.wallhaven]
+type = "noctalia/wallhaven:wallhaven"
+
+[plugins]
+enabled = ["noctalia/wallhaven"]
+auto_update = "official"
+
+[wallpaper]
+enabled = true
+fill_mode = "crop"
+fill_color = "#0d0d0d"
+transition = ["fade"]
+transition_duration = 350
+transition_on_startup = false
+directory = "/home/bassim/Pictures/Wallpapers"
+directory_dark = "/home/bassim/Pictures/Wallpapers"
+
+[wallpaper.default]
+path = "/home/bassim/Pictures/Wallpapers/foci-monochrome.png"
+
+[desktop_widgets]
+enabled = true
+schema_version = 2
+widget_order = ["clock_main"]
+
+[desktop_widgets.grid]
+visible = false
+cell_size = 16
+major_interval = 4
+
+[desktop_widgets.widget.clock_main]
+type = "clock"
+output = "HDMI-A-1"
+cx = 1720.0
+cy = 46.0
+box_width = 240.0
+box_height = 56.0
+rotation = 0.0
+flip_x = false
+flip_y = false
+
+[desktop_widgets.widget.clock_main.settings]
+clock_style = "digital"
+format = "{:%H:%M}"
+color = "on_surface"
+shadow = true
+center_text = true
+background = false
+
+[backdrop]
+enabled = true
+blur_intensity = 0.35
+tint_intensity = 0.45

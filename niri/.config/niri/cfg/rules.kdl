@@ -43,3 +43,16 @@
           // blur false
         }
     }
+
+// Floating monochrome terminal from the reference setup.
+window-rule {
+    match app-id="com.mitchellh.ghostty"
+    open-floating true
+    default-column-width { fixed 1200; }
+    default-window-height { fixed 800; }
+}
+
+layer-rule {
+    match namespace="^noctalia-backdrop"
+    place-within-backdrop true
+}

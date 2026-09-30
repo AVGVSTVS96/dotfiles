@@ -9,14 +9,14 @@ binds {
     Mod+Shift+ESCAPE                     { show-hotkey-overlay; }
 
     // ─── Applications ───
-    Mod+Return                          hotkey-overlay-title="Open Terminal: Alacritty" { spawn "alacritty"; }
+    Mod+R hotkey-overlay-title="Open Terminal: Ghostty" { spawn "ghostty"; }
     Mod+B                               hotkey-overlay-title="Open Browser: firefox" { spawn "firefox"; }
 
     // --- Noctalia ---
     Mod+Shift+Return                    hotkey-overlay-title="Open Wallpaper Selector: noctalia wallpaper toggle" { spawn-sh "noctalia msg panel-toggle wallpaper"; }
     Mod+S                               hotkey-overlay-title="Open Control Center: noctalia controlCenter" { spawn-sh "noctalia msg panel-toggle control-center"; }
     Mod+Shift+S                         hotkey-overlay-title="Open Settings: noctalia settings" { spawn-sh "noctalia msg settings-toggle"; }
-    Mod+CTRL+Return                     hotkey-overlay-title="Open App Launcher: noctalia launcher" { spawn-sh "noctalia msg panel-toggle launcher"; }
+    Mod+Space hotkey-overlay-title="Open App Launcher: Noctalia" { spawn-sh "noctalia msg panel-toggle launcher"; }
     Mod+ALT+L                           hotkey-overlay-title="Lock Screen: noctalia lock" { spawn-sh "noctalia msg session lock"; }
     Mod+Shift+Q                         hotkey-overlay-title="Session Menu: noctalia sessionMenu" { spawn-sh "noctalia msg panel-toggle session"; }
 
@@ -83,7 +83,6 @@ binds {
     Mod+Comma                           { consume-window-into-column; }
     Mod+Period                          { expel-window-from-column; }
 
-    Mod+R                               { switch-preset-column-width; }
     Mod+Shift+R                         { switch-preset-column-width-back; }
 
     Mod+Ctrl+Shift+R                    { switch-preset-window-height; }
@@ -126,7 +125,6 @@ binds {
     Mod+CTRL+8                          { move-column-to-workspace 8; }
     Mod+CTRL+9                          { move-column-to-workspace 9; }
 
-    Mod+TAB                             { focus-workspace-previous; }
 
     // ─── Layout Controls ───
     Mod+CTRL+F                          { expand-column-to-available-width; }
@@ -158,5 +156,5 @@ binds {
     // ─── Exit / Power ───
     CTRL+ALT+Delete                     { quit; } // Also quits Niri
     Mod+Shift+P                         { power-off-monitors; } // Turn off screens (useful for OLED or privacy)
-    Mod+O                               repeat=false { toggle-overview; }
+    Mod+Tab                               repeat=false { toggle-overview; }
 }
