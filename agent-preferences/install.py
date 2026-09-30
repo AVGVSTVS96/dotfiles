@@ -68,6 +68,9 @@ claude = json.loads((repo / "agent-preferences/claude.json").read_text())
 if os.uname().sysname != "Darwin":
     claude["enabledPlugins"].pop("paper-desktop@paper", None)
     claude["extraKnownMarketplaces"].pop("paper", None)
+    for name in ("code-simplifier", "frontend-design", "plugin-dev"):
+        claude["enabledPlugins"][name + "@claude-plugins-official"] = False
+        claude["enabledPlugins"][name + "@bassim-dotfiles"] = True
 json_merge(home / ".claude/settings.json", claude)
 mcp_path = home / ".claude.json"
 mcp_original = mcp_path.read_text() if mcp_path.exists() else "{}"
@@ -156,7 +159,8 @@ if os.uname().sysname != "Darwin":
     installed = json.loads(registry.read_text()).get("plugins", {}) if registry.exists() else {}
     missing = []
     for plugin in plugin_sources:
-        records = installed.get(plugin["name"], [])
+        installed_name = plugin["name"].replace("@claude-plugins-official", "@bassim-dotfiles")
+        records = installed.get(installed_name, [])
         def matches(record):
             root = Path(record.get("installPath", ""))
             return record.get("scope") == "user" and all(
@@ -164,7 +168,7 @@ if os.uname().sysname != "Darwin":
                 for path, digest in plugin["source_file_sha256"].items()
             )
         if not any(matches(record) for record in records):
-            missing.append(plugin["name"])
+            missing.append(installed_name)
     if missing:
         changes.extend("plugin:" + name for name in missing)
         if not args.dry_run:
@@ -173,9 +177,9 @@ if os.uname().sysname != "Darwin":
             catalog = repo / "agent-preferences/plugin-sources/claude-plugins-official"
             known_path = home / ".claude/plugins/known_marketplaces.json"
             known = json.loads(known_path.read_text()) if known_path.exists() else {}
-            existing = known.get("claude-plugins-official", {}).get("source")
+            existing = known.get("bassim-dotfiles", {}).get("source")
             if existing and existing != {"source": "directory", "path": str(catalog)}:
-                raise RuntimeError("Preserve existing official marketplace; coordinate its source before replacing it")
+                raise RuntimeError("Preserve existing snapshot marketplace; coordinate its source before replacing it")
             cli = home / ".local/bin/claude"
             if not existing:
                 subprocess.run([str(cli), "plugin", "marketplace", "add", str(catalog)], check=True, stdout=subprocess.DEVNULL)

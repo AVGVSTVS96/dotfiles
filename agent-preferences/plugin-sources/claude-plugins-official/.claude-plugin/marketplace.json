@@ -1,7 +1,7 @@
 {
-  "name": "claude-plugins-official",
+  "name": "bassim-dotfiles",
   "owner": {
-    "name": "Anthropic"
+    "name": "Bassim Shahidy"
   },
   "plugins": [
     {
