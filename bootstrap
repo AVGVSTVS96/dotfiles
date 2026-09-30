@@ -42,7 +42,7 @@ link() {
     if cmp -s "$HOME/$f" "/etc/skel/$f"; then git checkout -- "$(realpath "$HOME/$f")"; fi
   done
   echo "Backed up the originals of $(printf '%s\n' "$adopt" | wc -l | tr -d ' ') files to $backup"
-  git diff --quiet || { echo "Kept your own versions of these; review with: git -C $(pwd) diff"; git diff --stat; }
+  git diff --quiet || { echo "Kept your own versions of these; review with: git -C $(pwd) diff"; git --no-pager diff --stat; }
 }
 
 case "$(uname -s)" in
@@ -75,12 +75,15 @@ if have rustup; then
   rustup component add rust-analyzer
 fi
 # HERDR_ENV lets the herdr-only navigator plugin install too, which builds its helper.
-# The lockfile is reset afterwards: machines without the side-project checkouts only add
-# entries for those two plugins.
-have vim-herdr-navigator || {
-  HERDR_ENV=1 nvim --headless "+Lazy! restore" +qa
+# On a fresh install lazy.nvim rewrites the lockfile before LazyVim's own plugin specs load,
+# so those land on their latest commits; a second start restores every plugin to the lockfile.
+# The lockfile is reset after each start: machines without the side-project checkouts only
+# add entries for those two plugins.
+lazy() {
+  HERDR_ENV=1 nvim --headless "$@" +qa
   git checkout -- nvim/.config/nvim/lazy-lock.json
 }
+have vim-herdr-navigator || { lazy; lazy "+Lazy! restore"; }
 herdr plugin list | grep -q '^- drovr ' || herdr plugin install --yes AVGVSTVS96/herdr-drovr
 
 if [ -r "$HOME/.config/sops/age/key.txt" ]; then
