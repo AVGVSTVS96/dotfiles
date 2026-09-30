@@ -1,0 +1,64 @@
+#!/bin/sh
+# Set up this Mac or Arch/CachyOS machine from ~/dotfiles. Safe to rerun:
+# whatever is already installed is detected and left alone.
+set -eu
+cd "$(dirname "$0")"
+export PATH="$HOME/.local/bin:$HOME/.local/share/fnm/aliases/default/bin:$PATH"
+export CODEX_NON_INTERACTIVE=1
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+run_installer() { # url command...
+  installer=$(curl -fsSL "$1")
+  shift
+  printf '%s\n' "$installer" | "$@"
+}
+
+ensure() { # command installer-url interpreter
+  if have "$1"; then
+    echo "✓ $1 already installed: $(command -v "$1")"
+  else
+    run_installer "$2" "$3"
+  fi
+}
+
+case "$(uname -s)" in
+  Darwin)
+    brew bundle --no-upgrade --file brew/Brewfile
+    ;;
+  Linux)
+    sudo pacman -S --needed - < arch/pacman.txt
+    if have paru; then paru -S --needed - < arch/aur.txt; else echo "paru not found: skipped arch/aur.txt"; fi
+    ensure claude https://claude.ai/install.sh bash
+    ensure codex https://chatgpt.com/codex/install.sh sh
+    ensure herdr https://herdr.dev/install.sh sh
+    ensure t3 https://t3.codes/install.sh sh
+    ;;
+esac
+
+./install || { echo "Move the files stow reports above aside, then rerun ./bootstrap"; exit 1; }
+
+[ -d "$HOME/.oh-my-zsh" ] ||
+  run_installer https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh sh -s -- --unattended --keep-zshrc
+[ -e "$HOME/.local/share/fnm/aliases/default" ] || { fnm install --lts && fnm default lts-latest; }
+if have rustup; then
+  rustup default >/dev/null 2>&1 || rustup default stable
+  rustup component add rust-analyzer
+fi
+# HERDR_ENV lets the herdr-only navigator plugin install too, which builds its helper.
+have vim-herdr-navigator || HERDR_ENV=1 nvim --headless "+Lazy! restore" +qa
+herdr plugin list | grep -q '^- drovr ' || herdr plugin install --yes AVGVSTVS96/herdr-drovr
+
+if [ -r "$HOME/.config/sops/age/key.txt" ]; then
+  scripts/.local/bin/restore-secrets
+else
+  echo "Copy the existing age key to ~/.config/sops/age/key.txt, then run restore-secrets"
+fi
+
+case "$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f7)" in
+  "" | */zsh) ;;
+  *) chsh -s "$(command -v zsh)" ;;
+esac
+
+echo "Agent CLIs seen by non-interactive zsh (ssh commands, T3 Code):"
+zsh -c 'for c in claude codex herdr t3; do print -r -- "  $c: $(whence -p $c || print missing)"; done'
