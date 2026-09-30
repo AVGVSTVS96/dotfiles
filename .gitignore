@@ -38,6 +38,7 @@ fish/.config/fish/fish_variables
 fish/.config/fish/themes/
 fish/.config/fish/completions/fisher.fish
 fish/.config/fish/completions/fzf_configure_bindings.fish
+fish/.config/fish/completions/grok.fish
 
 # Fish functions/ - ignore plugin-generated files, track custom ones
 fish/.config/fish/functions/*
