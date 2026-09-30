@@ -27,6 +27,9 @@ opt.swapfile = false
 g.snacks_animate = false
 g.lazyvim_picker = "snacks"
 
+-- Only run prettier in projects that have a prettier config file
+g.lazyvim_prettier_needs_config = true
+
 -- MDX: LazyVim's markdown extra maps mdx to markdown.mdx, but only at
 -- VeryLazy (too late for argv/session buffers), and mdx.nvim's after/plugin
 -- remaps the extension to plain `mdx`. A pattern outranks extension maps, so
