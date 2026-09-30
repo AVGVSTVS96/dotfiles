@@ -27,6 +27,13 @@ opt.swapfile = false
 g.snacks_animate = false
 g.lazyvim_picker = "snacks"
 
+-- MDX: LazyVim's markdown extra maps mdx to markdown.mdx, but only at
+-- VeryLazy (too late for argv/session buffers), and mdx.nvim's after/plugin
+-- remaps the extension to plain `mdx`. A pattern outranks extension maps, so
+-- this wins regardless of load order.
+vim.filetype.add({ pattern = { [".*%.mdx"] = "markdown.mdx" } })
+vim.treesitter.language.register("markdown", "markdown.mdx")
+
 -- Visual
 o.winborder = "rounded"
 
