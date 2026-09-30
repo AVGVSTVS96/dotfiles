@@ -48,7 +48,7 @@
         {
           "properties": {
             "cache_duration": "none",
-            "script": "/Users/bassimshahidy/.local/bin/omp-monorepo"
+            "script": "~/.local/bin/omp-monorepo"
           },
           "template": "{{ $p := splitList \";\" .Output }}{{ $n := len $p }}{{ if eq $n 1 }}<p:terminal-magenta><b>{{ index $p 0 }}</b></>{{ else }}{{ $repo := index $p 0 }}{{ $sub := index $p 1 }}{{ $cwd := index $p 2 }}{{ if eq $sub \"\" }}<p:terminal-magenta><b>{{ $repo }}</b></>{{ if ne $cwd \"root\" }}<p:blue-black>[</><p:terminal-yellow><b>{{ $cwd }}</b></><p:blue-black>]</>{{ end }}{{ else }}<p:terminal-green><b>{{ $repo }}</b></>{{ if and (ne $cwd \"\") (ne $cwd $sub) }}<p:blue-black>[</><p:terminal-magenta><b>{{ $sub }}</b></><p:blue-black>:</><p:terminal-yellow><b>{{ $cwd }}</b></><p:blue-black>]</>{{ else if ne $sub \"\" }}<p:blue-black>[</><p:terminal-magenta><b>{{ $sub }}</b></><p:blue-black>]</>{{ end }}{{ end }}{{ end }} <p:light-sky-blue>⚡</>",
           "type": "command",
