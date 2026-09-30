@@ -46,6 +46,7 @@ fish/.config/fish/functions/*
 
 # Fish conf.d/ - ignore plugin-generated files, track custom ones
 fish/.config/fish/conf.d/*
+!fish/.config/fish/conf.d/00-env.fish
 !fish/.config/fish/conf.d/01-secrets.fish
 !fish/.config/fish/conf.d/functions.fish
 
