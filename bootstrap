@@ -58,6 +58,7 @@ case "$(uname -s)" in
     ensure codex https://chatgpt.com/codex/install.sh sh
     ensure herdr https://herdr.dev/install.sh sh
     ensure t3 https://t3.codes/install.sh sh
+    ensure pass-cli https://proton.me/download/pass-cli/install.sh bash
     ;;
 esac
 
