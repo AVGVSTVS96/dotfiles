@@ -1,0 +1,47 @@
+[
+  {
+    "name": "next-best-practices",
+    "reason": "no permissive license declaration established in local skill or upstream license tree",
+    "origin": "vercel-labs/next-skills"
+  },
+  {
+    "name": "review-logging-patterns",
+    "reason": "recorded source folder absent; no replacement fetched",
+    "origin": "hugorcd/evlog"
+  },
+  {
+    "name": "create-evlog-enricher",
+    "reason": "recorded source folder absent; no replacement fetched",
+    "origin": "hugorcd/evlog"
+  },
+  {
+    "name": "create-evlog-adapter",
+    "reason": "recorded source folder absent; no replacement fetched",
+    "origin": "hugorcd/evlog"
+  },
+  {
+    "name": "web-design-guidelines",
+    "reason": "no permissive license declaration established in local skill or upstream license tree",
+    "origin": "vercel-labs/agent-skills"
+  },
+  {
+    "name": "diagnose",
+    "reason": "recorded source folder absent; no replacement fetched",
+    "origin": "mattpocock/skills"
+  },
+  {
+    "name": "handoff",
+    "reason": "recorded source folder absent; no replacement fetched",
+    "origin": "mattpocock/skills"
+  },
+  {
+    "name": "setup-matt-pocock-skills",
+    "reason": "recorded source folder absent; no replacement fetched",
+    "origin": "mattpocock/skills"
+  },
+  {
+    "name": "remotion-best-practices",
+    "reason": "no permissive license declaration established in local skill or upstream license tree",
+    "origin": "remotion-dev/skills"
+  }
+]

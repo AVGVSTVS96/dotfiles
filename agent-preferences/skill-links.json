@@ -18,5 +18,121 @@
   {
     "path": ".codex/skills/gitbutler",
     "target": "../../.agents/skills/gitbutler"
+  },
+  {
+    "path": ".claude/skills/find-skills",
+    "target": "../../.agents/skills/find-skills"
+  },
+  {
+    "path": ".claude/skills/tdd",
+    "target": "../../.agents/skills/tdd"
+  },
+  {
+    "path": ".claude/skills/vercel-composition-patterns",
+    "target": "../../.agents/skills/vercel-composition-patterns"
+  },
+  {
+    "path": ".claude/skills/vercel-react-best-practices",
+    "target": "../../.agents/skills/vercel-react-best-practices"
+  },
+  {
+    "path": ".claude/skills/slack",
+    "target": "../../.agents/skills/slack"
+  },
+  {
+    "path": ".claude/skills/electron",
+    "target": "../../.agents/skills/electron"
+  },
+  {
+    "path": ".claude/skills/dogfood",
+    "target": "../../.agents/skills/dogfood"
+  },
+  {
+    "path": ".claude/skills/agent-browser",
+    "target": "../../.agents/skills/agent-browser"
+  },
+  {
+    "path": ".claude/skills/vercel-sandbox",
+    "target": "../../.agents/skills/vercel-sandbox"
+  },
+  {
+    "path": ".claude/skills/building-components",
+    "target": "../../.agents/skills/building-components"
+  },
+  {
+    "path": ".claude/skills/grill-with-docs",
+    "target": "../../.agents/skills/grill-with-docs"
+  },
+  {
+    "path": ".claude/skills/grill-me",
+    "target": "../../.agents/skills/grill-me"
+  },
+  {
+    "path": ".claude/skills/improve-codebase-architecture",
+    "target": "../../.agents/skills/improve-codebase-architecture"
+  },
+  {
+    "path": ".claude/skills/prototype",
+    "target": "../../.agents/skills/prototype"
+  },
+  {
+    "path": ".claude/skills/triage",
+    "target": "../../.agents/skills/triage"
+  },
+  {
+    "path": ".claude/skills/write-a-skill",
+    "target": "../../.agents/skills/write-a-skill"
+  },
+  {
+    "path": ".claude/skills/zoom-out",
+    "target": "../../.agents/skills/zoom-out"
+  },
+  {
+    "path": ".claude/skills/to-prd",
+    "target": "../../.agents/skills/to-prd"
+  },
+  {
+    "path": ".claude/skills/to-issues",
+    "target": "../../.agents/skills/to-issues"
+  },
+  {
+    "path": ".claude/skills/emil-design-eng",
+    "target": "../../.agents/skills/emil-design-eng"
+  },
+  {
+    "path": ".claude/skills/herdr",
+    "target": "../../.agents/skills/herdr"
+  },
+  {
+    "path": ".claude/skills/improve",
+    "target": "../../.agents/skills/improve"
+  },
+  {
+    "path": ".claude/skills/animation-vocabulary",
+    "target": "../../.agents/skills/animation-vocabulary"
+  },
+  {
+    "path": ".claude/skills/apple-design",
+    "target": "../../.agents/skills/apple-design"
+  },
+  {
+    "path": ".claude/skills/find-animation-opportunities",
+    "target": "../../.agents/skills/find-animation-opportunities"
+  },
+  {
+    "path": ".claude/skills/improve-animations",
+    "target": "../../.agents/skills/improve-animations"
+  },
+  {
+    "path": ".claude/skills/pick-ui-library",
+    "target": "../../.agents/skills/pick-ui-library"
+  },
+  {
+    "path": ".claude/skills/review-animations",
+    "target": "../../.agents/skills/review-animations"
+  },
+  {
+    "path": ".claude/skills/typesafe-ai",
+    "target": "../../.agents/skills/typesafe-ai"
   }
 ]

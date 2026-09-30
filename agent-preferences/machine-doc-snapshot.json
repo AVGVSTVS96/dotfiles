@@ -1,0 +1,158 @@
+{
+  "canonical": "~/Developer/fleet",
+  "observed_at": "2026-09-30T14:46:22.933819+00:00",
+  "git_commit": "2d29d20ed6cda47484bf0da676bb8b416e2980dc",
+  "files": [
+    {
+      "path": "machines-skill/inventory.md",
+      "sha256": "4e078b5093408b4011d7c81949dc70ad67276de44e0472dd0054533a81cf81d6",
+      "packaged_sha256": "4e078b5093408b4011d7c81949dc70ad67276de44e0472dd0054533a81cf81d6"
+    },
+    {
+      "path": "machines-skill/history.md",
+      "sha256": "3a5f0b4aae3224045648fb8413b03f1baa61fadfdd883d1efd26fc06e2a6f0e8",
+      "packaged_sha256": "3a5f0b4aae3224045648fb8413b03f1baa61fadfdd883d1efd26fc06e2a6f0e8"
+    },
+    {
+      "path": "machines-skill/status.md",
+      "sha256": "48e0dba44e6f80aa5745efcc312facb361951770c0007e671fd160f11b25449a",
+      "packaged_sha256": "48e0dba44e6f80aa5745efcc312facb361951770c0007e671fd160f11b25449a"
+    },
+    {
+      "path": "machines-skill/artifacts.md",
+      "sha256": "593497d577006de2a57ba89074d7d71ad38b1b58e5710bd964d8ad4ea173d20b",
+      "packaged_sha256": "593497d577006de2a57ba89074d7d71ad38b1b58e5710bd964d8ad4ea173d20b"
+    },
+    {
+      "path": "machines-skill/SKILL.md",
+      "sha256": "dfa11441336179203594ae9abdef2d0545395f54eaa95f429b52163d4ecb0ebf",
+      "packaged_sha256": "0737c041a54d6235547470664de964075ef30b589a33e8646a83453436977d04"
+    },
+    {
+      "path": "machines-skill/plan.md",
+      "sha256": "eff6f70682c49cfdd4692b7f4f54031ea92dffeddbb0791634872e190b6eff1e",
+      "packaged_sha256": "eff6f70682c49cfdd4692b7f4f54031ea92dffeddbb0791634872e190b6eff1e"
+    },
+    {
+      "path": "machines-skill/howto/secrets.md",
+      "sha256": "4c838cdce824efc0e99e2f9f2663398f7d94faf6e3e032aa02114934f7795084",
+      "packaged_sha256": "4c838cdce824efc0e99e2f9f2663398f7d94faf6e3e032aa02114934f7795084"
+    },
+    {
+      "path": "machines-skill/howto/updating.md",
+      "sha256": "81ad09be87205dd4e7686567b7d95ddee2f5dd45597f440b4eaf84e654b9dad4",
+      "packaged_sha256": "81ad09be87205dd4e7686567b7d95ddee2f5dd45597f440b4eaf84e654b9dad4"
+    },
+    {
+      "path": "machines-skill/howto/comet-kvm.md",
+      "sha256": "8071020dfc155b0f4f051fe7fec0a606b90913b3b3cec4ddeb9d71911ae186eb",
+      "packaged_sha256": "8071020dfc155b0f4f051fe7fec0a606b90913b3b3cec4ddeb9d71911ae186eb"
+    },
+    {
+      "path": "machines-skill/howto/server-access.md",
+      "sha256": "4525e151071e7d796b78693085a55413a445690bd1939ac5e8fba9b45dd9a3dc",
+      "packaged_sha256": "4525e151071e7d796b78693085a55413a445690bd1939ac5e8fba9b45dd9a3dc"
+    },
+    {
+      "path": "docs/coverage-gaps.md",
+      "sha256": "cc6d7138f55f7ec8a1cd38936f530dfd1b8dbebf12e2bd1010686d55431e261e",
+      "packaged_sha256": "cc6d7138f55f7ec8a1cd38936f530dfd1b8dbebf12e2bd1010686d55431e261e"
+    },
+    {
+      "path": "docs/supplemental-evidence-2026-09-30.md",
+      "sha256": "e34df1cc2670ae1ef535ed0aa913eb83edc3fc046abeea6ed19a5d743fb8f6bf",
+      "packaged_sha256": "e34df1cc2670ae1ef535ed0aa913eb83edc3fc046abeea6ed19a5d743fb8f6bf"
+    },
+    {
+      "path": "docs/sources.md",
+      "sha256": "3f0c4ddb230a8edab09436d93b3d6ea677a79fc7d8e88653b26796a2cc82d77c",
+      "packaged_sha256": "3f0c4ddb230a8edab09436d93b3d6ea677a79fc7d8e88653b26796a2cc82d77c"
+    },
+    {
+      "path": "docs/migration.md",
+      "sha256": "67581687a61e573e8b981a0b895dbdd41d0a0b26f81f6c21adbc92bc31335fd2",
+      "packaged_sha256": "67581687a61e573e8b981a0b895dbdd41d0a0b26f81f6c21adbc92bc31335fd2"
+    },
+    {
+      "path": "docs/verification.md",
+      "sha256": "5995c0f4bd030910f834e8e94c4c8d472b5d82b03063a4eac442a7fdcbc1a596",
+      "packaged_sha256": "5995c0f4bd030910f834e8e94c4c8d472b5d82b03063a4eac442a7fdcbc1a596"
+    },
+    {
+      "path": "docs/theo-remote-workflow-research-2026-09-30.md",
+      "sha256": "d6a83332d7b29b988b851beb413d53febcd54da0c8ad64dd3dbe5da0ff7d5b38",
+      "packaged_sha256": "d6a83332d7b29b988b851beb413d53febcd54da0c8ad64dd3dbe5da0ff7d5b38"
+    },
+    {
+      "path": "docs/orientation.md",
+      "sha256": "c3313edca8985269caf5347a024b66b752edffd24c474a8b3b036163f8b7d155",
+      "packaged_sha256": "c3313edca8985269caf5347a024b66b752edffd24c474a8b3b036163f8b7d155"
+    },
+    {
+      "path": "docs/current-state.md",
+      "sha256": "ea5cac28d0d1c2abae0bc2f687d355bba745be0a5e613b193231fdd9437a6c26",
+      "packaged_sha256": "ea5cac28d0d1c2abae0bc2f687d355bba745be0a5e613b193231fdd9437a6c26"
+    },
+    {
+      "path": "docs/decisions.md",
+      "sha256": "8b7bdca3bcee19691cdb2d2973a67ca9ab9677a8925017f2b0e5e07f263e9495",
+      "packaged_sha256": "8b7bdca3bcee19691cdb2d2973a67ca9ab9677a8925017f2b0e5e07f263e9495"
+    },
+    {
+      "path": "docs/supporting/coverage-gaps.md",
+      "sha256": "f319f3177878fa5f09d3d0b92cdc31a35f8ae5e79875096ad340a70fa7921299",
+      "packaged_sha256": "f319f3177878fa5f09d3d0b92cdc31a35f8ae5e79875096ad340a70fa7921299"
+    },
+    {
+      "path": "docs/supporting/supplemental-evidence-2026-09-30.md",
+      "sha256": "8ab5aa4a5713d58476458fd932cc0190b6bd96c1ae6da83ab14ca9f79dfbdac1",
+      "packaged_sha256": "8ab5aa4a5713d58476458fd932cc0190b6bd96c1ae6da83ab14ca9f79dfbdac1"
+    },
+    {
+      "path": "docs/supporting/sources.md",
+      "sha256": "6ef4162d00c591bf35613b4ca0d07f164b20e7e5d5cabafad8b34143a0679631",
+      "packaged_sha256": "6ef4162d00c591bf35613b4ca0d07f164b20e7e5d5cabafad8b34143a0679631"
+    },
+    {
+      "path": "docs/supporting/migration.md",
+      "sha256": "2fd8b32f32d20e7c769f8c3156fbe477b849330269e86941ef0d65915bdb821c",
+      "packaged_sha256": "2fd8b32f32d20e7c769f8c3156fbe477b849330269e86941ef0d65915bdb821c"
+    },
+    {
+      "path": "docs/supporting/README.md",
+      "sha256": "887a96a70aacc15289bfd1d904549cdf92708fe6bba62ad8087e46c783ae1924",
+      "packaged_sha256": "887a96a70aacc15289bfd1d904549cdf92708fe6bba62ad8087e46c783ae1924"
+    },
+    {
+      "path": "docs/supporting/verification.md",
+      "sha256": "23beb2c2d44e41b9789928915ce47ed5a03e07da044c277275dc8479c122cb27",
+      "packaged_sha256": "23beb2c2d44e41b9789928915ce47ed5a03e07da044c277275dc8479c122cb27"
+    },
+    {
+      "path": "docs/supporting/orientation.md",
+      "sha256": "bb4f3b5b3390fc4cbc81ebb628aa9185ed7b9b3b8ca508c43ec65907803191f1",
+      "packaged_sha256": "bb4f3b5b3390fc4cbc81ebb628aa9185ed7b9b3b8ca508c43ec65907803191f1"
+    },
+    {
+      "path": "docs/supporting/current-state.md",
+      "sha256": "fbdc9964d802ee2b3ce45315299593ec493b1e25097f58667adc5faa0a54fff6",
+      "packaged_sha256": "fbdc9964d802ee2b3ce45315299593ec493b1e25097f58667adc5faa0a54fff6"
+    },
+    {
+      "path": "docs/supporting/decisions.md",
+      "sha256": "68f18f7f1cb3ca5eb65cd7f85d54d660b26798edbf8891e15df16d4fe9eebe2b",
+      "packaged_sha256": "68f18f7f1cb3ca5eb65cd7f85d54d660b26798edbf8891e15df16d4fe9eebe2b"
+    },
+    {
+      "path": "README.md",
+      "sha256": "4d382afa842698a211b34601d6b0296bd1785de6929e09b096457a1207af2a83",
+      "packaged_sha256": "4d382afa842698a211b34601d6b0296bd1785de6929e09b096457a1207af2a83"
+    }
+  ],
+  "excluded": [
+    ".local/transcripts",
+    "secrets/auth/cache stores",
+    "Mac-only credential helpers"
+  ],
+  "linux_skill_target": "../../.local/share/dotfiles-machine-docs/machines-skill"
+}

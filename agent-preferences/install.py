@@ -86,6 +86,15 @@ for name, definition in mcp_definitions.items():
             backup.mkdir(parents=True, mode=0o700, exist_ok=True)
             (backup / "claude-mcp-before.json").write_text(json.dumps({name: None}) + "\n")
         mcp_state.setdefault("mcpServers", {})[name] = definition
+global_prefs = json.loads((repo / "agent-preferences/claude-global-preferences.json").read_text())
+global_before = {key: mcp_state.get(key) for key in global_prefs}
+if any(mcp_state.get(key) != value for key, value in global_prefs.items()):
+    if not args.dry_run:
+        backup.mkdir(parents=True, mode=0o700, exist_ok=True)
+        preference_backup = backup / "claude-global-preferences-before.json"
+        preference_backup.write_text(json.dumps(global_before, indent=2) + "\n")
+        preference_backup.chmod(0o600)
+    mcp_state.update(global_prefs)
 if mcp_state != json.loads(mcp_original):
     assert not mcp_path.exists() or mcp_path.read_text() == mcp_original, "Claude local state changed concurrently"
     write(mcp_path, json.dumps(mcp_state, indent=2) + "\n", backup_existing=False)
@@ -120,7 +129,10 @@ for source in (repo / "agent-preferences/protected-skills").rglob("*"):
     if source.is_file():
         write(home / ".agents/skills" / source.relative_to(repo / "agent-preferences/protected-skills"), source.read_text(), source.stat().st_mode & 0o777)
 
-for package in ("claude", "codex", "agent-skills"):
+packages = ("claude", "codex", "agent-skills")
+if os.uname().sysname != "Darwin":
+    packages += ("machine-docs",)
+for package in packages:
     tracked = subprocess.check_output(["git", "-C", str(repo), "ls-files", "-z", "--", package]).decode().split("\0")
     for path in filter(None, tracked):
         source = repo / path
@@ -140,7 +152,14 @@ for package in ("claude", "codex", "agent-skills"):
     if not args.dry_run:
         subprocess.run(["stow", "--no-folding", "--ignore=.*\\.local\\.json$", "--ignore=\\.DS_Store", "--dir", str(repo), "--target", str(home), package], check=True)
 
-for link in json.loads((repo / "agent-preferences/skill-links.json").read_text()):
+links = json.loads((repo / "agent-preferences/skill-links.json").read_text())
+if os.uname().sysname != "Darwin":
+    links += [
+        {"path": ".agents/skills/machines", "target": "../../.local/share/dotfiles-machine-docs/machines-skill"},
+        {"path": ".claude/skills/machines", "target": "../../.agents/skills/machines"},
+        {"path": ".codex/skills/machines", "target": "../../.agents/skills/machines"},
+    ]
+for link in links:
     destination = home / link["path"]
     if destination.is_symlink() and os.readlink(destination) == link["target"]:
         continue
