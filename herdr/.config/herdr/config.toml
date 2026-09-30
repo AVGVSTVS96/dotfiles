@@ -122,7 +122,7 @@ key = "prefix+backslash"
 type = "popup"
 width = "90%"
 height = "90%"
-command = "zsh"
+command = "$SHELL"
 description = "shell popup"
 
 [[keys.command]]
