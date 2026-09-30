@@ -10,10 +10,14 @@ mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
 
 case "$(uname -s)" in
-  Darwin) set -- "$@" brew fish nushell pi zed ;;
-  Linux) set -- --ignore=authorized_keys "$@" ;; # the machine's live SSH access list stays its own
+  Darwin) set -- "$@" brew fish ghostty nushell pi zed ;;
+  Linux)
+    # Wallpaper downloads stay out of the repo; the machine's SSH access list stays its own.
+    mkdir -p "$HOME/Pictures/Wallpapers"
+    set -- --ignore=authorized_keys "$@" ghostty-linux niri noctalia wallpapers
+    ;;
 esac
 
 exec stow --target="$HOME" "$@" \
-  agent-browser bat completions fastfetch gh gh-dash ghostty git graphite herdr \
+  agent-browser bat completions fastfetch gh gh-dash git graphite herdr \
   lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi zsh
