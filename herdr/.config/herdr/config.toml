@@ -154,7 +154,7 @@ key = "prefix+shift+n"
 type = "popup"
 width = "90%"
 height = "90%"
-command = "cd ~/Documents/GitHub/nvim && nvim"
+command = "cd ~/.config/nvim && nvim"
 description = "edit Neovim config"
 
 [[keys.command]]
