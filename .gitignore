@@ -8,9 +8,6 @@
 # GitHub config
 gh/.config/gh/hosts.yml
 
-# LazyVim lock file
-nvim/.config/nvim/lazy-lock.json
-
 # Zed editor
 zed/.config/zed/**
 !zed/.config/zed/settings.json
