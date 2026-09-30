@@ -1,0 +1,31 @@
+background = 0d0d0d
+foreground = e0e0e0
+cursor-color = e0e0e0
+cursor-text = 0d0d0d
+selection-background = 3a3a3a
+selection-foreground = e0e0e0
+
+palette = 0=#0d0d0d
+palette = 1=#4d4d4d
+palette = 2=#666666
+palette = 3=#808080
+palette = 4=#999999
+palette = 5=#b3b3b3
+palette = 6=#cccccc
+palette = 7=#e0e0e0
+palette = 8=#333333
+palette = 9=#595959
+palette = 10=#737373
+palette = 11=#8c8c8c
+palette = 12=#a6a6a6
+palette = 13=#bfbfbf
+palette = 14=#d9d9d9
+palette = 15=#f2f2f2
+
+font-family = "JetBrainsMono Nerd Font"
+font-size = 11
+window-padding-x = 10
+window-padding-y = 10
+background-opacity = 0.85
+cursor-style = block
+window-theme = ghostty
