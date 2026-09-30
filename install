@@ -11,6 +11,7 @@ mkdir -p "$HOME/.local/bin"
 
 case "$(uname -s)" in
   Darwin) set -- "$@" brew fish nushell pi zed ;;
+  Linux) set -- --ignore=authorized_keys "$@" ;; # the machine's live SSH access list stays its own
 esac
 
 exec stow --target="$HOME" "$@" \
