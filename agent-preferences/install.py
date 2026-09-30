@@ -24,6 +24,7 @@ backup = home / ".local/state/dotfiles/agent-backups" / datetime.datetime.now(da
 changes = []
 
 def save_backup(path):
+    backup.mkdir(parents=True, mode=0o700, exist_ok=True)
     destination = backup / path.relative_to(home)
     destination.parent.mkdir(parents=True, exist_ok=True)
     if path.is_symlink():
@@ -82,7 +83,7 @@ for name, definition in mcp_definitions.items():
         raise RuntimeError(f"Existing MCP definition differs: {name}; preserve its access configuration")
     if existing is None:
         if not args.dry_run:
-            backup.mkdir(parents=True, exist_ok=True)
+            backup.mkdir(parents=True, mode=0o700, exist_ok=True)
             (backup / "claude-mcp-before.json").write_text(json.dumps({name: None}) + "\n")
         mcp_state.setdefault("mcpServers", {})[name] = definition
 if mcp_state != json.loads(mcp_original):
@@ -120,9 +121,9 @@ for source in (repo / "agent-preferences/protected-skills").rglob("*"):
         write(home / ".agents/skills" / source.relative_to(repo / "agent-preferences/protected-skills"), source.read_text(), source.stat().st_mode & 0o777)
 
 for package in ("claude", "codex", "agent-skills"):
-    for source in (repo / package).rglob("*"):
-        if source.is_dir() and not source.is_symlink():
-            continue
+    tracked = subprocess.check_output(["git", "-C", str(repo), "ls-files", "-z", "--", package]).decode().split("\0")
+    for path in filter(None, tracked):
+        source = repo / path
         relative = source.relative_to(repo / package)
         destination = home / relative
         if destination.is_symlink() and destination.resolve() == source.resolve():
@@ -137,7 +138,7 @@ for package in ("claude", "codex", "agent-skills"):
         else:
             changes.append(str(relative))
     if not args.dry_run:
-        subprocess.run(["stow", "--no-folding", "--dir", str(repo), "--target", str(home), package], check=True)
+        subprocess.run(["stow", "--no-folding", "--ignore=.*\\.local\\.json$", "--ignore=\\.DS_Store", "--dir", str(repo), "--target", str(home), package], check=True)
 
 for link in json.loads((repo / "agent-preferences/skill-links.json").read_text()):
     destination = home / link["path"]
