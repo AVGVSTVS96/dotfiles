@@ -78,32 +78,7 @@ export PATH="$PATH:./node_modules/.bin"
 export PATH="$PATH:/Applications/Cursor.app/Contents/Resources/app/bin"
 
 # --- Cargo ---
-export PATH="$PATH:/Users/bassimshahidy/.cargo/bin"
-
-# --- Homebrew ---
-if $darwin; then
-  export HOMEBREW_PREFIX="/opt/homebrew"
-  export HOMEBREW_CELLAR="/opt/homebrew/Cellar"
-  export HOMEBREW_REPOSITORY="/opt/homebrew"
-  case ":$PATH:" in
-    *":$HOMEBREW_PREFIX/bin:"*) ;;
-    *) export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH" ;;
-  esac
-elif $linux; then
-  export HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
-  export HOMEBREW_CELLAR="$HOMEBREW_PREFIX/Cellar"
-  export HOMEBREW_REPOSITORY="$HOMEBREW_PREFIX/Homebrew"
-  case ":$PATH:" in
-    *":$HOMEBREW_PREFIX/bin:"*) ;;
-    *) export PATH="$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$PATH" ;;
-  esac
-fi
-
-_brew_prefix="$HOMEBREW_PREFIX"
-
-# Add brew's zsh completions to fpath
-FPATH="$_brew_prefix/share/zsh/site-functions:${FPATH}"
-
+export PATH="$PATH:$HOME/.cargo/bin"
 
 # --- oh-my-zsh ---
 export ZSH="$HOME/.oh-my-zsh"
@@ -113,9 +88,12 @@ ZSH_COMPDUMP="${ZDOTDIR:-$HOME}/.zcompdump-${HOST/.*/}-${ZSH_VERSION}"
 # --- zsh plugins ---
 plugins=(git)
 
-source "$_brew_prefix/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
-source "$_brew_prefix/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-unset _brew_prefix
+for plugin in zsh-syntax-highlighting zsh-autosuggestions; do
+  for dir in ${HOMEBREW_PREFIX:+$HOMEBREW_PREFIX/share} /usr/share/zsh/plugins; do
+    [[ -r $dir/$plugin/$plugin.zsh ]] && source $dir/$plugin/$plugin.zsh && break
+  done
+done
+unset plugin dir
 
 # load oh-my-zsh
 source $ZSH/oh-my-zsh.sh
@@ -234,7 +212,7 @@ alias update-last-commit="git commit -a --amend --no-edit && git push --force-wi
 alias prc="gh pr create"
 alias devs='lsof -nP -iTCP -sTCP:LISTEN | grep -E "(node|next|astro|vite|webpack|parcel)" | awk "{split(\$9, addr, \":\"); port = addr[length(addr)]; process = \$1; printf \"\\033[1;36m%-6s\\033[0m \\033[1;33m%s\\033[0m\\n\", process, port}" | sort -k2 -n'
 alias list-servers="devs"
-alias pbc="pbcopy"
+$darwin && alias pbc="pbcopy" || alias pbc="wl-copy"
 
 unalias gcb
 unalias gcl
@@ -329,7 +307,7 @@ vv() {
 # -- brewfile creation function --
 brewfile() {
   local current_dir="$PWD"
-  cd /Users/bassimshahidy/dotfiles/brew
+  cd ~/dotfiles/brew
   brew bundle dump --formula --cask --tap --mas --force "$@"
   cd "$current_dir"
 }
@@ -373,14 +351,14 @@ fkill() {
 }
 
 # --- bun ---
-export PATH="$PATH:/Users/bassimshahidy/.cache/.bun/bin"
+export PATH="$PATH:$HOME/.cache/.bun/bin"
 
 # bun completions
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
 
 
 # --- pnpm ---
-export PNPM_HOME="$HOME/Library/pnpm"
+$darwin && export PNPM_HOME="$HOME/Library/pnpm" || export PNPM_HOME="$XDG_DATA_HOME/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
@@ -418,19 +396,19 @@ export VISUAL='nvim'
 # Uncomment the following line if pasting URLs and other text is messed up.
 # DISABLE_MAGIC_FUNCTIONS="true"
 
-# TODO figure out what this is and why i added it
-. "$HOME/.local/share/../bin/env"
+# Added by cargo-dist installers (uv): puts ~/.local/bin on PATH
+[[ -r "$HOME/.local/share/../bin/env" ]] && . "$HOME/.local/share/../bin/env"
 
 # Added by CodeRabbit CLI installer
-export PATH="/Users/bassimshahidy/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 
 # OpenClaw
-export OPENCLAW_IMAGE_BACKEND=sips
+$darwin && export OPENCLAW_IMAGE_BACKEND=sips
 cached_eval openclaw openclaw completion --shell zsh
 cached_eval but-completions but completions zsh
 
 # Vite+ bin (https://viteplus.dev)
-. "$HOME/.vite-plus/env"
+[[ -r "$HOME/.vite-plus/env" ]] && . "$HOME/.vite-plus/env"
 
 # --- fnm ---
 export PATH="$HOME/.local/share/fnm/aliases/default/bin:$PATH"
