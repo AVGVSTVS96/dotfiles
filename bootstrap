@@ -70,9 +70,12 @@ case "$SHELL" in
     ;;
 esac
 [ -e "$HOME/.local/share/fnm/aliases/default" ] || { fnm install --lts && fnm default lts-latest; }
+have gt || npm install -g @withgraphite/graphite-cli@stable
 if have rustup; then
   rustup default >/dev/null 2>&1 || rustup default stable
   rustup component add rust-analyzer
+  # rustup acts as whichever tool it's named after; Arch's rustup links cargo and rustc only.
+  have rust-analyzer || ln -s "$(command -v rustup)" "$HOME/.local/bin/rust-analyzer"
 fi
 # HERDR_ENV lets the herdr-only navigator plugin install too, which builds its helper.
 # On a fresh install lazy.nvim rewrites the lockfile before LazyVim's own plugin specs load,
