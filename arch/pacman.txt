@@ -26,8 +26,9 @@ lazygit
 lsof
 lua-language-server
 neovim
+niri
+noctalia
 opencode
-otf-monaspace-nerd
 pnpm
 ripgrep
 ruby
@@ -42,9 +43,11 @@ superfile
 thefuck
 tmux
 tree-sitter-cli
+ttf-jetbrains-mono-nerd
 unzip
 uv
 wl-clipboard
+xwayland-satellite
 yazi
 yt-dlp
 zoxide

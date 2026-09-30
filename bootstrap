@@ -22,12 +22,35 @@ ensure() { # command installer-url interpreter
   fi
 }
 
+# On Linux, files that already exist where stow links are adopted. Ones still identical
+# to the distro's /etc/skel copy are replaceable defaults, so the repo version wins; any
+# other file is the user's own work and stays adopted for review. Originals are backed up.
+link() {
+  if [ "$(uname -s)" != Linux ]; then
+    ./install || { echo "Move the files stow reports above aside, then rerun ./bootstrap"; exit 1; }
+    return
+  fi
+  adopt=$(./install -n -v --adopt 2>&1 | sed -n 's/^MV: \(.*\) -> .*/\1/p')
+  [ -n "$adopt" ] || { ./install; return; }
+  git diff --quiet HEAD || { echo "$(pwd) has uncommitted changes; commit or stash them, then rerun"; exit 1; }
+  backup="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/backups/$(date -u +%Y%m%dT%H%M%SZ)"
+  printf '%s\n' "$adopt" | while IFS= read -r f; do
+    mkdir -p "$backup/$(dirname "$f")" && cp -p "$HOME/$f" "$backup/$f"
+  done
+  ./install --adopt
+  printf '%s\n' "$adopt" | while IFS= read -r f; do
+    if cmp -s "$HOME/$f" "/etc/skel/$f"; then git checkout -- "$(realpath "$HOME/$f")"; fi
+  done
+  echo "Backed up the originals of $(printf '%s\n' "$adopt" | wc -l | tr -d ' ') files to $backup"
+  git diff --quiet || { echo "Kept your own versions of these; review with: git -C $(pwd) diff"; git diff --stat; }
+}
+
 case "$(uname -s)" in
   Darwin)
     brew bundle --no-upgrade --file brew/Brewfile
     ;;
   Linux)
-    sudo pacman -S --needed - < arch/pacman.txt
+    sudo pacman -Syu --needed - < arch/pacman.txt
     if have paru; then paru -S --needed - < arch/aur.txt; else echo "paru not found: skipped arch/aur.txt"; fi
     ensure claude https://claude.ai/install.sh bash
     ensure codex https://chatgpt.com/codex/install.sh sh
@@ -36,7 +59,7 @@ case "$(uname -s)" in
     ;;
 esac
 
-./install || { echo "Move the files stow reports above aside, then rerun ./bootstrap"; exit 1; }
+link
 
 [ -d "$HOME/.oh-my-zsh" ] ||
   run_installer https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh sh -s -- --unattended --keep-zshrc
@@ -46,7 +69,12 @@ if have rustup; then
   rustup component add rust-analyzer
 fi
 # HERDR_ENV lets the herdr-only navigator plugin install too, which builds its helper.
-have vim-herdr-navigator || HERDR_ENV=1 nvim --headless "+Lazy! restore" +qa
+# The lockfile is reset afterwards: machines without the side-project checkouts only add
+# entries for those two plugins.
+have vim-herdr-navigator || {
+  HERDR_ENV=1 nvim --headless "+Lazy! restore" +qa
+  git checkout -- nvim/.config/nvim/lazy-lock.json
+}
 herdr plugin list | grep -q '^- drovr ' || herdr plugin install --yes AVGVSTVS96/herdr-drovr
 
 if [ -r "$HOME/.config/sops/age/key.txt" ]; then

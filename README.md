@@ -14,10 +14,11 @@ git clone https://github.com/AVGVSTVS96/dotfiles ~/dotfiles
 
 `bootstrap` sets up a Mac or an Arch/CachyOS machine and is safe to rerun: anything already installed is detected and skipped.
 
-- Packages: `brew bundle` on macOS; `arch/pacman.txt`, and `arch/aur.txt` through paru, on Arch.
+- Packages: `brew bundle` on macOS. On Arch, one synchronized full upgrade that also installs `arch/pacman.txt` (`pacman -Syu --needed`), then `arch/aur.txt` through paru.
 - On Linux, Claude Code, Codex, herdr and T3 Code come from their own self-updating installers, only when they aren't already on PATH.
-- `./install`, then oh-my-zsh, fnm's default Node, rustup's stable toolchain with rust-analyzer, Neovim plugins with the `vim-herdr-navigator` helper, and herdr's drovr plugin.
+- Linking. On Linux, a file already at a link's path is backed up to `~/.local/state/dotfiles/backups/` first; if it's still the distro's `/etc/skel` default the repo version replaces it, otherwise it's adopted into the repo and left for review in `git diff`.
+- oh-my-zsh, fnm's default Node, rustup's stable toolchain with rust-analyzer, Neovim plugins with the `vim-herdr-navigator` helper, and herdr's drovr plugin.
 - `restore-secrets`, once the existing age key is at `~/.config/sops/age/key.txt` (Proton Pass item `SOPS / dotfiles — age key`, or `find-age-key` on a Mac). It restores the SSH key, the GitHub CLI token and the Graphite config and never overwrites them; see [docs/secrets.md](docs/secrets.md).
 - zsh as the login shell.
 
-`./install` alone links the shared packages plus the current OS's; both lists live in the script. Stow flags pass through: `./install -nv` previews, `-R` restows after adding files, `-D` unlinks. Stow won't replace files that already exist, so move those aside and rerun. On Linux, `~/.ssh/authorized_keys` is never linked; each machine keeps its own.
+`./install` alone links the shared packages plus the current OS's; both lists live in the script. Stow flags pass through: `./install -nv` previews, `-R` restows after adding files, `-D` unlinks. Stow won't replace files that already exist, so move those aside and rerun. On Linux, `~/.ssh/authorized_keys` is never linked; each machine keeps its own. The macOS and Linux lists differ where the machines do: Ghostty keeps its own look on each, and `niri`, `noctalia` and `wallpapers` are the Linux desktop.
