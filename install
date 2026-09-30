@@ -4,9 +4,9 @@
 set -eu
 cd "$(dirname "$0")"
 
-# Real directories, so stow links into them instead of folding installers' and
-# restore-secrets' writes into this repo.
-mkdir -p "$HOME/.local/bin"
+# Real directories, so stow links into them instead of folding the writes of
+# installers, herdr's runtime state and restore-secrets into this repo.
+mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
 
 case "$(uname -s)" in
