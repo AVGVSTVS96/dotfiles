@@ -1,0 +1,10 @@
+#!/bin/sh
+# pass-cli as the agent: its own session dir, logged in with the scoped agent token.
+# Usage: pass-agent <pass-cli args>   (see `pass-agent agent instructions`)
+: "${PROTON_PASS_AGENT_TOKEN:?is not set; it comes from ~/dotfiles/zsh/secrets.env}"
+export PROTON_PASS_SESSION_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pass-agent"
+
+pass-cli info >/dev/null 2>&1 ||
+  PROTON_PASS_PERSONAL_ACCESS_TOKEN=$PROTON_PASS_AGENT_TOKEN pass-cli login >/dev/null ||
+  exit
+exec pass-cli "$@"
