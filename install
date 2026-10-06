@@ -16,7 +16,7 @@ case "$(uname -s)" in
     # Fish is the login shell, so zsh only gets .zshenv: agents' shell commands run in zsh.
     mkdir -p "$HOME/Pictures/Wallpapers"
     set -- --ignore=authorized_keys --ignore='\.zshrc' "$@"
-    os="ghostty-linux niri noctalia wallpapers zsh"
+    os="ghostty-linux niri noctalia systemd wallpapers zsh"
     ;;
 esac
 
