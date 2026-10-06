@@ -56,3 +56,11 @@ layer-rule {
     match namespace="^noctalia-backdrop"
     place-within-backdrop true
 }
+
+// The Cardboard eBay collector's headed Chrome (app-id from its --class):
+// opens as an unfocused column, off to the side, so it never takes the
+// keyboard from whoever is using this desktop.
+window-rule {
+    match app-id="^cardboard-ebay$"
+    open-focused false
+}
