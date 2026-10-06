@@ -22,27 +22,17 @@ ensure() { # command installer-url interpreter
   fi
 }
 
-# On Linux, files that already exist where stow links are adopted. Ones still identical
-# to the distro's /etc/skel copy are replaceable defaults, so the repo version wins; any
-# other file is the user's own work and stays adopted for review. Originals are backed up.
+# Files already where stow links go are moved to a backup, so the repo's version is linked.
 link() {
-  if [ "$(uname -s)" != Linux ]; then
-    ./install || { echo "Move the files stow reports above aside, then rerun ./bootstrap"; exit 1; }
-    return
+  existing=$(./install -n -v --adopt 2>&1 | sed -n 's/^MV: \(.*\) -> .*/\1/p')
+  if [ -n "$existing" ]; then
+    backup="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/backups/$(date -u +%Y%m%dT%H%M%SZ)"
+    printf '%s\n' "$existing" | while IFS= read -r f; do
+      mkdir -p "$backup/$(dirname "$f")" && mv "$HOME/$f" "$backup/$f"
+    done
+    echo "Moved $(printf '%s\n' "$existing" | wc -l | tr -d ' ') existing files to $backup"
   fi
-  adopt=$(./install -n -v --adopt 2>&1 | sed -n 's/^MV: \(.*\) -> .*/\1/p')
-  [ -n "$adopt" ] || { ./install; return; }
-  git diff --quiet HEAD || { echo "$(pwd) has uncommitted changes; commit or stash them, then rerun"; exit 1; }
-  backup="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/backups/$(date -u +%Y%m%dT%H%M%SZ)"
-  printf '%s\n' "$adopt" | while IFS= read -r f; do
-    mkdir -p "$backup/$(dirname "$f")" && cp -p "$HOME/$f" "$backup/$f"
-  done
-  ./install --adopt
-  printf '%s\n' "$adopt" | while IFS= read -r f; do
-    if cmp -s "$HOME/$f" "/etc/skel/$f"; then git checkout -- "$(realpath "$HOME/$f")"; fi
-  done
-  echo "Backed up the originals of $(printf '%s\n' "$adopt" | wc -l | tr -d ' ') files to $backup"
-  git diff --quiet || { echo "Kept your own versions of these; review with: git -C $(pwd) diff"; git --no-pager diff --stat; }
+  ./install
 }
 
 case "$(uname -s)" in
@@ -74,16 +64,12 @@ esac
 have gt || npm install -g @withgraphite/graphite-cli@stable
 if have rustup; then
   rustup default >/dev/null 2>&1 || rustup default stable
-  rustup component add rust-analyzer
-  # rustup acts as whichever tool it's named after; Arch's rustup links cargo and rustc only.
-  have rust-analyzer || ln -s "$(command -v rustup)" "$HOME/.local/bin/rust-analyzer"
 fi
 ./install-agents
-# HERDR_ENV lets the herdr-only navigator plugin install too, which builds its helper.
-# On a fresh install lazy.nvim rewrites the lockfile before LazyVim's own plugin specs load,
-# so those land on their latest commits; a second start restores every plugin to the lockfile.
-# The lockfile is reset after each start: machines without the side-project checkouts only
-# add entries for those two plugins.
+# HERDR_ENV also installs the herdr-only navigator plugin, which builds its helper.
+# A fresh lazy.nvim install rewrites the lockfile before LazyVim's plugin specs load, so a
+# second start restores them to it. The lockfile is reset after each start, since machines
+# without the side-project checkouts add entries for those plugins.
 lazy() {
   HERDR_ENV=1 nvim --headless "$@" +qa
   git checkout -- nvim/.config/nvim/lazy-lock.json
@@ -93,11 +79,8 @@ herdr plugin list | grep -q '^- drovr ' || herdr plugin install --yes AVGVSTVS96
 
 if [ -r "$HOME/.config/sops/age/key.txt" ]; then
   scripts/.local/bin/restore-secrets
+  [ -d "$HOME/Developer/fleet" ] || git clone git@github.com:AVGVSTVS96/fleet.git "$HOME/Developer/fleet"
+  "$HOME/Developer/fleet/scripts/install-skill.sh"
 else
-  echo "Copy the existing age key to ~/.config/sops/age/key.txt, then run restore-secrets"
+  echo "Copy the existing age key to ~/.config/sops/age/key.txt, then rerun ./bootstrap"
 fi
-
-echo "Agent CLIs seen by non-interactive $(basename "$SHELL") (ssh commands, T3 Code):"
-for c in claude codex herdr t3; do
-  printf '  %s: %s\n' "$c" "$("$SHELL" -c "command -v $c" 2>/dev/null || echo missing)"
-done

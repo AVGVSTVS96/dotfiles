@@ -33,6 +33,7 @@ opencode
 pnpm
 ripgrep
 ruby
+rust-analyzer
 rustup
 sd
 serpl
