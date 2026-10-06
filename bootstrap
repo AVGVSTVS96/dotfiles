@@ -89,6 +89,8 @@ lazy() {
 }
 have vim-herdr-navigator || { lazy; lazy "+Lazy! restore"; }
 herdr plugin list | grep -q '^- drovr ' || herdr plugin install --yes AVGVSTVS96/herdr-drovr
+# --discard redeploys packages whose lock another machine upgraded instead of aborting.
+have ya && ya pkg install --discard
 
 if [ -r "$HOME/.config/sops/age/key.txt" ]; then
   scripts/.local/bin/restore-secrets

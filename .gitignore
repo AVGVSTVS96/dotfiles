@@ -15,6 +15,9 @@ zed/.config/zed/**
 # Tmux plugins
 tmux/.config/tmux/plugins
 
+# Yazi flavors (installed from package.toml by `ya pkg install`)
+yazi/.config/yazi/flavors/
+
 # Age encryption keys
 **/.config/sops/age/
 **/sops/age/
