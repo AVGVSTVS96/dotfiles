@@ -11,6 +11,7 @@ gh/.config/gh/hosts.yml
 # Zed editor
 zed/.config/zed/**
 !zed/.config/zed/settings.json
+!zed/.config/zed/keymap.json
 
 # Tmux plugins
 tmux/.config/tmux/plugins
