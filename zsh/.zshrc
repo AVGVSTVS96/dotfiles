@@ -6,51 +6,13 @@ zmodload zsh/stat 2>/dev/null
 zmodload zsh/datetime 2>/dev/null
 
 cached_eval() {
-    local name="$1"
+    local cache_file="$HOME/.cache/$1.zsh" tmp="$HOME/.cache/$1.zsh.$$"
     shift
-
-    local cache_file="$HOME/.cache/${name}.zsh"
-    local lock_file="${cache_file}.lock"
-    local log_file="${cache_file}.refresh.log"
-    local max_age=86400
-    local -a cache_stat
-    local stale=1
-
-    if [[ -r "$cache_file" ]]; then
-        source "$cache_file"
-
-        if zstat -A cache_stat +mtime -- "$cache_file" 2>/dev/null; then
-            (( EPOCHSECONDS - cache_stat[1] <= max_age )) && stale=0
-        fi
-    fi
-
-    (( stale )) || return
-
-    [[ -d "${cache_file:h}" ]] || command mkdir -p -- "${cache_file:h}" || return
-    : >> "$lock_file"
-
-    (
-        zmodload zsh/system || return
-        zsystem flock -t 0 "$lock_file" 2>/dev/null || return
-
-        # Another shell may have refreshed it between our stale check and lock.
-        local -a current_stat
-        if [[ -r "$cache_file" ]] &&
-           zstat -A current_stat +mtime -- "$cache_file" 2>/dev/null &&
-           (( EPOCHSECONDS - current_stat[1] <= max_age )); then
-            return
-        fi
-
-        local tmp="${cache_file}.tmp.$$.${RANDOM}"
-        trap 'command rm -f -- "$tmp" "$tmp.zwc"' EXIT
-
-        "$@" >| "$tmp" || return
-        zcompile "$tmp" || return
-
-        # Atomic replacements keep readers from seeing partial cache files.
-        command mv -f -- "$tmp" "$cache_file" || return
-        command mv -f -- "$tmp.zwc" "$cache_file.zwc"
-    ) >> "$log_file" 2>&1 &!
+    local -a stat_out
+    [[ -r "$cache_file" ]] && source "$cache_file"
+    zstat -A stat_out +mtime -- "$cache_file" 2>/dev/null && (( EPOCHSECONDS - stat_out[1] <= 86400 )) && return
+    ("$@" >| "$tmp" && zcompile "$tmp" && mv -f "$tmp" "$cache_file" && mv -f "$tmp.zwc" "$cache_file.zwc" ||
+        rm -f "$tmp" "$tmp.zwc") &!
 }
 
 # --- Check OS ---
