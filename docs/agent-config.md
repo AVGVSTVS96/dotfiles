@@ -13,4 +13,4 @@
 
 Keys the repo sets win: a local change to one of them lasts until the next `./install-agents`, so change it here instead.
 
-Personal skills live in `claude/.claude/skills` (Claude only) or `agent-skills/.agents/skills` (every agent; the symlinks in `claude/.claude/skills` show them to Claude too). Third-party skills install from their source through `skills.txt`. The few kept in `agent-skills` (dogfood, electron, slack, vercel-sandbox, to-issues, to-prd, write-a-skill, zoom-out) are no longer published by their source and keep its license next to them.
+Personal skills live in `claude/.claude/skills` (Claude only) or `agent-skills/.agents/skills` (every agent; the symlinks in `claude/.claude/skills` show them to Claude too). Third-party skills install from their source through `skills.txt`.
