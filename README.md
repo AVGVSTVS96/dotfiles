@@ -12,12 +12,14 @@ git clone https://github.com/AVGVSTVS96/dotfiles ~/dotfiles
 ~/dotfiles/bootstrap
 ```
 
-`bootstrap` sets up a Mac or an Arch/CachyOS machine and is safe to rerun: anything already installed is detected and skipped.
+`bootstrap` sets up a Mac or an Arch/CachyOS machine and is safe to rerun: anything already installed is skipped.
 
-- Packages: `brew bundle` on macOS. On Arch, when something in `arch/pacman.txt` is missing, one synchronized full upgrade that installs it (`pacman -Syu --needed`); missing `arch/aur.txt` packages go through paru.
-- On Linux, Claude Code, Codex, herdr, T3 Code and the Proton Pass CLI come from their own self-updating installers, only when they aren't already on PATH.
-- Linking. On Linux, a file already at a link's path is backed up to `~/.local/state/dotfiles/backups/` first; if it's still the distro's `/etc/skel` default the repo version replaces it, otherwise it's adopted into the repo and left for review in `git diff`.
-- oh-my-zsh where zsh is the login shell, fnm's default Node, the Graphite CLI (npm, where Homebrew doesn't provide it), rustup's stable toolchain with rust-analyzer on PATH, Neovim plugins with the `vim-herdr-navigator` helper, and herdr's drovr plugin.
-- `restore-secrets`, once the existing age key is at `~/.config/sops/age/key.txt` (Proton Pass item `SOPS / dotfiles — age key`, or `find-age-key` on a Mac). It restores the SSH key, the GitHub CLI token and the Graphite config and never overwrites them; see [docs/secrets.md](docs/secrets.md).
+1. Packages: `brew/Brewfile` on macOS; `arch/pacman.txt` and `arch/aur.txt` on Arch, plus the self-updating installers of Claude Code, Codex, herdr, T3 Code and the Proton Pass CLI.
+2. `./install` links the packages. Files already in the way are moved to `~/.local/state/dotfiles/backups/` first.
+3. oh-my-zsh where zsh is the login shell, fnm's Node, the Graphite CLI, Rust's stable toolchain, Neovim plugins and herdr's drovr plugin.
+4. `./install-agents` brings Claude Code and Codex in line with `agent-preferences/`; see [docs/agent-config.md](docs/agent-config.md).
+5. Once the age key is at `~/.config/sops/age/key.txt` (Proton Pass item `SOPS / dotfiles — age key`, or `find-age-key` on a Mac): `restore-secrets` (see [docs/secrets.md](docs/secrets.md)) and the [fleet](https://github.com/AVGVSTVS96/fleet) repo with its machines skill.
 
-`./install` alone links the shared packages plus the current OS's; both lists live in the script. Stow flags pass through: `./install -nv` previews, `-R` restows after adding files, `-D` unlinks. Stow won't replace files that already exist, so move those aside and rerun. On Linux, `~/.ssh/authorized_keys` is never linked; each machine keeps its own. Each machine keeps its own login shell: zsh on the Mac with `~/.zshrc`, fish on Linux with `fish/.config/fish`, a port of `~/.zshrc` to keep in step with it. The macOS and Linux lists also differ where the machines do: Ghostty keeps its own look on each, and `niri`, `noctalia` and `wallpapers` are the Linux desktop.
+`./install` stows the shared packages plus the current OS's; both lists live in the script, and stow flags pass through: `-nv` previews, `-R` restows, `-D` unlinks.
+
+Each machine keeps its own login shell: zsh on the Mac, fish on Linux, where `fish/` is a port of `~/.zshrc` to keep in step with it. On Linux zsh only gets `.zshenv`, for agents' shell commands, and `~/.ssh/authorized_keys` stays each machine's own. Ghostty has its own look on each OS (`ghostty`, `ghostty-linux`), and `niri`, `noctalia` and `wallpapers` are the Linux desktop.
