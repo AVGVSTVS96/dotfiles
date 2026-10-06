@@ -1,0 +1,11 @@
+assistant-ui/skills assistant-ui cloud primitives runtime setup streaming thread-list tools update
+emilkowalski/skills animation-vocabulary apple-design emil-design-eng find-animation-opportunities improve-animations pick-ui-library review-animations
+mattpocock/skills grill-me grill-with-docs improve-codebase-architecture prototype tdd triage
+ogulcancelik/herdr herdr
+remotion-dev/skills remotion-best-practices
+shadcn/improve improve
+typesafe-ai/skills typesafe-ai
+vercel-labs/agent-browser agent-browser
+vercel-labs/agent-skills vercel-composition-patterns vercel-react-best-practices web-design-guidelines
+vercel-labs/skills find-skills
+vercel/components.build building-components

@@ -78,3 +78,19 @@ url = "https://developers.openai.com/mcp"
 [mcp_servers.onshape]
 url = "https://fs-mcp.labs.onshape.app/mcp"
 
+
+[[skills.config]]
+name = "github:gh-address-comments"
+enabled = false
+
+[[skills.config]]
+name = "github:gh-fix-ci"
+enabled = false
+
+[[skills.config]]
+name = "github:github"
+enabled = false
+
+[[skills.config]]
+name = "github:yeet"
+enabled = false

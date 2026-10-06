@@ -78,6 +78,7 @@ if have rustup; then
   # rustup acts as whichever tool it's named after; Arch's rustup links cargo and rustc only.
   have rust-analyzer || ln -s "$(command -v rustup)" "$HOME/.local/bin/rust-analyzer"
 fi
+./install-agents
 # HERDR_ENV lets the herdr-only navigator plugin install too, which builds its helper.
 # On a fresh install lazy.nvim rewrites the lockfile before LazyVim's own plugin specs load,
 # so those land on their latest commits; a second start restores every plugin to the lockfile.

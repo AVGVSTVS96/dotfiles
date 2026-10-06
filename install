@@ -3,14 +3,6 @@
 # Stow flags pass through: ./install -nv previews, -R restows, -D unlinks.
 set -eu
 cd "$(dirname "$0")"
-agent_dry=
-agent_delete=
-for flag in "$@"; do
-  case "$flag" in
-    -D|--delete) agent_delete=1 ;;
-    -*n*|--simulate) agent_dry=--dry-run ;;
-  esac
-done
 
 # Real directories, so stow links into them instead of folding the writes of
 # installers, herdr's runtime state and restore-secrets into this repo.
@@ -18,20 +10,18 @@ mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
 
 case "$(uname -s)" in
-  Darwin) set -- "$@" brew completions ghostty nushell pi zed zsh ;;
+  Darwin) os="brew completions ghostty nushell pi zed zsh" ;;
   Linux)
     # Wallpaper downloads stay out of the repo; the machine's SSH access list stays its own.
     # Fish is the login shell, so zsh only gets .zshenv: agents' shell commands run in zsh.
     mkdir -p "$HOME/Pictures/Wallpapers"
-    set -- --ignore=authorized_keys --ignore='\.zshrc' --ignore='secrets\.env' "$@" \
-      ghostty-linux niri noctalia wallpapers zsh
+    set -- --ignore=authorized_keys --ignore='\.zshrc' "$@"
+    os="ghostty-linux niri noctalia wallpapers zsh"
     ;;
 esac
 
-stow --target="$HOME" "$@" \
+stow --target="$HOME" --ignore='secrets\.env' "$@" $os \
   agent-browser bat fastfetch fish gh gh-dash git graphite herdr \
   lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi
-if [ -n "$agent_delete" ]; then
-  exec stow --no-folding --target="$HOME" -D claude codex agent-skills
-fi
-exec ./install-agents ${agent_dry:+"$agent_dry"}
+# Agent homes fill with sessions and installed skills, so only files are linked into them.
+stow --target="$HOME" --no-folding "$@" agent-skills claude codex

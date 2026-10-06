@@ -1,8 +1,0 @@
-{
-  "autoConnectIde": true,
-  "copyFullResponse": true,
-  "preferredNotifChannel": "ghostty",
-  "workflowSizeGuideline": "medium",
-  "teammateMode": "tmux",
-  "claudeInChromeDefaultEnabled": false
-}

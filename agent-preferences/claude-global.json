@@ -1,0 +1,14 @@
+{
+  "autoConnectIde": true,
+  "copyFullResponse": true,
+  "preferredNotifChannel": "ghostty",
+  "workflowSizeGuideline": "medium",
+  "teammateMode": "tmux",
+  "claudeInChromeDefaultEnabled": false,
+  "mcpServers": {
+    "onshape": {
+      "type": "http",
+      "url": "https://fs-mcp.labs.onshape.app/mcp"
+    }
+  }
+}

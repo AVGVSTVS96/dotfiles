@@ -1,4 +1,96 @@
-#!/bin/sh
-set -eu
-cd "$(dirname "$0")"
-exec uv run --script agent-preferences/install.py "$@"
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["tomlkit"]
+# ///
+"""Merge agent-preferences into the live Claude Code and Codex settings, then install their plugins and skills."""
+import json
+import os
+import platform
+import subprocess
+import sys
+from pathlib import Path
+
+import tomlkit
+
+home = Path.home()
+prefs = Path(__file__).resolve().parent / "agent-preferences"
+os.umask(0o077)
+
+
+def merge(live, ours):
+    for key, value in ours.items():
+        if isinstance(value, dict) and isinstance(live.get(key), dict):
+            merge(live[key], value)
+        else:
+            live[key] = value
+    return live
+
+
+def update(path, parse, render, change):
+    text = path.read_text() if path.exists() else ""
+    new = render(change(parse(text)))
+    if new != render(parse(text)):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(path.name + ".tmp")
+        temporary.write_text(new)
+        temporary.replace(path)
+        print("updated", path)
+
+
+def parse_json(text):
+    return json.loads(text or "{}")
+
+
+def render_json(data):
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+
+
+def read_json(path):
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+claude = read_json(prefs / "claude.json")
+if platform.system() == "Darwin":
+    merge(claude, read_json(prefs / "claude-macos.json"))
+update(home / ".claude/settings.json", parse_json, render_json, lambda live: merge(live, claude))
+update(home / ".claude.json", parse_json, render_json, lambda live: merge(live, read_json(prefs / "claude-global.json")))
+
+codex = tomlkit.parse((prefs / "codex.toml").read_text())
+toggles = codex.pop("skills")["config"]
+
+
+def apply_codex(live):
+    merge(live, codex)
+    config = live.setdefault("skills", {}).setdefault("config", tomlkit.aot())
+    for toggle in toggles:
+        match = next((item for item in config if item.get("name") == toggle["name"]), None)
+        if match is None:
+            config.append(toggle)
+        else:
+            match["enabled"] = toggle["enabled"]
+    return live
+
+
+update(home / ".codex/config.toml", tomlkit.parse, tomlkit.dumps, apply_codex)
+
+known = read_json(home / ".claude/plugins/known_marketplaces.json")
+for name, marketplace in claude["extraKnownMarketplaces"].items():
+    if name not in known:
+        subprocess.run(["claude", "plugin", "marketplace", "add", marketplace["source"]["repo"]], check=True)
+installed = read_json(home / ".claude/plugins/installed_plugins.json").get("plugins", {})
+for plugin, enabled in claude["enabledPlugins"].items():
+    if enabled and plugin not in installed:
+        subprocess.run(["claude", "plugin", "install", plugin], check=True)
+
+
+def missing(names):
+    return [name for name in names if not (home / ".claude/skills" / name / "SKILL.md").exists()]
+
+
+for line in (prefs / "skills.txt").read_text().splitlines():
+    source, *names = line.split()
+    if missing(names):
+        subprocess.run(["npx", "-y", "skills", "add", source, "-g", "-a", "universal", "claude-code", "-y", "--skill", *missing(names)], check=True)
+        if gone := missing(names):
+            print(f"{source} no longer has {' '.join(gone)}", file=sys.stderr)
