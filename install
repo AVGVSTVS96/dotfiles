@@ -14,7 +14,8 @@ case "$(uname -s)" in
   Linux)
     # Wallpaper downloads stay out of the repo; the machine's SSH access list stays its own.
     # Fish is the login shell, so zsh only gets .zshenv: agents' shell commands run in zsh.
-    mkdir -p "$HOME/Pictures/Wallpapers"
+    # systemd skips drop-in directories that are symlinks, so stow links the files into a real one.
+    mkdir -p "$HOME/Pictures/Wallpapers" "$HOME/.config/systemd/user/app-com.t3tools.T3Code-.scope.d"
     set -- --ignore=authorized_keys --ignore='\.zshrc' "$@"
     os="ghostty-linux niri noctalia systemd wallpapers zsh"
     ;;
