@@ -76,7 +76,7 @@ const PHASES = [...meta.matchAll(/\{([^{}]*)\}/g)].flatMap(([, body]) => {
 const HOST = process.env.HOST ?? "127.0.0.1"
 const TITLE = process.env.TITLE ?? field(meta, "name") ?? runId
 const DECISIONS = process.env.DECISIONS ?? ""
-const CONTEXT_CAP = Number(process.env.CONTEXT_CAP ?? 400_000)
+const CONTEXT_CAP = Number(process.env.CONTEXT_CAP ?? 800_000)
 const SSH = /(?:^|[\s;&|(])ssh(?:\s+-[46AaCfGgKkMNnqsTtVvXxYy]+|\s+-[BbcDEeFIiJLlmOoPpRSWw]\s*\S+)*\s+(?:[\w.-]+@)?([\w.-]+)/
 
 const parseLine = <T>(line: string): T[] => {

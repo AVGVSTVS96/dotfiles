@@ -41,7 +41,7 @@ Open the URL once in the user's preview. Don't keep reopening windows.
 | `PROJECT`     | the leads' git repo           |                                                                                                              |
 | `SCRIPT`      | found automatically           | Path to the workflow script, if it isn't found                                                               |
 | `DECISIONS`   | none                          | Path to a decisions JSON file (see below)                                                                    |
-| `CONTEXT_CAP` | `400000`                      | The cap line on each lead's context chart                                                                    |
+| `CONTEXT_CAP` | `800000`                      | The cap line on each lead's context chart: Claude Code's `autoCompactWindow`                                 |
 
 ## Richer panels
 
