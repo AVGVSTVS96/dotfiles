@@ -308,6 +308,13 @@ const briefs = (prompts: string[]) => {
   )
 }
 
+const projectOf = (cwd: string) => {
+  const root = Bun.spawnSync(["git", "-C", cwd, "rev-parse", "--show-toplevel"]).stdout.toString().trim() || cwd
+  return basename(root.replace(/\/\.claude\/worktrees\/.*$/, ""))
+}
+
+let project = process.env.PROJECT ?? ""
+
 const pickCurrent = () => {
   const current = new Map<string, Lead>()
   for (const lead of leads.values()) {
@@ -325,6 +332,8 @@ const state = () => {
   const started = [...leads.values()].filter(l => l.startedAt && l.lastAt)
   const active = mergeSpans(started.map(l => spanOf(l, current)))
   const brief = briefs(list.map(l => l.prompt))
+  const cwd = list.find(l => l.cwd)?.cwd
+  if (!project && cwd) project = projectOf(cwd)
   const attemptOf = (l: Lead) => started.filter(o => o.label === l.label && (o.startedAt ?? "") <= (l.startedAt ?? "")).length
   const phases = (PHASES.length ? PHASES : [...new Set(list.map(l => l.phase))].map(title => ({ title, detail: "" }))).map(({ title, detail }) => {
     const inPhase = list.filter(l => l.phase === title)
@@ -332,7 +341,7 @@ const state = () => {
   })
   return {
     title: TITLE,
-    project: process.env.PROJECT ?? basename(list.find(l => l.cwd)?.cwd.replace(/\/\.claude\/worktrees\/.*$/, "") ?? ""),
+    project,
     runId,
     now: Date.now(),
     startedAt: list[0]?.startedAt ?? null,

@@ -19,7 +19,7 @@ A Bun server reads a workflow run's transcripts incrementally and serves one HTM
 bun ~/.claude/skills/workflow-dashboard-template/server.ts [wf_runId | run dir]
 ```
 
-With no argument it watches the newest run. It finds the run's script on its own and takes the title from `meta.name` and the project from the leads' working directory. It prints its URL.
+With no argument it watches the newest run. It finds the run's script on its own and takes the title from `meta.name` and the project from the leads' git repo. It prints its URL.
 
 To keep it running after your turn ends, on Linux:
 
@@ -38,7 +38,7 @@ Open the URL once in the user's preview. Don't keep reopening windows.
 | `HOST`        | `127.0.0.1`                   | Bind to the Tailscale IP when the viewer is on another machine (T3's preview runs on the Mac)                |
 | `PORT`        | `4777`                        | Takes the next free port if this one is busy                                                                 |
 | `TITLE`       | `meta.name`                   |                                                                                                              |
-| `PROJECT`     | the leads' working directory  |                                                                                                              |
+| `PROJECT`     | the leads' git repo           |                                                                                                              |
 | `SCRIPT`      | found automatically           | Path to the workflow script, if it isn't found                                                               |
 | `DECISIONS`   | none                          | Path to a decisions JSON file (see below)                                                                    |
 | `CONTEXT_CAP` | `400000`                      | The cap line on each lead's context chart                                                                    |

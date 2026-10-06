@@ -756,8 +756,8 @@
 
   const GLYPHS = { ran: "›", wrote: "+", edited: "+", read: "◦", searched: "⌕", spawned: "⤷", failed: "✕", finished: "✓", note: "“" }
   const leadLabel = name => {
-    const prefix = `${state.leads.find(l => l.name === name)?.phase ?? ""}:`.toLowerCase()
-    return (name.toLowerCase().startsWith(prefix) ? name.slice(prefix.length) : name).replace(":", " ")
+    const short = name.slice(name.indexOf(":") + 1)
+    return state.leads.filter(l => l.name.endsWith(`:${short}`) || l.name === short).length > 1 ? name.replace(":", " ") : short
   }
   let actMode = "lead"
   const expanded = new Set()
