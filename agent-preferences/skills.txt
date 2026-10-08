@@ -1,4 +1,5 @@
 AVGVSTVS96/better-github-skill better-github-skill
+AVGVSTVS96/brand-it brand-it
 assistant-ui/skills assistant-ui cloud primitives runtime setup streaming thread-list tools update
 emilkowalski/skills animation-vocabulary apple-design emil-design-eng find-animation-opportunities improve-animations pick-ui-library review-animations
 mattpocock/skills grill-me grill-with-docs improve-codebase-architecture prototype tdd triage
