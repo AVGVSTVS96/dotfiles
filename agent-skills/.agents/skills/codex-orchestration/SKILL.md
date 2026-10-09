@@ -1,6 +1,6 @@
 ---
 name: codex-orchestration
-description: "Orchestrate the GPT-5.6 family (sol/luna) via Codex CLI: Claude owns intent, taste, and the final call; Codex executes and reviews bounded technical work fast and deep. Use when delegating implementation, debugging, build/type/test failures, verification, mechanical refactors, heavy code-reading, or GUI/computer-use verification to Codex/GPT-5.6, for deep web research, when asked to pair with, consult, fact-check, or get a second opinion from Codex, when spinning up fresh headless Fable 5 sessions for delegation, or to conserve the orchestrator's context window."
+description: "Orchestrate the GPT-5.6 family (sol/luna) via Codex CLI: Claude owns intent, taste, and the final call; Codex executes and reviews bounded technical work fast and deep. Use when delegating implementation, debugging, build/type/test failures, verification, mechanical refactors, heavy code-reading, or GUI/computer-use verification to Codex/GPT-5.6, for deep web research, when asked to pair with, consult, fact-check, or get a second opinion from Codex, when spinning up fresh headless Fable 5.1 sessions for delegation, or to conserve the orchestrator's context window."
 ---
 
 # Codex Orchestration
@@ -9,7 +9,7 @@ GPT-5.6 via Codex CLI is a relentless technical workhorse: it does not stop unti
 
 Send it anything technical with a clear boundary (build/type/test failures, debugging, perf, subtle logic, mechanical refactors, verification by running the thing, heavy code-reading), and just as readily ask for a second opinion: reviewing your work (`codex exec review`), pressure-testing a diagnosis or a design under clear constraints. You own intent, taste, and the final call.
 
-Delegate for your context window as much as for speed: take back conclusions, not file contents. Fan out independent runs concurrently; readers freely, writers only on disjoint files or separate worktrees. For self-contained work that needs Claude-grade judgment or the Claude Code ecosystem, delegate to a fresh headless Fable 5 session instead: [fable5-sessions.md](fable5-sessions.md).
+Delegate for your context window as much as for speed: take back conclusions, not file contents. Fan out independent runs concurrently; readers freely, writers only on disjoint files or separate worktrees. For self-contained work that needs Claude-grade judgment or the Claude Code ecosystem, delegate to a fresh headless Fable 5.1 session instead: [fable5-sessions.md](fable5-sessions.md).
 
 Before a writing run, pin state with `git status --short` so its diff is separable from pre-existing changes; writer prompts carry a standing rule: no commit, push, deploy, or config edits unless the user asked. Review what it lands (`git diff`) for scope drift and intent, and have it report what it ran to verify. Keep final judgment on product, design, UX, API shape, and naming.
 
@@ -70,7 +70,7 @@ For in-depth web research, run luna at `max` with `-c reasoning.mode="pro"`: pro
 
 ## Pairing with Fable
 
-5.6-sol and Fable 5 are strong mutual fact-checkers. Hand sol a conclusion plus its evidence and ask it to attack; verify any decisive counterclaim before accepting it. In mixed loops, Fable plans and reviews, 5.6 implements. When the two disagree, don't average: re-derive from primary sources.
+5.6-sol and Fable 5.1 are strong mutual fact-checkers. Hand sol a conclusion plus its evidence and ask it to attack; verify any decisive counterclaim before accepting it. In mixed loops, Fable plans and reviews, 5.6 implements. When the two disagree, don't average: re-derive from primary sources.
 
 ## Interactive
 
