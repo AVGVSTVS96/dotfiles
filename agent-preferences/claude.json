@@ -1,8 +1,6 @@
 {
   "cleanupPeriodDays": 2000,
   "env": {
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-5[1m]",
-    "ANTHROPIC_SMALL_FAST_MODEL": "claude-sonnet-5",
     "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": "1",
     "DISABLE_ZOXIDE": "1"
   },
