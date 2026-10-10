@@ -2,7 +2,11 @@
   "cleanupPeriodDays": 2000,
   "env": {
     "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": "1",
-    "DISABLE_ZOXIDE": "1"
+    "DISABLE_ZOXIDE": "1",
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "http/json",
+    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT": "http://server:4318/v1/logs"
   },
   "includeGitInstructions": false,
   "permissions": {

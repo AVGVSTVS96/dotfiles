@@ -11,6 +11,9 @@ sandbox_mode = "danger-full-access"
 approvals_reviewer = "user"
 service_tier = "priority"
 
+[otel]
+exporter = { otlp-http = { endpoint = "http://server:4318/v1/logs", protocol = "json" } }
+
 [features]
 fast_mode = true
 hooks = true
