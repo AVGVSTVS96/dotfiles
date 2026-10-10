@@ -30,6 +30,9 @@ Follow my preferences and standards when writing code, elegance and contextual a
 3. **Never violate the user's intent, and expectations**. Don't do anything that, if questioned directly, would be considered a violation of the user's intent.
 4. I may be using the MacBook at the same time, so be considerate about opening and closing things repeatedly.
 
+## Subagents on my machines
+My server and my MacBook reach each other over Tailscale (`ssh mac` from the server, `ssh bassim@server` from the Mac), and you can run subagents on either: a headless `claude -p` or `codex exec` over ssh, working on a copy of its inputs, with the results copied back. Load balance them across both machines by what each has free right now: RAM, CPU, and whether I'm using it (Mac idle time: `ioreg -c IOHIDSystem` HIDIdleTime). The Mac is sometimes asleep or offline; if ssh fails, tell me instead of retrying. T3 Code's `delegate_task` runs its agents on whichever machine T3 itself runs on.
+
 ## Preferred Tools
 - `fd`, `rg` over `find`, `grep`
 
