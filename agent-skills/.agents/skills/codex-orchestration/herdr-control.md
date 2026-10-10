@@ -8,7 +8,7 @@ Requires `HERDR_ENV=1`. herdr natively detects Codex agent status, so you can bl
 
 ```bash
 NEW=$(herdr pane split <your-pane-id> --direction right --no-focus | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["pane"]["pane_id"])')
-herdr pane run "$NEW" "cd <dir> && codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.6-sol"
+herdr pane run "$NEW" "cd <dir> && codex --dangerously-bypass-approvals-and-sandbox"
 ```
 
 Pane ids are not durable; re-read from `pane list` after panes close.
@@ -19,7 +19,7 @@ Pane ids are not durable; re-read from `pane list` after panes close.
 herdr pane read "$NEW" --source visible --lines 30
 ```
 
-Always use `--source visible` for Codex panes (`recent` returns nothing). Confirm the header shows `gpt-5.6-sol` and the composer (`›`) is ready.
+Always use `--source visible` for Codex panes (`recent` returns nothing). Confirm the header shows the configured sol model and the composer (`›`) is ready.
 
 3. **Prompt.** Send the text and Enter as two separate commands; the gap between calls lets the composer settle (don't use `sleep`, some harnesses block it):
 

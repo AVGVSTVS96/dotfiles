@@ -1,14 +1,14 @@
-# Driving fresh Fable 5.1 sessions (headless Claude Code)
+# Driving fresh Opus sessions (headless Claude Code)
 
-Fresh context windows are cheap; bloated ones are not. When work is self-contained but needs Claude-grade judgment, breadth, or the Claude Code tool ecosystem (skills, MCP, subagents, CLAUDE.md), delegate it to a headless Fable 5.1 session instead of doing it in your own window. Fifty prompts to fresh sessions cost less than one 200k-token conversation.
+Fresh context windows are cheap; bloated ones are not. When work is self-contained but needs Claude-grade judgment, breadth, or the Claude Code tool ecosystem (skills, MCP, subagents, CLAUDE.md), delegate it to a headless Opus session instead of doing it in your own window. Fifty prompts to fresh sessions cost less than one 200k-token conversation.
 
 ## Canonical invocation
 
 ```bash
-cd <dir> && claude -p --model claude-fable-5-1 --dangerously-skip-permissions "<prompt>"
+cd <dir> && claude -p --model opus --dangerously-skip-permissions "<prompt>"
 ```
 
-Runs take minutes: background them and capture stdout to a file. The session inherits skills, CLAUDE.md, and MCP config from the directory it starts in.
+`opus` is the alias for the newest Opus (Opus 5.5 today): smarter than Fable 5.1 on Anthropic's benchmarks at 40% of its price. Runs take minutes: background them and capture stdout to a file. The session inherits skills, CLAUDE.md, and MCP config from the directory it starts in.
 
 ## The brief-file pattern
 
@@ -31,9 +31,9 @@ For anything nontrivial, write the full spec to a `BRIEF.md` in the working dire
 - `--no-session-persistence`: throwaway runs, nothing written to disk
 - Pipe context via stdin: `git diff | claude -p "review this diff"`
 
-## Routing: Codex vs fresh Fable
+## Routing: Codex vs fresh Opus
 
-- **Codex (GPT-5.6):** bounded, deep technical execution; the relentless specialist.
-- **Fresh Fable 5.1:** work needing judgment, taste, multi-step orchestration, or the Claude Code ecosystem, including running its own Codex fan-outs. Two-level delegation: brief one Fable session, it drives N Codex runs, you read one findings file.
+- **Codex (GPT sol):** bounded, deep technical execution; the relentless specialist.
+- **Fresh Opus:** work needing judgment, taste, multi-step orchestration, or the Claude Code ecosystem, including running its own Codex fan-outs. Two-level delegation: brief one Opus session, it drives N Codex runs, you read one findings file.
 
 Fan out independent delegations concurrently in the background, same as Codex execs.

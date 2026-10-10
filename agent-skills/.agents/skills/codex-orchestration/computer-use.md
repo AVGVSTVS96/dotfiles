@@ -1,10 +1,10 @@
 # Computer Use
 
-Delegate GUI and runtime verification to Codex: real UI flows, browsers, simulators, screenshots, independent runtime inspection. 5.6 is the strongest computer-use model available; use sol at `high`. Don't delegate checks you can run directly (typecheck, lint, tests). Launching apps, simulators, or browsers to verify work is fine without asking; ask first only if the run could disrupt the user's environment beyond that.
+Delegate GUI and runtime verification to Codex: real UI flows, browsers, simulators, screenshots, independent runtime inspection. Sol is the strongest computer-use model available; use sol at `high`. Don't delegate checks you can run directly (typecheck, lint, tests). Launching apps, simulators, or browsers to verify work is fine without asking; ask first only if the run could disrupt the user's environment beyond that.
 
 ```bash
 ARTIFACT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/codex-cu.XXXXXX")
-codex exec --dangerously-bypass-approvals-and-sandbox -m gpt-5.6-sol \
+codex exec --dangerously-bypass-approvals-and-sandbox \
   -c model_reasoning_effort=high --add-dir "$ARTIFACT_DIR" \
   -C <dir> -o "$ARTIFACT_DIR/report.md" "<prompt>" </dev/null
 ```

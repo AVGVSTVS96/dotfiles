@@ -4,7 +4,7 @@ The canonical `codex exec` invocation, tier ladder, and prompting rules live in 
 
 ## Flags
 
-- `-m gpt-5.6-sol|gpt-5.6-luna`: sol for all work, luna only for pro research; ladder in SKILL.md
+- `-m gpt-6-astra`: only for pro research; leave `-m` off otherwise so runs use the configured sol; ladder in SKILL.md
 - `-c model_reasoning_effort=none|minimal|low|medium|high|xhigh|max|ultra`: set explicitly; warnings in SKILL.md
 - `-o <file>`: write the final message to a file for clean capture
 - `--json`: stream events as JSONL on stdout (session id, progress, failures); pair with `-o` for background runs
@@ -22,7 +22,7 @@ Always end scripted invocations with `</dev/null`; an open stdin pipe hangs code
 Pipe long context via stdin (it arrives as a `<stdin>` block appended to the prompt):
 
 ```bash
-git diff | codex exec --dangerously-bypass-approvals-and-sandbox -m gpt-5.6-sol "Review this diff for correctness."
+git diff | codex exec --dangerously-bypass-approvals-and-sandbox "Review this diff for correctness."
 ```
 
 ## Reviews
@@ -30,7 +30,7 @@ git diff | codex exec --dangerously-bypass-approvals-and-sandbox -m gpt-5.6-sol 
 `codex exec review` is a dedicated review mode, sharper than prompting for a review yourself:
 
 ```bash
-codex exec review --uncommitted -m gpt-5.6-sol -c model_reasoning_effort=medium -o <file> "Focus on correctness regressions."
+codex exec review --uncommitted -c model_reasoning_effort=medium -o <file> "Focus on correctness regressions."
 ```
 
 Pick the diff with `--uncommitted`, `--base <branch>`, or `--commit <sha>`. Supports `--json` and `-o`.
@@ -53,7 +53,7 @@ If a final message fails to deliver, resume and have it diff against its previou
 ## Interactive
 
 ```bash
-codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.6-sol
+codex --dangerously-bypass-approvals-and-sandbox
 ```
 
 Drive it through herdr or tmux (see the control files). `codex resume` reopens a previous interactive session (add `--include-non-interactive` to reopen exec sessions in the TUI); `codex fork` branches one.

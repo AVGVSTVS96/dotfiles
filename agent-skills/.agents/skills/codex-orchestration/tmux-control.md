@@ -8,7 +8,7 @@ Requires `$TMUX` (or a user-named target). tmux has no agent-status detection; v
 
 ```bash
 PANE=$(tmux split-window -h -d -c <dir> -P -F '#{pane_id}')
-tmux send-keys -t "$PANE" "codex --dangerously-bypass-approvals-and-sandbox -m gpt-5.6-sol" C-m
+tmux send-keys -t "$PANE" "codex --dangerously-bypass-approvals-and-sandbox" C-m
 ```
 
 To use an existing pane instead, resolve its id via `tmux list-panes -a -F '#{pane_id} #{session_name}:#{window_index}.#{pane_index} #{pane_current_command}'`.
@@ -19,7 +19,7 @@ To use an existing pane instead, resolve its id via `tmux list-panes -a -F '#{pa
 tmux capture-pane -p -t "$PANE" -S -40
 ```
 
-Confirm the header shows `gpt-5.6-sol` and the composer (`›`) is ready.
+Confirm the header shows the configured sol model and the composer (`›`) is ready.
 
 3. **Prompt.** Insert the text and Enter as two separate commands; the gap between calls lets the composer settle (don't use `sleep`, some harnesses block it):
 
