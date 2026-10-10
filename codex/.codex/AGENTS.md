@@ -22,3 +22,7 @@ The only time you should ask for approval I, Bassim, would genuinely be surprise
 - Keep call stacks relatively short, intuitive and simple. Avoid indirection and poor logic flow/architecture at all costs. 
 - Be mindful about leaving messes behind when you complete a given task, ensure you optimize the solution before calling the first working version ready for prod.
 
+## Shared with hex
+hex is my personal assistant, living in `~/hex`. Read `~/hex/AGENTS.md` at the start of every session: my rules, written to hex, so "you" in them means hex. Facts about me live in hex's memory, below.
+
+For anything older, search hex's memory with `MEMORY_DIR=~/hex/memory ~/hex/.hex/vendor/memo recall <regex>` and its past conversations in `~/hex/log/` with `rg`. Only read them: never run other `memo` commands or edit files in `~/hex`.
