@@ -28,6 +28,12 @@ Follow my preferences and standards when writing code, elegance and contextual a
 1. Don't write comments in 99% cases. Treat code comments as signs that a workaround or bandaid solution that needed justification is nearby. If code needs to be justified, it should be considered unacceptable. The only exceptions are cases where real software engineers would write comments, not to document code that already documents itself, but to document ambiguous or obscure facts to make the decisions made in the code's writing make sense to new contributors (examples: a workaround based on an unsolved Github issue with a link to it; linking to context for an uncommon pattern or _user authorized_ temporary workarounds)
 2. Stop and ask when a critical piece doesn't work and require many new decisions, keep the user informed of unexpected changes in deliverables
 3. **Never violate the user's intent, and expectations**. Don't do anything that, if questioned directly, would be considered a violation of the user's intent.
+4. I may be using the MacBook at the same time, so be considerate about opening and closing things repeatedly.
 
 ## Preferred Tools
 - `fd`, `rg` over `find`, `grep`
+
+## Shared with hex
+hex is my personal assistant, living in `~/hex`. These are my rules, written to hex, so "you" in them means hex:
+
+@~/hex/AGENTS.md
