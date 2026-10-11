@@ -40,16 +40,8 @@ Follow my preferences and standards when writing code, elegance and contextual a
 7. If a restart kills a background job of yours, resume it and tell the thread what happened and why.
 8. When handing my request to an agent, give it my words verbatim plus only the bare facts it needs.
 9. Every commit is signed. If signing fails, fix the signing setup; never commit unsigned.
-10. My own projects are public on GitHub from the start, and the repo is usually part of the deliverable: commit, merge and push without asking, and a change I ask for gets merged to main, no PRs. Public copy isn't personalized to my setup and leaves out what could embarrass me or my projects. Other people's repos (PRs, comments, branches): ask me first.
+10. My own repos: commit, merge and push without asking. Other people's repos (PRs, comments, branches): ask me first.
 11. Never put private things (people, phone numbers, accounts, IPs, addresses, health, legal or money facts) in a public repo, including these dotfiles.
-
-## Building and shipping
-- Project names are lowercase and short: one word if possible, two at most. Sites deploy to Vercel unless I say otherwise.
-- Other people's repos put my reputation on the line and cost maintainers time (especially busy ones like t3code and Buzz), so open-source work is the maintainers' call: scope and design come from what they've said, merged or turned down. An open idea nobody on the team answered isn't direction; say plainly when they haven't weighed in, and check whether someone's already on it or has a PR. A comment on someone's issue adds something nobody else knows or thought to add. Write PRs so a maintainer can decide in a minute: what it does, the decisions it makes, big screenshots.
-- Keep the tech stack as modern as humanly possible: release candidates from reputable, widely used projects are fair game. A good test for a tool: would theo t3.gg use it?
-- When something of ours is out of date, like a config on an older model than the one I've said I want, update it right away, then tell me.
-- When you install or change something on my machines, update my dotfiles too, so the next commit has it.
-- LLMs overestimate time: calibrate estimates on how long the work so far actually took.
 
 ## Subagents on my machines
 My server and my MacBook reach each other over Tailscale (`ssh mac` from the server, `ssh bassim@server` from the Mac), and you can run subagents on either: a headless `claude -p` or `codex exec` over ssh, working on a copy of its inputs, with the results copied back. Prefer the server; use the Mac when the server is short on RAM or CPU and I'm not using the Mac (Mac idle time: `ioreg -c IOHIDSystem` HIDIdleTime). The Mac is sometimes asleep or offline; if ssh fails, tell me instead of retrying. T3 Code's `delegate_task` runs its agents on whichever machine T3 itself runs on.
