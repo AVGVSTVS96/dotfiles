@@ -4,7 +4,8 @@
 : "${PROTON_PASS_AGENT_TOKEN:?is not set; it comes from ~/dotfiles/zsh/secrets.env}"
 export PROTON_PASS_SESSION_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pass-agent"
 
-pass-cli info >/dev/null 2>&1 ||
-  PROTON_PASS_PERSONAL_ACCESS_TOKEN=$PROTON_PASS_AGENT_TOKEN pass-cli login >/dev/null ||
-  exit
+pass-cli info >/dev/null 2>&1 || {
+  pass-cli logout >/dev/null 2>&1
+  PROTON_PASS_PERSONAL_ACCESS_TOKEN=$PROTON_PASS_AGENT_TOKEN pass-cli login >/dev/null || exit
+}
 exec pass-cli "$@"
