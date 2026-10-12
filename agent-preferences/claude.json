@@ -77,5 +77,19 @@
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": false,
   "voiceEnabled": true,
-  "compactingEnabled": true
+  "compactingEnabled": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/.claude/hooks/pkill-guard.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
 }

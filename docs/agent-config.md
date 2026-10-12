@@ -5,7 +5,7 @@
 | Source | Lands in | How |
 |---|---|---|
 | `claude/`, `codex/`, `agent-skills/` | `~/.claude`, `~/.codex`, `~/.agents` | stowed by `./install` file by file, so sessions and installed skills stay out of the repo |
-| `agent-preferences/claude.json`, plus `claude-macos.json` on the Mac | `~/.claude/settings.json` | deep-merged: keys the repo doesn't set, like herdr's hooks, stay |
+| `agent-preferences/claude.json`, plus `claude-macos.json` on the Mac | `~/.claude/settings.json` | deep-merged: keys the repo doesn't set stay, and so do hook events it doesn't set, like herdr's SessionStart |
 | `agent-preferences/claude-global.json` | `~/.claude.json` | deep-merged into Claude's account and cache store |
 | `agent-preferences/codex.toml` | `~/.codex/config.toml` | deep-merged, keeping the file's formatting; `[[skills.config]]` toggles match by name |
 | `enabledPlugins` and `extraKnownMarketplaces` in the Claude JSON | Claude plugins | missing marketplaces are added and missing plugins installed |
