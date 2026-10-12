@@ -1,0 +1,12 @@
+[Unit]
+Description=netmuxd, a usbmuxd that also reaches iOS devices over Wi-Fi
+After=network-online.target
+
+[Service]
+ExecStart=%h/.local/bin/netmuxd --socket-path %t/netmuxd.sock --plist-storage %S/netmuxd
+StateDirectory=netmuxd
+StateDirectoryMode=0700
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

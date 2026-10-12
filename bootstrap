@@ -49,10 +49,18 @@ case "$(uname -s)" in
     ensure herdr https://herdr.dev/install.sh sh
     ensure t3 https://t3.codes/install.sh sh
     ensure pass-cli https://proton.me/download/pass-cli/install.sh bash
+    have netmuxd || curl -fsSL "https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/netmuxd-$(uname -m)-unknown-linux-gnu.tar.gz" | tar xz --one-top-level="$HOME/.local/bin" netmuxd
+    # xtool from the fork, whose XTL_KEEP_IDENTIFIERS=1 signs apps with their own bundle IDs (upstream prefixes them with XTL-).
+    if ! have xtool; then
+      [ -d "$HOME/Developer/xtool" ] || git clone -b keep-identifiers https://github.com/AVGVSTVS96/xtool.git "$HOME/Developer/xtool"
+      swift build --package-path "$HOME/Developer/xtool" -c release --product xtool
+      ln -sf "$HOME/Developer/xtool/.build/release/xtool" "$HOME/.local/bin/xtool"
+    fi
     ;;
 esac
 
 link
+[ "$(uname -s)" = Linux ] && systemctl --user enable --now netmuxd
 
 case "$SHELL" in
   */zsh)
