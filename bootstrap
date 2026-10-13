@@ -56,6 +56,8 @@ case "$(uname -s)" in
       swift build --package-path "$HOME/Developer/xtool" -c release --product xtool
       ln -sf "$HOME/Developer/xtool/.build/release/xtool" "$HOME/.local/bin/xtool"
     fi
+    # swift reads SDKs from ~/.swiftpm once that folder exists, which hides xtool's Darwin SDK in ~/.config/swiftpm
+    mkdir -p "$HOME/.swiftpm" && ln -sfn "$HOME/.config/swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks"
     ;;
 esac
 
