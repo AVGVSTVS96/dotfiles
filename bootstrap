@@ -58,6 +58,8 @@ case "$(uname -s)" in
     fi
     # swift reads SDKs from ~/.swiftpm once that folder exists, which hides xtool's Darwin SDK in ~/.config/swiftpm
     mkdir -p "$HOME/.swiftpm" && ln -sfn "$HOME/.config/swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks"
+    dot=etc/systemd/resolved.conf.d/dns-over-tls.conf
+    cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl restart systemd-resolved; }
     ;;
 esac
 
