@@ -44,7 +44,7 @@ Follow my preferences and standards when writing code, elegance and contextual a
 11. Never put private things (people, phone numbers, accounts, IPs, addresses, health, legal or money facts) in a public repo, including these dotfiles.
 
 ## Subagents on my machines
-My server and my MacBook reach each other over Tailscale (`ssh mac` from the server, `ssh bassim@server` from the Mac), and you can run subagents on either: a headless `claude -p` or `codex exec` over ssh, working on a copy of its inputs, with the results copied back. Prefer the server; use the Mac when the server is short on RAM or CPU and I'm not using the Mac (Mac idle time: `ioreg -c IOHIDSystem` HIDIdleTime). The Mac is sometimes asleep or offline; if ssh fails, tell me instead of retrying. T3 Code's `delegate_task` runs its agents on whichever machine T3 itself runs on.
+My server and my MacBook reach each other over Tailscale (`ssh mac` from the server, `ssh bassim@server` from the Mac), and you can run subagents on either: a headless `claude -p` or `codex exec` over ssh, working on a copy of its inputs, with the results copied back. Prefer the server; use the Mac when the server is short on RAM or CPU. The Mac is sometimes asleep or offline; if ssh fails, tell me instead of retrying. T3 Code's `delegate_task` runs its agents on whichever machine T3 itself runs on.
 
 ## Preferred Tools
 - `fd`, `rg` over `find`, `grep`
