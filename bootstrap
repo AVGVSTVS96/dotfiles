@@ -49,6 +49,8 @@ case "$(uname -s)" in
     ensure herdr https://herdr.dev/install.sh sh
     ensure t3 https://t3.codes/install.sh sh
     ensure pass-cli https://proton.me/download/pass-cli/install.sh bash
+    # hex's launcher asks tokenmaxxing which pooled Claude account has headroom, and hex.service's PATH has ~/.local/bin.
+    [ -x "$HOME/.config/tokenmaxxing/bin/tokenmaxxing" ] && ln -sfn "$HOME/.config/tokenmaxxing/bin/tokenmaxxing" "$HOME/.local/bin/tokenmaxxing"
     have netmuxd || curl -fsSL "https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/netmuxd-$(uname -m)-unknown-linux-gnu.tar.gz" | tar xz --one-top-level="$HOME/.local/bin" netmuxd
     # xtool from the fork, which signs apps with their own bundle and group IDs (upstream copies them under XTL-) and gives free teams App Groups.
     if ! have xtool; then
