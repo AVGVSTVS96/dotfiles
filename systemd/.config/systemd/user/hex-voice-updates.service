@@ -1,0 +1,12 @@
+[Unit]
+Description=hex-voice-updates: over-the-air updates for the hex voice app, on the tailnet
+After=network-online.target
+
+[Service]
+Environment=HEX_UPDATES_DIR=%h/.local/share/hex-voice/updates
+ExecStart=/usr/bin/node %h/.local/share/hex-voice/release/updates/store.mts serve
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
