@@ -1,0 +1,6 @@
+[Unit]
+Description=Preserve native Claude pooling across vendor updates
+[Path]
+PathChanged=%h/.local/bin
+[Install]
+WantedBy=default.target

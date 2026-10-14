@@ -1,0 +1,7 @@
+[Unit]
+Description=Restore pooled Claude entry point after a native update
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Developer/tokenhub
+ExecStart=/usr/bin/bun entrypoint.ts
+UMask=0077
