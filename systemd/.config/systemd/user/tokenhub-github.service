@@ -1,0 +1,10 @@
+[Unit]
+Description=Import native Claude accounting from GitHub agents
+After=token-tracker-dashboard.service
+[Service]
+Type=oneshot
+WorkingDirectory=/home/bassim/Developer/tokenhub
+ExecStart=/usr/bin/python3 github-artifacts.py
+ExecStart=/usr/bin/bun import-github.ts
+Environment=PATH=/home/bassim/.cache/.bun/bin:/home/bassim/.local/bin:/usr/bin:/bin
+UMask=0077

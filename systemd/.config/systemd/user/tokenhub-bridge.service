@@ -1,0 +1,10 @@
+[Unit]
+Description=Recover quota-blocked native Claude background sessions
+[Service]
+WorkingDirectory=/home/bassim/Developer/tokenhub
+ExecStart=/usr/bin/bun daemon-bridge.ts
+Environment=PATH=/home/bassim/.cache/.bun/bin:/home/bassim/.local/bin:/usr/bin:/bin
+Restart=on-failure
+UMask=0077
+[Install]
+WantedBy=default.target

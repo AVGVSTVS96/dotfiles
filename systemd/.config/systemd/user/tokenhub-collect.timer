@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh account and agent usage every five minutes
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=5min
+Unit=tokenhub-collect.service
+[Install]
+WantedBy=timers.target

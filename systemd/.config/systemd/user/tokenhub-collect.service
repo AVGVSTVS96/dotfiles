@@ -1,0 +1,9 @@
+[Unit]
+Description=Account and agent usage snapshot
+After=token-tracker-dashboard.service
+[Service]
+Type=oneshot
+WorkingDirectory=/home/bassim/Developer/tokenhub
+ExecStart=/usr/bin/bun collect.ts
+Environment=PATH=/home/bassim/.cache/.bun/bin:/home/bassim/.local/bin:/usr/bin:/bin
+UMask=0077

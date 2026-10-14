@@ -1,0 +1,8 @@
+[Unit]
+Description=Check GitHub agent accounting every five minutes
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=tokenhub-github.service
+[Install]
+WantedBy=timers.target

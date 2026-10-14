@@ -19,7 +19,7 @@ end
 
 contains -- ./node_modules/.bin $PATH; or set -gx PATH $PATH ./node_modules/.bin
 fish_add_path -P -a /Applications/Cursor.app/Contents/Resources/app/bin ~/.cargo/bin ~/.cache/.bun/bin ~/.maestro/bin
-fish_add_path -P -m ~/.local/share/fnm/aliases/default/bin ~/.local/bin $PNPM_HOME
+fish_add_path -P -m ~/.config/tokenmaxxing/bin ~/.local/share/fnm/aliases/default/bin ~/.local/bin $PNPM_HOME
 
 if status is-interactive
     oh-my-posh init fish --config ~/.config/oh-my-posh/tokyonight_storm-customized.omp.json | source
