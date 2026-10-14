@@ -51,4 +51,4 @@ My server and my MacBook reach each other over Tailscale (`ssh mac` from the ser
 - On the server, `/tmp` is RAM (tmpfs): put big scratch work on disk and clean it up when done.
 
 ## hex
-hex is my personal assistant in `~/hex`: its rules are in `~/hex/AGENTS.md`, its memory is searchable with `MEMORY_DIR=~/hex/memory ~/hex/.hex/vendor/memo recall <regex>` (read only), and every conversation I've had with it is in `~/hex/log/` (search with `rg`). Look there when a task touches hex or something I've done before.
+hex is my personal assistant in `~/hex`: its rules are in `~/hex/AGENTS.md`, its memory is searchable with `MEMORY_DIR=~/hex/memory ~/hex/.hex/vendor/memo recall <regex>` (read only), and every conversation I've had with it is in `~/hex/log/` (search with `rg`); my T3 Code threads and Codex logs hold the rest. Look there when a task touches hex or something I've done before, and search them before saying you don't know.
