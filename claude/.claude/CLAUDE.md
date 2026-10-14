@@ -38,7 +38,7 @@ Follow my preferences and standards when writing code, elegance and contextual a
 5. Check live state (files, services, processes, logins) before calling something missing, broken or done; notes and memory go stale.
 6. Read raw logs and sources over summaries and memory notes.
 7. If a restart kills a background job of yours, resume it and tell the thread what happened and why.
-8. When handing my request to an agent, give it my words verbatim plus only the bare facts it needs.
+8. When handing my request to an agent, pass my intent faithfully plus only the bare facts it needs; quote my words only where the wording matters, and never put words in my mouth.
 9. Every commit is signed. If signing fails, fix the signing setup; never commit unsigned.
 10. My own repos: commit, merge and push without asking. Other people's repos (PRs, comments, branches): ask me first.
 11. Never put private things (people, phone numbers, accounts, IPs, addresses, health, legal or money facts) in a public repo, including these dotfiles.
