@@ -1,0 +1,7 @@
+[Unit]
+Description=Daily checkpoint of hex's cloud Sprite
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/sprite checkpoint create -s cloud2
+TimeoutStartSec=15min
