@@ -1,0 +1,13 @@
+[Unit]
+Description=deck: hex agent control room on the tailnet
+After=network-online.target tailscaled.service
+
+[Service]
+WorkingDirectory=%h/Developer/deck
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/bun src/server.ts
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
