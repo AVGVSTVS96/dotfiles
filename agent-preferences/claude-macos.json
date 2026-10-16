@@ -9,5 +9,17 @@
         "repo": "paper-design/agent-plugins"
       }
     }
+  },
+  "hooks": {
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "launchctl kickstart gui/$(id -u)/dev.commonplace.sync > /dev/null 2>&1 || true"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -20,3 +20,7 @@ TCC database corruption caused complete inability to access ~/Documents director
 ```bash
 tccutil reset SystemPolicyDocumentsFolder
 ```
+
+## Archive sync
+
+My commonplace archive (`~/Developer/personal/commonplace`) keeps itself current through the `dev.commonplace.sync` LaunchAgent, which `commonplace install` writes there. It syncs at login, when Messages' `chat.db` changes, and when a hook kicks it: Claude Code's SessionEnd (`agent-preferences/claude-macos.json`) and Codex's Stop (`~/.codex/hooks.json`, outside this repo, next to herdr's hook). Its launcher, `data/commonplace-sync`, needs Full Disk Access once, for Messages and `~/Documents`. The CLI is linked as `~/.local/bin/commonplace`.
