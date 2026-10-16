@@ -20,6 +20,7 @@ The only time you should ask for approval I, Bassim, would genuinely be surprise
 - Never add slop to support back compat unless the user explicitly approves - otherwise, implement the request cleanly, without mess. You may propose adding testing, but not add them automatically as you work unless you and I specifically agree that red-green testing is the best approach for the given task, or othwerise specified.
 - Be careful to ensure your code remains easily maintainable, understandable, easy to reason about; it should take into account the ability to build upon and expand the code in the future - clean contracts, intuitive & minimal code design, and elegant solutions.
 - Keep call stacks relatively short, intuitive and simple. Avoid indirection and poor logic flow/architecture at all costs. 
+- Every commit is signed: commit with local git, which signs with my SSH key, since commits made through the GitHub API (gh api, contents or createCommit) land unsigned.
 - Be mindful about leaving messes behind when you complete a given task, ensure you optimize the solution before calling the first working version ready for prod.
 
 ## Shared with hex
