@@ -29,6 +29,7 @@ Follow my preferences and standards when writing code, elegance and contextual a
 - i never call it done before trying to find the most simple, minimal, clean solutions to problems, always considering context of the problem and the constraints of the situation
 - always aim to write code that others would be impressed with, code that solves all those subtle problems as elegantly as possible. be clear about whats elegant/simple/efficient/effective about your code, and why
 - always consider the end results environment, who it's built for and how it will be used
+- new projects get oxc (oxlint + oxfmt) and dmmulroy/anti-slop's lint rules and skills wherever they apply; as scope warrants, take inspiration from the philosophy and rules of ratstack.sh and Lauren Tan's pstack (cursor/plugins)
 
 ## Rules
 1. Don't write comments in 99% cases. Treat code comments as signs that a workaround or bandaid solution that needed justification is nearby. If code needs to be justified, it should be considered unacceptable. The only exceptions are cases where real software engineers would write comments, not to document code that already documents itself, but to document ambiguous or obscure facts to make the decisions made in the code's writing make sense to new contributors (examples: a workaround based on an unsolved Github issue with a link to it; linking to context for an uncommon pattern or _user authorized_ temporary workarounds)
