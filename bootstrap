@@ -49,6 +49,7 @@ case "$(uname -s)" in
     ensure herdr https://herdr.dev/install.sh sh
     ensure t3 https://t3.codes/install.sh sh
     ensure pass-cli https://proton.me/download/pass-cli/install.sh bash
+    have vercel || bun add -g vercel
     # hex's launcher asks tokenmaxxing which pooled Claude account has headroom, and hex.service's PATH has ~/.local/bin.
     [ -x "$HOME/.config/tokenmaxxing/bin/tokenmaxxing" ] && ln -sfn "$HOME/.config/tokenmaxxing/bin/tokenmaxxing" "$HOME/.local/bin/tokenmaxxing"
     have netmuxd || curl -fsSL "https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/netmuxd-$(uname -m)-unknown-linux-gnu.tar.gz" | tar xz --one-top-level="$HOME/.local/bin" netmuxd
@@ -76,6 +77,7 @@ case "$SHELL" in
 esac
 [ -e "$HOME/.local/share/fnm/aliases/default" ] || { fnm install --lts && fnm default lts-latest; }
 have gt || npm install -g @withgraphite/graphite-cli@stable
+have agent-browser || { npm install -g agent-browser && agent-browser install; }
 if have rustup; then
   rustup default >/dev/null 2>&1 || rustup default stable
 fi
