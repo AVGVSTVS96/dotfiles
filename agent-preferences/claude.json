@@ -6,7 +6,8 @@
     "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
     "OTEL_LOGS_EXPORTER": "otlp",
     "OTEL_EXPORTER_OTLP_PROTOCOL": "http/json",
-    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT": "http://server:4318/v1/logs"
+    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT": "http://server:4318/v1/logs",
+    "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS": "0"
   },
   "includeGitInstructions": false,
   "permissions": {
