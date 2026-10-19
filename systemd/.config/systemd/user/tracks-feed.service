@@ -1,0 +1,12 @@
+[Unit]
+Description=pages: live data for the tracks page, read from hex's tasks and questions
+After=pages.service
+
+[Service]
+WorkingDirectory=%h/Developer/pages
+ExecStart=/usr/bin/bun tools/tracks/feed.ts
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
