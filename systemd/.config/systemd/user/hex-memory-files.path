@@ -1,0 +1,16 @@
+[Unit]
+Description=pages: watch hex's memory files for the hex-memory page
+
+[Path]
+PathChanged=%h/hex/MEMORY.md
+PathChanged=%h/hex/AGENTS.md
+PathChanged=%h/hex/SOUL.md
+PathChanged=%h/hex/.hex/HEX.md
+PathChanged=%h/.claude/CLAUDE.md
+PathChanged=%h/hex/memory/LOG.txt
+PathChanged=%h/hex/log
+PathChanged=%h/hex/log/threads
+PathChanged=%h/hex/log/2026-10-06-addfa113.md
+
+[Install]
+WantedBy=default.target

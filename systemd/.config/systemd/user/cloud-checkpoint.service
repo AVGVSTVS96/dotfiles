@@ -1,0 +1,7 @@
+[Unit]
+Description=Daily checkpoint of hex's cloud Sprite
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'exec %h/.local/bin/sprite checkpoint create -s "$(jq -r .env.HEX_COMPUTER %h/hex/.claude/settings.json)"'
+TimeoutStartSec=15min

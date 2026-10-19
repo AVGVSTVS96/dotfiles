@@ -1,0 +1,7 @@
+[Unit]
+Description=pages: rebuild hex-memory file contents
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/Developer/pages/tools/hex-memory/files.py
