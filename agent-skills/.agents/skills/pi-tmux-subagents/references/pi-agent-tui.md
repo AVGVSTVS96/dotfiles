@@ -7,19 +7,19 @@
 - `--list-models [search]`: inspect available model names if a pattern fails.
 
 **Model IDs:**
-- codex / gpt-5.5 = `gpt-5.5`
-- claude opus 4.7 = `claude-opus-4.7`
+- codex / gpt-6.1-sol = `gpt-6.1-sol`
+- claude opus 5.5 = `claude-opus-5-5`
 
 ```bash
 # Launch pi tui:
 pi
 
 # Launch pi with specific model and thinking level:
-pi --model gpt-5.5 --thinking low
-pi --model 'gpt-5.5:low' # shorthand
+pi --model gpt-6.1-sol --thinking low
+pi --model 'gpt-6.1-sol:low' # shorthand
 
-pi --model claude-opus-4.7 --thinking high
-pi --model 'claude-opus-4.7:high' # shorthand
+pi --model claude-opus-5-5 --thinking high
+pi --model 'claude-opus-5-5:high' # shorthand
 ```
 
 

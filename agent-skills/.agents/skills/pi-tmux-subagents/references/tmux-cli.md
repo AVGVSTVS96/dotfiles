@@ -16,7 +16,7 @@ tmux capture-pane -p -t %140 -S -40 | tail -n 30
 Send a shell command:
 
 ```bash
-tmux send-keys -t %140 "pi --model gpt-5.5 --thinking low" C-m
+tmux send-keys -t %140 "pi --model gpt-6.1-sol --thinking low" C-m
 ```
 
 Send a prompt safely: paste/type, send Enter separately, then capture to verify. If text remains in the editor, send Enter again.

@@ -1,6 +1,6 @@
 ---
 name: pi-tmux-subagents
-description: Orchestrate pi coding-agent subagents in tmux panes. Use when the user passes pane IDs or a tmux window/session and wants the agent to delegate work, steer pi TUIs, and choose between codex/gpt-5.5 and claude-opus-4.7 by task.
+description: Orchestrate pi coding-agent subagents in tmux panes. Use when the user passes pane IDs or a tmux window/session and wants the agent to delegate work, steer pi TUIs, and choose between codex/gpt-6.1-sol and claude-opus-5-5 by task.
 ---
 
 # Pi tmux subagents

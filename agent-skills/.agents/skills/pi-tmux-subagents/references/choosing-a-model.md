@@ -2,7 +2,7 @@
 
 Use the user's subjective model notes as policy.
 
-## codex / gpt-5.5
+## codex / gpt-6.1-sol
 
 No-bs, narrow technical engineer. Best for precise implementation and troubleshooting.
 
@@ -27,7 +27,7 @@ Effort:
 - `high`: large technical scope, subtle bugs, hard debugging.
 - `xhigh`: only when other attempts fail or the issue is genuinely difficult.
 
-## claude-opus-4.7
+## claude-opus-5-5
 
 Creative, craft-minded engineer. Better at intent, architecture, APIs, organization, and clear explanations.
 
