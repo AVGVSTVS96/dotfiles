@@ -95,6 +95,9 @@ if [ -r "$HOME/.config/sops/age/key.txt" ]; then
   scripts/.local/bin/restore-secrets
   [ -d "$HOME/Developer/fleet" ] || git clone git@github.com:AVGVSTVS96/fleet.git "$HOME/Developer/fleet"
   "$HOME/Developer/fleet/scripts/install-skill.sh"
+  [ -d "$HOME/Developer/microscope" ] || git clone git@github.com:AVGVSTVS96/microscope.git "$HOME/Developer/microscope"
+  (cd "$HOME/Developer/microscope" && bun install --frozen-lockfile)
+  ln -sf "$HOME/Developer/microscope/src/cli.ts" "$HOME/.bun/bin/microscope"
 else
   echo "Copy the existing age key to ~/.config/sops/age/key.txt, then rerun ./bootstrap"
 fi
