@@ -1,0 +1,12 @@
+[Unit]
+Description=hex keyboard: the record source, a log of what you send and type on the phone (behind tailscale serve /record)
+
+[Service]
+WorkingDirectory=%h/Developer/hex-keyboard
+EnvironmentFile=%h/.config/hex-keyboard/record.env
+ExecStart=/usr/bin/bun sources/record.ts --port 2590 --out %h/.local/share/hex-keyboard/record.jsonl
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
