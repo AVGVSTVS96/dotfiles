@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+export PATH="$HOME/.local/bin:$PATH"
+export APPIMAGE="$HOME/Applications/T3-Code-Nightly.AppImage"
+# Unpacked to disk once per AppImage: --appimage-extract-and-run unpacked into RAM-backed /tmp on every launch and left 440 MB behind whenever the app was killed.
+app="${XDG_CACHE_HOME:-$HOME/.cache}/t3code-nightly"
+if [ ! -x "$app/AppRun" ] || [ "$APPIMAGE" -nt "$app/AppRun" ]; then
+  next="$app.next"
+  rm -rf "$next"
+  mkdir -p "$next"
+  (cd "$next" && "$APPIMAGE" --appimage-extract >/dev/null)
+  rm -rf "$app"
+  mv "$next/squashfs-root" "$app"
+  rmdir "$next"
+  touch "$app/AppRun"
+fi
+export APPDIR="$app"
+exec "$app/AppRun" "$@"
