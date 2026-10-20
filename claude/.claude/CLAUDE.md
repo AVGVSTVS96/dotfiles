@@ -30,4 +30,4 @@ Answer my actual question first in one plain sentence, then the few facts that m
 - I may be using the MacBook at the same time, so go easy on opening and closing things there.
 - Server and Mac reach each other over Tailscale (`ssh mac`, `ssh bassim@server`). Subagents can run on either as headless `claude -p` or `codex exec` over ssh, on a copy of their inputs; prefer the server, use the Mac when the server is short on RAM or CPU. If the Mac doesn't answer, it's asleep: tell me instead of retrying.
 - On the server `/tmp` is RAM: big scratch goes on disk, cleaned up after.
-- hex, my assistant, lives in `~/hex`: rules in `AGENTS.md`, memory via `MEMORY_DIR=~/hex/memory ~/hex/.hex/vendor/memo recall <regex>` (read only), every conversation in `log/`. Search there, and my T3 Code and Codex logs, before saying you don't know something I've done.
+- hex, my assistant, lives in `~/hex`: rules in `AGENTS.md`, memory via `MEMORY_DIR=~/hex/memory ~/hex/.hex/vendor/memo recall <regex>` (read only), every conversation in `log/`. Look there, and in my T3 Code and Codex logs, when a task touches hex or something I've done before, and before saying you don't know.
