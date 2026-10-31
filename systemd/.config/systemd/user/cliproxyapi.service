@@ -1,0 +1,11 @@
+[Unit]
+Description=cliproxyapi: Claude account pool and its dashboard on the tailnet
+After=network-online.target tailscaled.service
+
+[Service]
+ExecStart=%h/.local/bin/cliproxyapi -config %h/.config/cliproxyapi/config.yaml
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target
