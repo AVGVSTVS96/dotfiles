@@ -33,6 +33,16 @@ if [ "$name" != turn ]; then
         sleep 5
         booted=$("$real" simctl list devices booted | grep '(Booted)' || true)
       done
+      # It boots without its wallpaper, widget and Live Activity services, a third of a fresh simulator's CPU that no
+      # test needs (measured Nov 3: 295 → 193 CPU-s in its first 2 minutes). Its launchd reads them from this file.
+      id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
+      if [ -n "$id" ]; then
+        off=/private/var/tmp/com.apple.CoreSimulator.SimDevice.$id/disabled.plist
+        mkdir -p -m 700 "${off%/*}"
+        for label in com.apple.PosterBoard com.apple.chronod com.apple.liveactivitiesd; do
+          /usr/libexec/PlistBuddy -c "Set :$label true" "$off" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$label bool true" "$off" >/dev/null
+        done
+      fi
       exec "$real" "$@" ;;
     xcodebuild*-version* | xcodebuild*-showsdks* | xcodebuild*-list* | xcodebuild*-showBuildSettings* | xcodebuild*-find*) exec "$real" "$@" ;;
     xcodebuild*Simulator*id=*)
