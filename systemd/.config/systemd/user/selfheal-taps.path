@@ -1,0 +1,8 @@
+[Unit]
+Description=selfheal: watch the fixes page's Approve and Deny taps
+
+[Path]
+PathChanged=%h/Developer/pages/data/selfheal.json
+
+[Install]
+WantedBy=default.target

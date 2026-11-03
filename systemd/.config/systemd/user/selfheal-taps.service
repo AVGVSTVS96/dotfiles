@@ -1,0 +1,8 @@
+[Unit]
+Description=selfheal: send page taps to the Selfheal topic
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/hex
+ExecStart=/usr/bin/bun %h/hex/bin/selfheal tapped
