@@ -1,5 +1,5 @@
 [Unit]
-Description=selfheal: watch the fixes page's Approve and Deny taps
+Description=selfheal: watch the fixes page's answers
 
 [Path]
 PathChanged=%h/Developer/pages/data/selfheal.json
