@@ -61,6 +61,8 @@ case "$(uname -s)" in
     mkdir -p "$HOME/.swiftpm" && ln -sfn "$HOME/.config/swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks"
     dot=etc/systemd/resolved.conf.d/dns-over-tls.conf
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl restart systemd-resolved; }
+    dot=etc/systemd/journald.conf.d/size.conf
+    cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl restart systemd-journald; }
     ;;
 esac
 
