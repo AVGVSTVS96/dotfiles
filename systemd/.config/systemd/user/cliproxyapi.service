@@ -6,9 +6,8 @@ Requires=cliproxyapi.socket
 [Service]
 Environment=GOMEMLIMIT=768MiB
 ExecStart=%h/.local/bin/cliproxyapi -config %h/.config/cliproxyapi/config.yaml
-# Every agent's requests go through the proxy, so it runs ahead of builds and agents when the CPU or memory is short.
+# Every agent's requests go through the proxy, so it runs ahead of the other services when the CPU is short.
 CPUWeight=500
-MemoryLow=1G
 Restart=always
 RestartSec=2
 TimeoutStopSec=200
