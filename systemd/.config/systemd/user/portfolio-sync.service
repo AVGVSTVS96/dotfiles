@@ -5,5 +5,5 @@ Description=Refresh the portfolio's GitHub and npm data and redeploy it
 Type=oneshot
 WorkingDirectory=%h/Developer/portfolio
 Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin
-ExecStart=/bin/sh -c 'bun scripts/sync.ts && { git diff --quiet src/data/activity.json || git commit -qm "chore(data): sync activity" src/data/activity.json; } && vercel deploy --prod --yes'
+ExecStart=%h/Developer/portfolio/scripts/deploy.sh
 TimeoutStartSec=15min
