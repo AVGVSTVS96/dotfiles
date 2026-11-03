@@ -1,0 +1,9 @@
+[Unit]
+Description=Cardboard Elite Fourum collector (public forum posts, archived raw)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/dev/card-app/apps/web
+Environment=PATH=%h/.local/share/vite-plus/bin:%h/.local/share/vite-plus/fallback-bin:/usr/local/bin:/usr/bin
+ExecStart=%h/.local/share/vite-plus/fallback-bin/node scripts/community-elitefourum.ts
+TimeoutStartSec=30min
