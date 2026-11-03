@@ -33,22 +33,6 @@ dir=/tmp/turn-$(id -u)/$pool
 mkdir -p "$dir"
 # flock on Linux, lockf on macOS: both hold the lock while the command runs and give it back when it exits.
 if command -v flock >/dev/null; then lock="flock -o" try="flock -n"; else lock="lockf -k" try="lockf -k -t 0"; fi
-# On a Mac, a turn starts with fewer than TURN_SIMULATORS (3) simulators booted, shutting down the longest-booted
-# first, but never one its own command names, so leftover simulators don't pile up.
-simulators() {
-  command -v xcrun >/dev/null || return 0
-  booted=$(ps -Ao etime=,args= | awk '/launchd_sim .*\/Devices\// { n = split($1, t, /[-:]/); match($0, /Devices\/[0-9A-F-]+/)
-    print t[n] + 60 * t[n - 1] + 3600 * (n > 2 ? t[n - 2] : 0) + 86400 * (n > 3 ? t[1] : 0), substr($0, RSTART + 8, RLENGTH - 8) }' | sort -rn)
-  extra=$(($(printf '%s' "$booted" | grep -c .) - ${TURN_SIMULATORS:-3} + 1))
-  [ "$extra" -gt 0 ] || return 0
-  printf '%s\n' "$booted" | while read -r _ id; do
-    case "$*" in *"$id"*) continue ;; esac
-    [ "$extra" -gt 0 ] || break
-    echo "turn: shutting down simulator $id, booted longest, so fewer than ${TURN_SIMULATORS:-3} run" >&2
-    xcrun simctl shutdown "$id" || true
-    extra=$((extra - 1))
-  done
-}
 told=
 while :; do
   slot=1
@@ -56,7 +40,6 @@ while :; do
     if $try "$dir/$slot" true 2>/dev/null; then
       printf '%s %s: %s\n' "$(date +%H:%M)" "$PWD" "$*" > "$dir/$slot.who"
       export TURN="${TURN:+$TURN }$pool"
-      simulators "$@"
       exec $lock "$dir/$slot" nice -n 19 "$@"
     fi
     slot=$((slot + 1))
