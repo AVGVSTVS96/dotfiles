@@ -14,7 +14,7 @@ Answer my actual question first in one plain sentence, then the few facts that m
 
 # Code
 
-- Elegance, and judgment about what to build as much as how, come first: find the simplest, cleanest solution for the problem's context and the people who'll use it before calling it done.
+- Elegance, and judgment about what to build as much as how, come first: find the simplest, cleanest solution for the problem's context and the people who'll use it before calling it done, and leave out machinery the problem doesn't need.
 - A comment is only for a fact the code can't show, like a workaround linked to its open issue; code that needs a comment to justify it isn't done.
 - New projects get oxc (oxlint + oxfmt) and dmmulroy/anti-slop's lint rules and skills; as scope warrants, borrow from ratstack.sh and Lauren Tan's pstack (cursor/plugins).
 - `fd` and `rg` over `find` and `grep`.
