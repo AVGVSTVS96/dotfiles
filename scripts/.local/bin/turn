@@ -1,0 +1,45 @@
+#!/bin/sh
+# turn <command...>: runs a heavy command (a build, test suite, simulator or browser run) once one of this machine's
+# TURN_SLOTS turns (2 by default) is free, at the lowest CPU priority, so heavy work from every project and agent takes
+# turns instead of all running at once. Through ~/.local/share/turn, first on PATH in .zshenv, xtool, swift and
+# xcodebuild builds and tests take a turn by themselves; their other commands run straight away.
+set -e
+name=${0##*/}
+if [ "$name" != turn ]; then
+  shims=$(cd "${0%/*}" && pwd -P)
+  real=
+  IFS=:
+  for dir in $PATH; do
+    [ -d "$dir" ] && [ "$(cd "$dir" && pwd -P)" != "$shims" ] && [ -x "$dir/$name" ] && { real=$dir/$name; break; }
+  done
+  unset IFS
+  [ -n "$real" ] || { echo "turn: no $name on PATH besides $shims" >&2; exit 127; }
+  case "$name $*" in
+    "xtool dev"* | "swift build"* | "swift test"* | "swift run"*) ;;
+    xcodebuild*-version* | xcodebuild*-showsdks* | xcodebuild*-list* | xcodebuild*-showBuildSettings* | xcodebuild*-find*) exec "$real" "$@" ;;
+    xcodebuild*) ;;
+    *) exec "$real" "$@" ;;
+  esac
+  set -- "$real" "$@"
+fi
+[ $# -gt 0 ] || { echo "usage: turn <command...>" >&2; exit 2; }
+[ -z "${TURN:-}" ] || exec "$@"
+
+dir=/tmp/turn-$(id -u)
+mkdir -p "$dir"
+# flock on Linux, lockf on macOS: both hold the lock while the command runs and give it back when it exits.
+if command -v flock >/dev/null; then lock="flock -o" try="flock -n"; else lock="lockf -k" try="lockf -k -t 0"; fi
+told=
+while :; do
+  slot=1
+  while [ "$slot" -le "${TURN_SLOTS:-2}" ]; do
+    if $try "$dir/$slot" true 2>/dev/null; then
+      printf '%s %s: %s\n' "$(date +%H:%M)" "$PWD" "$*" > "$dir/$slot.who"
+      export TURN=$slot
+      exec $lock "$dir/$slot" nice -n 19 "$@"
+    fi
+    slot=$((slot + 1))
+  done
+  [ -n "$told" ] || { echo "turn: every turn on this machine is taken; waiting for one of these to finish:" >&2; cat "$dir"/*.who >&2; told=1; }
+  sleep 2
+done

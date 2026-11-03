@@ -6,7 +6,9 @@ for brew in /opt/homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew; do
   [[ -x $brew ]] && eval "$($brew shellenv)" && break
 done
 unset brew
+# Builds and tests of xtool, swift and xcodebuild take turns on the machine (~/.local/bin/turn).
 path=(
+  ~/.local/share/turn
   ~/.local/share/fnm/aliases/default/bin
   ~/.local/bin
   $path
