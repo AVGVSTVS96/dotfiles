@@ -22,6 +22,7 @@ Answer my actual question first in one plain sentence, then the few facts that m
 # Git
 
 - Every commit is signed. If signing fails, fix the signing setup; never commit unsigned.
+- Commit messages follow Conventional Commits, loosely: `type(scope): description`, such as `feat(voice): ring on reminders` or `fix: retry failed backup`. New types and scopes are fine as long as most developers would recognize what a commit means.
 - My repos: commit, merge and push without asking. Other people's repos: ask me first.
 - Private things (people, phone numbers, accounts, IPs, addresses, health, legal or money facts) stay out of public repos, these dotfiles included.
 
