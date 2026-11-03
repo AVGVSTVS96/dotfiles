@@ -35,8 +35,13 @@ mkdir -p "$dir"
 if command -v flock >/dev/null; then lock="flock -o" try="flock -n"; else lock="lockf -k" try="lockf -k -t 0"; fi
 told=
 while :; do
+  # A run that has held its turn for TURN_MINUTES (30), like a dev server or a watcher, stops counting.
+  limit=${TURN_SLOTS:-2}
+  for who in $(find "$dir" -name '*.who' -mmin +"${TURN_MINUTES:-30}"); do
+    $try "${who%.who}" true 2>/dev/null || limit=$((limit + 1))
+  done
   slot=1
-  while [ "$slot" -le "${TURN_SLOTS:-2}" ]; do
+  while [ "$slot" -le "$limit" ]; do
     if $try "$dir/$slot" true 2>/dev/null; then
       printf '%s %s: %s\n' "$(date +%H:%M)" "$PWD" "$*" > "$dir/$slot.who"
       export TURN="${TURN:+$TURN }$pool"
