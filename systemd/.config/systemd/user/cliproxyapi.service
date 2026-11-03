@@ -4,7 +4,8 @@ After=network-online.target tailscaled.service
 Requires=cliproxyapi.socket
 
 [Service]
-Environment=GOMEMLIMIT=768MiB
+# About twice the live heap (~600 MB, mostly usage records), so garbage collection isn't running nonstop.
+Environment=GOMEMLIMIT=1280MiB
 ExecStart=%h/.local/bin/cliproxyapi -config %h/.config/cliproxyapi/config.yaml
 # Every agent's requests go through the proxy, so it runs ahead of the other services when the CPU is short.
 CPUWeight=500
