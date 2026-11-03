@@ -2,7 +2,8 @@
 # turn <command...>: runs a heavy command (a build, test suite, simulator or browser run) once one of this machine's
 # TURN_SLOTS turns (2 by default) is free, at the lowest CPU priority, so heavy work from every project and agent takes
 # turns instead of all running at once. Through ~/.local/share/turn, first on PATH in .zshenv, xtool, swift and
-# xcodebuild builds and tests take a turn by themselves; their other commands run straight away.
+# xcodebuild builds and tests take a turn by themselves, their other commands run straight away, and microscope
+# reviews, each a team of agents, take turns of their own (TURN_POOL=reviews).
 set -e
 name=${0##*/}
 if [ "$name" != turn ]; then
@@ -16,6 +17,7 @@ if [ "$name" != turn ]; then
   [ -n "$real" ] || { echo "turn: no $name on PATH besides $shims" >&2; exit 127; }
   case "$name $*" in
     "xtool dev"* | "swift build"* | "swift test"* | "swift run"*) ;;
+    "microscope review"*) export TURN_POOL=reviews ;;
     xcodebuild*-version* | xcodebuild*-showsdks* | xcodebuild*-list* | xcodebuild*-showBuildSettings* | xcodebuild*-find*) exec "$real" "$@" ;;
     xcodebuild*) ;;
     *) exec "$real" "$@" ;;
@@ -23,23 +25,39 @@ if [ "$name" != turn ]; then
   set -- "$real" "$@"
 fi
 [ $# -gt 0 ] || { echo "usage: turn <command...>" >&2; exit 2; }
-[ -z "${TURN:-}" ] || exec "$@"
+pool=${TURN_POOL:-runs}
+unset TURN_POOL
+case " ${TURN:-} " in *" $pool "*) exec "$@" ;; esac
 
-dir=/tmp/turn-$(id -u)
+dir=/tmp/turn-$(id -u)/$pool
 mkdir -p "$dir"
 # flock on Linux, lockf on macOS: both hold the lock while the command runs and give it back when it exits.
 if command -v flock >/dev/null; then lock="flock -o" try="flock -n"; else lock="lockf -k" try="lockf -k -t 0"; fi
+# On a Mac, a turn starts with fewer than TURN_SIMULATORS (3) simulators booted, shutting down the longest-booted
+# first, so leftover simulators don't pile up.
+simulators() {
+  command -v xcrun >/dev/null || return 0
+  booted=$(ps -Ao etime=,args= | awk '/launchd_sim .*\/Devices\// { n = split($1, t, /[-:]/); match($0, /Devices\/[0-9A-F-]+/)
+    print t[n] + 60 * t[n - 1] + 3600 * (n > 2 ? t[n - 2] : 0) + 86400 * (n > 3 ? t[1] : 0), substr($0, RSTART + 8, RLENGTH - 8) }' | sort -rn)
+  extra=$(($(printf '%s' "$booted" | grep -c .) - ${TURN_SIMULATORS:-3} + 1))
+  [ "$extra" -gt 0 ] || return 0
+  printf '%s\n' "$booted" | head -n "$extra" | while read -r _ id; do
+    echo "turn: shutting down simulator $id, booted longest, so fewer than ${TURN_SIMULATORS:-3} run" >&2
+    xcrun simctl shutdown "$id" || true
+  done
+}
 told=
 while :; do
   slot=1
   while [ "$slot" -le "${TURN_SLOTS:-2}" ]; do
     if $try "$dir/$slot" true 2>/dev/null; then
       printf '%s %s: %s\n' "$(date +%H:%M)" "$PWD" "$*" > "$dir/$slot.who"
-      export TURN=$slot
+      export TURN="${TURN:+$TURN }$pool"
+      simulators
       exec $lock "$dir/$slot" nice -n 19 "$@"
     fi
     slot=$((slot + 1))
   done
-  [ -n "$told" ] || { echo "turn: every turn on this machine is taken; waiting for one of these to finish:" >&2; cat "$dir"/*.who >&2; told=1; }
+  [ -n "$told" ] || { echo "turn: every $pool turn on this machine is taken; waiting for one of these to finish:" >&2; cat "$dir"/*.who >&2; told=1; }
   sleep 2
 done
