@@ -3,7 +3,7 @@
 # TURN_SLOTS turns (2 by default) is free, at the lowest CPU priority, so heavy work from every project and agent takes
 # turns instead of all running at once. Through ~/.local/share/turn, first on PATH in .zshenv, xtool, swift and
 # xcodebuild builds and tests take a turn by themselves, their other commands run straight away, and microscope
-# reviews, each a team of agents, take turns of their own (TURN_POOL=reviews).
+# reviews, each a team of agents, take turns of their own (TURN_POOL=reviews), and `xcrun simctl boot` waits while SIMULATORS (3) are booted.
 set -e
 name=${0##*/}
 if [ "$name" != turn ]; then
@@ -18,7 +18,26 @@ if [ "$name" != turn ]; then
   case "$name $*" in
     "xtool dev"* | "swift build"* | "swift test"* | "swift run"*) ;;
     "microscope review"*) export TURN_POOL=reviews ;;
+    "xcrun simctl boot "* | "xcrun simctl bootstatus "*"-b"*)
+      # A simulator boots only while fewer than SIMULATORS (3) are booted on this machine, one boot at a time.
+      booted=$("$real" simctl list devices booted | grep '(Booted)' || true)
+      case "$booted" in *"($3)"* | *" $3 ("*) exec "$real" "$@" ;; esac
+      if [ -z "${TURN_SIMULATOR:-}" ]; then
+        mkdir -p "/tmp/turn-$(id -u)"
+        export TURN_SIMULATOR=1
+        exec lockf -k "/tmp/turn-$(id -u)/simulators" "$0" "$@"
+      fi
+      told=
+      while [ "$(printf '%s' "$booted" | grep -c '(Booted)')" -ge "${SIMULATORS:-3}" ]; do
+        [ -n "$told" ] || { echo "turn: ${SIMULATORS:-3} simulators are booted; $3 boots once one shuts down:" >&2; echo "$booted" >&2; told=1; }
+        sleep 5
+        booted=$("$real" simctl list devices booted | grep '(Booted)' || true)
+      done
+      exec "$real" "$@" ;;
     xcodebuild*-version* | xcodebuild*-showsdks* | xcodebuild*-list* | xcodebuild*-showBuildSettings* | xcodebuild*-find*) exec "$real" "$@" ;;
+    xcodebuild*Simulator*id=*)
+      id=$(echo "$*" | sed -n 's/.*id=\([0-9A-Fa-f-]\{36\}\).*/\1/p')
+      [ -z "$id" ] || "$shims/xcrun" simctl boot "$id" >/dev/null 2>&1 || true ;;
     xcodebuild*) ;;
     *) exec "$real" "$@" ;;
   esac
