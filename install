@@ -10,7 +10,7 @@ mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
 
 case "$(uname -s)" in
-  Darwin) os="brew completions ghostty nushell pi zed zsh" ;;
+  Darwin) os="brew completions ghostty launchd nushell pi zed zsh" ;;
   Linux)
     # Wallpaper downloads stay out of the repo; the machine's SSH access list stays its own.
     # Fish is the login shell, so zsh only gets .zshenv: agents' shell commands run in zsh.

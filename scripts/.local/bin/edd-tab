@@ -1,0 +1,33 @@
+#!/bin/sh
+# edd-tab arm <YYYY-MM-DD> | disarm | open
+# While an EDD deadline is armed and three days or less away, open puts EDD's UI Online in front in
+# Dia: the tab already on uio.edd.ca.gov, or one new tab. hex arms it from the unemployment topic.
+set -eu
+due=~/.config/edd-tab/due
+case ${1:-} in
+arm) mkdir -p "${due%/*}" && echo "$2" >"$due" ;;
+disarm) rm -f "$due" ;;
+open)
+  [ -f "$due" ] || exit 0
+  day=$(cat "$due")
+  if [ "$(date +%F)" \> "$day" ]; then rm -f "$due"; exit 0; fi
+  [ "$(date -v+3d +%F)" \< "$day" ] && exit 0
+  osascript <<'APPLESCRIPT'
+tell application "Dia"
+  repeat with w in windows
+    repeat with t in tabs of w
+      if URL of t contains "uio.edd.ca.gov" then
+        focus t
+        activate
+        return
+      end if
+    end repeat
+  end repeat
+  set t to make new tab at end of tabs of front window with properties {URL:"https://uio.edd.ca.gov/UIO/Pages/Public/LandingPage.aspx"}
+  focus t
+  activate
+end tell
+APPLESCRIPT
+  ;;
+*) echo "usage: edd-tab arm <YYYY-MM-DD> | disarm | open" >&2; exit 2 ;;
+esac

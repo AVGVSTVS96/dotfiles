@@ -1,0 +1,15 @@
+[Unit]
+Description=hex mail: Gmail push to hex threads (~/hex/mail)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=%h/hex/mail
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+Environment="PROTON_PASS_AGENT_REASON=hex mail: Gmail push credentials"
+ExecStart=%h/.local/bin/enclave run GMAIL_CLIENT_ID=gmail-push/client_id GMAIL_CLIENT_SECRET=gmail-push/client_secret GMAIL_REFRESH_TOKEN=gmail-push/refresh_token bun watch.ts
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target
