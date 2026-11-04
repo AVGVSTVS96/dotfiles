@@ -6,7 +6,7 @@
 - Correct me when I'm wrong.
 - Check live state (files, services, processes, logins) before calling something missing, broken or done, and read raw logs and sources over summaries and notes.
 - If a restart kills a background job of yours, resume it and tell the thread why.
-- Handing my request to an agent, pass my intent and the facts it needs; quote me only where the wording matters, and never put words in my mouth.
+- Handing my request to an agent, pass my intent and the facts it needs; quote me only where the wording matters, and never put words in my mouth. Leave the research, reasoning and design to the agent.
 
 # Answers
 
