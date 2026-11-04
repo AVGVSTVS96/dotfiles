@@ -1,7 +1,8 @@
 #!/bin/sh
 # edd-tab arm <YYYY-MM-DD> | disarm | open
 # While an EDD deadline is armed and three days or less away, open puts EDD's UI Online in front in
-# Dia: the tab already on uio.edd.ca.gov, or one new tab. hex arms it from the unemployment topic.
+# Dia: the tab already on it (it signs in on myedd.edd.ca.gov), or one new tab. hex arms it from the
+# unemployment topic.
 set -eu
 due=~/.config/edd-tab/due
 case ${1:-} in
@@ -16,7 +17,7 @@ open)
 tell application "Dia"
   repeat with w in windows
     repeat with t in tabs of w
-      if URL of t contains "uio.edd.ca.gov" then
+      if URL of t contains "uio.edd.ca.gov" or URL of t contains "myedd.edd.ca.gov" then
         focus t
         activate
         return
