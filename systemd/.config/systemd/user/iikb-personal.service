@@ -1,0 +1,10 @@
+[Unit]
+Description=iikb: fine-tunes the next-word network on what you type, at most once a day (the backup server gives it to the phone)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Developer/iikb
+ExecStart=%h/Developer/iikb/scripts/personal --daily %h/.local/share/iikb/record.jsonl
+Nice=19
+IOSchedulingClass=idle
+TimeoutStartSec=1h

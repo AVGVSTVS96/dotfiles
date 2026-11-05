@@ -1,0 +1,12 @@
+[Unit]
+Description=iikb: keeps every file iikb sends from the phone, never deleting one (behind tailscale serve /backup)
+
+[Service]
+WorkingDirectory=%h/Developer/iikb
+EnvironmentFile=%h/.config/iikb/backup.env
+ExecStart=/usr/bin/bun server/backup.ts --port 2592 --dir %h/.local/share/iikb/backup
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

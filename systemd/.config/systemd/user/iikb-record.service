@@ -1,0 +1,12 @@
+[Unit]
+Description=iikb: the record source, a log of what you send and type on the phone (behind tailscale serve /record)
+
+[Service]
+WorkingDirectory=%h/Developer/iikb
+EnvironmentFile=%h/.config/iikb/record.env
+ExecStart=/usr/bin/bun sources/record.ts --port 2590 --out %h/.local/share/iikb/record.jsonl
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
