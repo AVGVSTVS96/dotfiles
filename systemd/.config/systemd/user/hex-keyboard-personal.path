@@ -1,0 +1,9 @@
+[Unit]
+Description=hex keyboard: watches the record and the shipped network for the personal network
+
+[Path]
+PathChanged=%h/.local/share/hex-keyboard/record.jsonl
+PathChanged=%h/Developer/hex-keyboard/Packages/HexKeyboard/Sources/KeyboardUI/Resources/en.network
+
+[Install]
+WantedBy=default.target

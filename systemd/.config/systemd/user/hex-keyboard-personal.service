@@ -1,0 +1,10 @@
+[Unit]
+Description=hex keyboard: fine-tunes the next-word network on what you type, at most once a day (the backup server gives it to the phone)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Developer/hex-keyboard
+ExecStart=%h/Developer/hex-keyboard/scripts/personal --daily %h/.local/share/hex-keyboard/record.jsonl
+Nice=19
+IOSchedulingClass=idle
+TimeoutStartSec=1h
