@@ -38,36 +38,50 @@ if [ "$name" != turn ]; then
     "xtool dev"* | "swift build"* | "swift test"* | "swift run"*) ;;
     "microscope review"*) export TURN_POOL=reviews ;;
     "xcrun simctl boot "* | "xcrun simctl bootstatus "*"-b"*)
-      # A simulator boots only while fewer than SIMULATORS (3) are booted on this machine, one boot at a time.
-      booted=$("$real" simctl list devices booted | grep '(Booted)' || true)
-      case "$booted" in *"($3)"* | *" $3 ("*) exec "$real" "$@" ;; esac
-      if [ -z "${TURN_SIMULATOR:-}" ]; then
-        mkdir -p "/tmp/turn-$(id -u)"
-        export TURN_SIMULATOR=1
-        exec lockf -k "/tmp/turn-$(id -u)/simulators" "$0" "$@"
-      fi
+      # A simulator boots only while fewer than SIMULATORS (3) are booted and memory has room, one boot starting at a
+      # time. The wait for room happens outside the lock, and a boot holds the lock 10 minutes at most, so no stuck
+      # boot blocks the machine's others.
+      id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
+      [ -n "$id" ] || exec "$real" "$@"
+      is_booted() { "$real" simctl list devices booted | grep -q "($id) (Booted)"; }
+      wait_for_room() {
+        while [ "$("$real" simctl list devices booted | grep -c '(Booted)')" -ge "${SIMULATORS:-3}" ] || ! roomy; do
+          [ -n "$told" ] || { echo "turn: $id boots once fewer than ${SIMULATORS:-3} simulators are booted and memory has room ($(memory)); booted:" >&2; "$real" simctl list devices booted | grep '(Booted)' >&2; told=1; }
+          sleep 5
+        done
+      }
       told=
-      while [ "$(printf '%s' "$booted" | grep -c '(Booted)')" -ge "${SIMULATORS:-3}" ] || ! roomy; do
-        [ -n "$told" ] || { echo "turn: $3 boots once fewer than ${SIMULATORS:-3} simulators are booted and memory has room ($(memory)); booted:" >&2; echo "$booted" >&2; told=1; }
-        sleep 5
-        booted=$("$real" simctl list devices booted | grep '(Booted)' || true)
-      done
+      if [ -z "${TURN_SIMULATOR:-}" ]; then
+        if ! is_booted; then
+          wait_for_room
+          mkdir -p "/tmp/turn-$(id -u)"
+          TURN_SIMULATOR=1 lockf -k "/tmp/turn-$(id -u)/simulators" "$0" simctl boot "$id" || true
+        fi
+        [ "$2" = boot ] && is_booted && exit 0
+        exec "$real" "$@"
+      fi
+      # Under the lock: room again, then the boot started and waited on for 10 minutes at most.
+      is_booted && exit 0
+      wait_for_room
       # It boots without its wallpaper, widget and Live Activity services, a third of a fresh simulator's CPU that no
       # test needs (measured Nov 3: 295 → 193 CPU-s in its first 2 minutes), or the Siri, Apple Intelligence, routine,
       # usage, mail, photos and device-management daemons iOS 27.1's simulators crash-loop (1,025 crash reports by
       # Nov 5, each also costing ReportCrash CPU). Its launchd reads them from this file.
-      id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
-      if [ -n "$id" ]; then
-        off=/private/var/tmp/com.apple.CoreSimulator.SimDevice.$id/disabled.plist
-        mkdir -p -m 700 "${off%/*}"
-        for label in com.apple.PosterBoard com.apple.chronod com.apple.liveactivitiesd com.apple.intelligencetasksd \
-          com.apple.siriactionsd com.apple.siriinferenced com.apple.siriknowledged com.apple.assistantd com.apple.routined \
-          com.apple.UsageTrackingAgent com.apple.nanoprefsyncd.2 com.apple.dmd com.apple.email.maild com.apple.assetsd \
-          com.apple.ScreenTimeAgent com.apple.sirittsd com.apple.modelmanagerd; do
-          /usr/libexec/PlistBuddy -c "Set :$label true" "$off" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$label bool true" "$off" >/dev/null
-        done
-      fi
-      exec "$real" "$@" ;;
+      off=/private/var/tmp/com.apple.CoreSimulator.SimDevice.$id/disabled.plist
+      mkdir -p -m 700 "${off%/*}"
+      for label in com.apple.PosterBoard com.apple.chronod com.apple.liveactivitiesd com.apple.intelligencetasksd \
+        com.apple.siriactionsd com.apple.siriinferenced com.apple.siriknowledged com.apple.assistantd com.apple.routined \
+        com.apple.UsageTrackingAgent com.apple.nanoprefsyncd.2 com.apple.dmd com.apple.email.maild com.apple.assetsd \
+        com.apple.ScreenTimeAgent com.apple.sirittsd com.apple.modelmanagerd; do
+        /usr/libexec/PlistBuddy -c "Set :$label true" "$off" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$label bool true" "$off" >/dev/null
+      done
+      "$real" simctl boot "$id" 2>/dev/null || true
+      held=0
+      until is_booted || [ "$held" -ge 600 ]; do
+        sleep 3
+        held=$((held + 3))
+      done
+      exit 0 ;;
     xcodebuild*-version* | xcodebuild*-showsdks* | xcodebuild*-list* | xcodebuild*-showBuildSettings* | xcodebuild*-find*) exec "$real" "$@" ;;
     xcodebuild*Simulator*id=*)
       id=$(echo "$*" | sed -n 's/.*id=\([0-9A-Fa-f-]\{36\}\).*/\1/p')
