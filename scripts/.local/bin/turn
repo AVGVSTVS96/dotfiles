@@ -34,12 +34,16 @@ if [ "$name" != turn ]; then
         booted=$("$real" simctl list devices booted | grep '(Booted)' || true)
       done
       # It boots without its wallpaper, widget and Live Activity services, a third of a fresh simulator's CPU that no
-      # test needs (measured Nov 3: 295 → 193 CPU-s in its first 2 minutes). Its launchd reads them from this file.
+      # test needs (measured Nov 3: 295 → 193 CPU-s in its first 2 minutes), or the Siri, Apple Intelligence, routine,
+      # usage, mail, photos and device-management daemons iOS 27.1's simulators crash-loop (1,025 crash reports by
+      # Nov 5, each also costing ReportCrash CPU). Its launchd reads them from this file.
       id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
       if [ -n "$id" ]; then
         off=/private/var/tmp/com.apple.CoreSimulator.SimDevice.$id/disabled.plist
         mkdir -p -m 700 "${off%/*}"
-        for label in com.apple.PosterBoard com.apple.chronod com.apple.liveactivitiesd; do
+        for label in com.apple.PosterBoard com.apple.chronod com.apple.liveactivitiesd com.apple.intelligencetasksd \
+          com.apple.siriactionsd com.apple.siriinferenced com.apple.siriknowledged com.apple.assistantd com.apple.routined \
+          com.apple.UsageTrackingAgent com.apple.nanoprefsyncd.2 com.apple.dmd com.apple.email.maild com.apple.assetsd; do
           /usr/libexec/PlistBuddy -c "Set :$label true" "$off" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$label bool true" "$off" >/dev/null
         done
       fi
