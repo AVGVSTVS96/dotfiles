@@ -9,8 +9,17 @@
 # A check's own xcodebuilds, its UI tests' build included, run inside its turn.
 # Waiting runs take turns in the order they came; TURN_FIRST=1 puts one that someone is waiting on first.
 # ~/.config/turn/<pool> holds a pool's number of turns when it should differ from TURN_SLOTS, as while the Mac recovers.
+# A new turn or simulator boot also waits while memory pressure isn't normal or under 2 GB of swap is free (roomy).
 set -e
 name=${0##*/}
+# Whether the machine has memory to spare for another simulator or build: macOS's memory pressure is normal (not
+# warn or critical) and at least TURN_SWAP_FREE MB (2048) of swap is free. Always true where there's no such sysctl.
+roomy() {
+  level=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null) || return 0
+  swap=$(sysctl -n vm.swapusage | sed -n 's/.*free = \([0-9]*\).*/\1/p')
+  [ "$level" = 1 ] && [ "${swap:-0}" -ge "${TURN_SWAP_FREE:-2048}" ]
+}
+memory() { echo "memory pressure $(sysctl -n kern.memorystatus_vm_pressure_level) (1 is normal), $(sysctl -n vm.swapusage)"; }
 if [ "$name" != turn ]; then
   shims=$(cd "${0%/*}" && pwd -P)
   real=
@@ -38,8 +47,8 @@ if [ "$name" != turn ]; then
         exec lockf -k "/tmp/turn-$(id -u)/simulators" "$0" "$@"
       fi
       told=
-      while [ "$(printf '%s' "$booted" | grep -c '(Booted)')" -ge "${SIMULATORS:-3}" ]; do
-        [ -n "$told" ] || { echo "turn: ${SIMULATORS:-3} simulators are booted; $3 boots once one shuts down:" >&2; echo "$booted" >&2; told=1; }
+      while [ "$(printf '%s' "$booted" | grep -c '(Booted)')" -ge "${SIMULATORS:-3}" ] || ! roomy; do
+        [ -n "$told" ] || { echo "turn: $3 boots once fewer than ${SIMULATORS:-3} simulators are booted and memory has room ($(memory)); booted:" >&2; echo "$booted" >&2; told=1; }
         sleep 5
         booted=$("$real" simctl list devices booted | grep '(Booted)' || true)
       done
@@ -88,6 +97,11 @@ while :; do
   for waiting in "$dir.queue"/*; do
     kill -0 "${waiting##*-}" 2>/dev/null || rm -f "$waiting"
   done
+  if [ "$pool" != reviews ] && ! roomy; then
+    [ "$told" = memory ] || { echo "turn: the next $pool turn waits for memory: $(memory)" >&2; told=memory; }
+    sleep 5
+    continue
+  fi
   if [ "$(ls "$dir.queue" | sort -t- -k1,1 -k2,2n | head -1)" != "${ticket##*/}" ]; then
     [ -n "$told" ] || { echo "turn: waiting in line for a $pool turn, behind:" >&2; ls "$dir.queue" | sort -t- -k1,1 -k2,2n |
       sed "/^${ticket##*/}\$/,\$d" | while read -r t; do cat "$dir.queue/$t"; done >&2; told=1; }
