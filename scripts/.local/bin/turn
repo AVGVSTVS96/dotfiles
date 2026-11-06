@@ -7,6 +7,7 @@
 # Simulator test runs (xcodebuild test, or a check run as TURN_POOL=sims) take turns of their own too, since they mostly
 # wait on a simulator that's already booted, so they don't queue behind builds and benchmarks, nor those behind them.
 # A check's own xcodebuilds, its UI tests' build included, run inside its turn.
+# Waiting runs take turns in the order they came; TURN_FIRST=1 puts one that someone is waiting on first.
 set -e
 name=${0##*/}
 if [ "$name" != turn ]; then
@@ -75,8 +76,23 @@ dir=/tmp/turn-$(id -u)/$pool
 mkdir -p "$dir"
 # flock on Linux, lockf on macOS: both hold the lock while the command runs and give it back when it exits.
 if command -v flock >/dev/null; then lock="flock -o" try="flock -n"; else lock="lockf -k" try="lockf -k -t 0"; fi
+# Waiting runs take turns in the order they came, by ticket, and TURN_FIRST=1 puts a run that someone is waiting on
+# ahead of the rest. A ticket whose run has gone is dropped.
+mkdir -p "$dir.queue"
+ticket=$dir.queue/$([ -n "${TURN_FIRST:-}" ] && echo 0 || echo 1)-$(date +%s)-$$
+echo "$PWD: $*" > "$ticket"
+unset TURN_FIRST
 told=
 while :; do
+  for waiting in "$dir.queue"/*; do
+    kill -0 "${waiting##*-}" 2>/dev/null || rm -f "$waiting"
+  done
+  if [ "$(ls "$dir.queue" | sort -t- -k1,1 -k2,2n | head -1)" != "${ticket##*/}" ]; then
+    [ -n "$told" ] || { echo "turn: waiting in line for a $pool turn, behind:" >&2; ls "$dir.queue" | sort -t- -k1,1 -k2,2n |
+      sed "/^${ticket##*/}\$/,\$d" | while read -r t; do cat "$dir.queue/$t"; done >&2; told=1; }
+    sleep 2
+    continue
+  fi
   # A run that has held its turn for TURN_MINUTES (30), like a dev server or a watcher, stops counting.
   limit=${TURN_SLOTS:-2}
   for who in $(find "$dir" -name '*.who' -mmin +"${TURN_MINUTES:-30}"); do
@@ -87,10 +103,11 @@ while :; do
     if $try "$dir/$slot" true 2>/dev/null; then
       printf '%s %s: %s\n' "$(date +%H:%M)" "$PWD" "$*" > "$dir/$slot.who"
       export TURN="${TURN:+$TURN }$pool"
+      rm -f "$ticket"
       exec $lock "$dir/$slot" nice -n 19 "$@"
     fi
     slot=$((slot + 1))
   done
-  [ -n "$told" ] || { echo "turn: every $pool turn on this machine is taken; waiting for one of these to finish:" >&2; cat "$dir"/*.who >&2; told=1; }
+  [ "$told" = taken ] || { echo "turn: every $pool turn on this machine is taken; next in line, waiting for one of these to finish:" >&2; cat "$dir"/*.who >&2; told=taken; }
   sleep 2
 done
