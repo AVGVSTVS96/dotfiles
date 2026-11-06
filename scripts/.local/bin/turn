@@ -48,7 +48,8 @@ if [ "$name" != turn ]; then
         mkdir -p -m 700 "${off%/*}"
         for label in com.apple.PosterBoard com.apple.chronod com.apple.liveactivitiesd com.apple.intelligencetasksd \
           com.apple.siriactionsd com.apple.siriinferenced com.apple.siriknowledged com.apple.assistantd com.apple.routined \
-          com.apple.UsageTrackingAgent com.apple.nanoprefsyncd.2 com.apple.dmd com.apple.email.maild com.apple.assetsd; do
+          com.apple.UsageTrackingAgent com.apple.nanoprefsyncd.2 com.apple.dmd com.apple.email.maild com.apple.assetsd \
+          com.apple.ScreenTimeAgent com.apple.sirittsd com.apple.modelmanagerd; do
           /usr/libexec/PlistBuddy -c "Set :$label true" "$off" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$label bool true" "$off" >/dev/null
         done
       fi
