@@ -1,0 +1,4 @@
+#!/bin/sh
+rsync -a --exclude '.*' --exclude folder-posts.jsonl --exclude referenced.jsonl \
+  "$HOME/Developer/personal/commonplace/data/raw/x/" bassim@server:.local/share/xdraft/x/ &&
+  ssh bassim@server hex/bin/xdraft-batch

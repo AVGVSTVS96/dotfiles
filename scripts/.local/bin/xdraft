@@ -1,0 +1,4 @@
+#!/bin/sh
+export XDRAFT_FEED="$HOME/.local/share/xfeed/days"
+export XDRAFT_BROWSER="ssh mac /Users/bassimshahidy/.local/share/fnm/aliases/default/bin/agent-browser --session xdraft --restore x --restore-save never"
+exec bun "$HOME/Developer/xdraft/src/cli.ts" "$@"
