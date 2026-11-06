@@ -8,6 +8,7 @@
 # wait on a simulator that's already booted, so they don't queue behind builds and benchmarks, nor those behind them.
 # A check's own xcodebuilds, its UI tests' build included, run inside its turn.
 # Waiting runs take turns in the order they came; TURN_FIRST=1 puts one that someone is waiting on first.
+# ~/.config/turn/<pool> holds a pool's number of turns when it should differ from TURN_SLOTS, as while the Mac recovers.
 set -e
 name=${0##*/}
 if [ "$name" != turn ]; then
@@ -94,7 +95,7 @@ while :; do
     continue
   fi
   # A run that has held its turn for TURN_MINUTES (30), like a dev server or a watcher, stops counting.
-  limit=${TURN_SLOTS:-2}
+  limit=$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/turn/$pool" 2>/dev/null || echo "${TURN_SLOTS:-2}")
   for who in $(find "$dir" -name '*.who' -mmin +"${TURN_MINUTES:-30}"); do
     $try "${who%.who}" true 2>/dev/null || limit=$((limit + 1))
   done
