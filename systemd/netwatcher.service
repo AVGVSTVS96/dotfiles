@@ -1,0 +1,13 @@
+[Unit]
+Description=netwatch: watches the home network (outages, latency, speed, devices, Tailscale)
+After=network-online.target tailscaled.service
+
+[Service]
+WorkingDirectory=%h/Developer/netwatch
+ExecStart=/usr/bin/bun src/main.ts
+Restart=always
+RestartSec=2
+MemoryMax=256M
+
+[Install]
+WantedBy=default.target
