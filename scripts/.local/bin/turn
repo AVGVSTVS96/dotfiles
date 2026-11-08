@@ -44,8 +44,20 @@ if [ "$name" != turn ]; then
       id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
       [ -n "$id" ] || exec "$real" "$@"
       is_booted() { "$real" simctl list devices booted | grep -q "($id) (Booted)"; }
+      # A booted simulator no process outside it has named, by id or name, for 30 seconds is idle, since runs leave
+      # theirs booted for the next one; a boot waiting on the cap shuts one idle simulator down.
+      named() { ps -Ao command= | grep -v -e CoreSimulator/Devices/ -e grep | grep -qF -e "$1" -e "$2"; }
+      free_idle() {
+        "$real" simctl list devices booted | sed -n 's/^ *\(.*\) (\([0-9A-F-]\{36\}\)) (Booted).*/\2 \1/p' |
+          while read -r other sim; do
+            named "$other" "$sim" && continue
+            sleep 30
+            named "$other" "$sim" || { "$real" simctl shutdown "$other"; break; }
+          done
+      }
       wait_for_room() {
         while [ "$("$real" simctl list devices booted | grep -c '(Booted)')" -ge "${SIMULATORS:-2}" ] || ! roomy; do
+          roomy && free_idle
           [ -n "$told" ] || { echo "turn: $id boots once fewer than ${SIMULATORS:-2} simulators are booted and memory has room ($(memory)); booted:" >&2; "$real" simctl list devices booted | grep '(Booted)' >&2; told=1; }
           sleep 5
         done
