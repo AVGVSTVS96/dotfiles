@@ -117,7 +117,15 @@ if [ "$name" != turn ]; then
         com.apple.ScreenTimeAgent com.apple.sirittsd com.apple.modelmanagerd; do
         /usr/libexec/PlistBuddy -c "Set :$label true" "$off" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :$label bool true" "$off" >/dev/null
       done
-      "$real" simctl boot "$id" 2>/dev/null || true
+      # simslim (brew install mobai-app/tap/simslim) adds the ~170 other services no check needs to the same file and
+      # boots it, so a booted Duo costs 0.7 GB, 130 CPU-s and 34 s to boot, against 1.6 GB, 310 CPU-s and 67 s with the
+      # list above alone (github.com/AVGVSTVS96/simlight, Nov 8). It runs the real xcrun, past this shim.
+      if command -v simslim >/dev/null; then
+        PATH=${real%/*}:$PATH simslim on "$id" ${SIM_WIDGETS:+--keep com.apple.chronod,com.apple.siriactionsd} >/dev/null 2>&1 ||
+          "$real" simctl boot "$id" 2>/dev/null || true
+      else
+        "$real" simctl boot "$id" 2>/dev/null || true
+      fi
       held=0
       until is_booted || [ "$held" -ge 600 ]; do
         sleep 3
