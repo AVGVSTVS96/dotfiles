@@ -13,12 +13,12 @@
 set -e
 name=${0##*/}
 # Whether the machine has room for another simulator or build: macOS's memory pressure is normal, not warn or
-# critical, it runs on power, as hex's job placement (room) asks of the Mac too, and a quarter of its CPU is idle, since simulators, builds and installs starting together on Nov 8 took
+# critical, and a quarter of its CPU is idle, since simulators, builds and installs starting together on Nov 8 took
 # the Mac's load past 595, where loginwindow crashed and logged Bassim out. Free swap isn't a signal, since macOS
 # grows and shrinks swap as it goes. Always true where there's no such sysctl.
 roomy() {
   level=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null) || return 0
-  [ "$level" = 1 ] && pmset -g batt | grep -q "AC Power" && [ "$(top -l 2 -n 0 -s 1 | awk '/CPU usage/ { idle = $7 } END { print int(idle) }')" -ge 25 ]
+  [ "$level" = 1 ] && [ "$(top -l 2 -n 0 -s 1 | awk '/CPU usage/ { idle = $7 } END { print int(idle) }')" -ge 25 ]
 }
 memory() { echo "memory pressure $(sysctl -n kern.memorystatus_vm_pressure_level) (1 is normal), $(sysctl -n vm.swapusage), $(top -l 1 -n 0 | grep "CPU usage"), $(pmset -g batt | head -1)"; }
 if [ "$name" != turn ]; then
