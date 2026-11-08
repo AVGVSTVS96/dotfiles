@@ -5,7 +5,7 @@
 # xcodebuild builds and tests take a turn by themselves, their other commands run straight away, and microscope
 # reviews, each a team of agents, take turns of their own (TURN_POOL=reviews), and `xcrun simctl boot` waits while SIMULATORS (3) are booted, starting 2 minutes after the last boot at the soonest.
 # Simulator test runs (xcodebuild test, or a check run as TURN_POOL=sims) take turns of their own too, since they mostly
-# wait on a simulator that's already booted, so they don't queue behind builds and benchmarks, nor those behind them.
+# wait on a simulator that's already booted, so they don't queue behind builds and benchmarks, nor those behind them, nor wait for room: their simulator, booted, already took it.
 # A check's own xcodebuilds, its UI tests' build included, run inside its turn.
 # Waiting runs take turns in the order they came; TURN_FIRST=1 puts one that someone is waiting on first.
 # ~/.config/turn/<pool> holds a pool's number of turns when it should differ from TURN_SLOTS, as while the Mac recovers.
@@ -147,7 +147,7 @@ while :; do
   for waiting in "$dir.queue"/*; do
     kill -0 "${waiting##*-}" 2>/dev/null || rm -f "$waiting"
   done
-  if [ "$pool" != reviews ] && ! roomy; then
+  if [ "$pool" != reviews ] && [ "$pool" != sims ] && ! roomy; then
     [ "$told" = memory ] || { echo "turn: the next $pool turn waits for memory: $(memory)" >&2; told=memory; }
     sleep 5
     continue
