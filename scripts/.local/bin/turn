@@ -3,7 +3,7 @@
 # TURN_SLOTS turns (2 by default) is free, at the lowest CPU priority, so heavy work from every project and agent takes
 # turns instead of all running at once. Through ~/.local/share/turn, first on PATH in .zshenv, xtool, swift and
 # xcodebuild builds and tests take a turn by themselves, their other commands run straight away, and microscope
-# reviews, each a team of agents, take turns of their own (TURN_POOL=reviews), and `xcrun simctl boot` waits while SIMULATORS (3) are booted.
+# reviews, each a team of agents, take turns of their own (TURN_POOL=reviews), and `xcrun simctl boot` waits while SIMULATORS (3) are booted, starting 2 minutes after the last boot at the soonest.
 # Simulator test runs (xcodebuild test, or a check run as TURN_POOL=sims) take turns of their own too, since they mostly
 # wait on a simulator that's already booted, so they don't queue behind builds and benchmarks, nor those behind them.
 # A check's own xcodebuilds, its UI tests' build included, run inside its turn.
@@ -60,9 +60,14 @@ if [ "$name" != turn ]; then
         [ "$2" = boot ] && is_booted && exit 0
         exec "$real" "$@"
       fi
-      # Under the lock: room again, then the boot started and waited on for 10 minutes at most.
+      # Under the lock: room again, and 2 minutes since the last boot started, then the boot started and waited on
+      # for 10 minutes at most. Each boot starts ~300 iOS services at once; on Nov 8, 8 boots in 30 minutes took the
+      # Mac's load to 595 and crashed loginwindow, logging Bassim out.
       is_booted && exit 0
       wait_for_room
+      last=/tmp/turn-$(id -u)/last-boot
+      while [ -e "$last" ] && [ $(($(date +%s) - $(stat -f %m "$last" 2>/dev/null || stat -c %Y "$last"))) -lt 120 ]; do sleep 5; done
+      touch "$last"
       # It boots without its wallpaper, widget and Live Activity services, a third of a fresh simulator's CPU that no
       # test needs (measured Nov 3: 295 → 193 CPU-s in its first 2 minutes), or the Siri, Apple Intelligence, routine,
       # usage, mail, photos and device-management daemons iOS 27.1's simulators crash-loop (1,025 crash reports by
