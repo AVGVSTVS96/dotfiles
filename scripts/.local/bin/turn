@@ -48,7 +48,7 @@ if [ "$name" != turn ]; then
       # A booted simulator is in use while a process outside it names it, by id or name, or for 5 minutes after it
       # boots or an app starts on it, since a check names its simulator only in short simctl calls and launches its app
       # for each state. An app left running longer, like a probe a run left open, doesn't count. One out of use for 30
-      # seconds is idle, since runs leave theirs booted for the next one; a boot waiting on the cap shuts one down.
+      # seconds is idle, since runs leave theirs booted for the next one; a waiting boot shuts one down, also when the CPU is short, since idle simulators can keep it so.
       used() {
         ps -Ao etime=,command= | awk -v id="$1" -v sim="$2" '
           function age(etime, part, n) {
@@ -70,7 +70,7 @@ if [ "$name" != turn ]; then
       }
       wait_for_room() {
         while [ "$("$real" simctl list devices booted | grep -c '(Booted)')" -ge "${SIMULATORS:-3}" ] || ! roomy; do
-          roomy && free_idle
+          free_idle
           [ -n "$told" ] || { echo "turn: $id boots once fewer than ${SIMULATORS:-3} simulators are booted and memory has room ($(memory)); booted:" >&2; "$real" simctl list devices booted | grep '(Booted)' >&2; told=1; }
           sleep 5
         done
