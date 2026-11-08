@@ -1,0 +1,12 @@
+[Unit]
+Description=standby: the cloud twin takes hex over while the server is gone, and hands it back
+After=network-online.target tailscaled.service
+
+[Service]
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/standby watch
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
