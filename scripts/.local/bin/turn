@@ -131,6 +131,14 @@ if [ "$name" != turn ]; then
         sleep 3
         held=$((held + 3))
       done
+      # macOS starts a simulator's processes itself, so the nice this boot runs at never reaches them (they ran at 0
+      # and -10). Lowering its launchd_sim and everything under it does, and apps it launches later inherit that.
+      ps -Ao pid=,ppid=,command= | awk -v id="$id" '
+        { pid[NR] = $1; parent[NR] = $2; if (/launchd_sim/ && index($0, id)) sim[$1] = 1 }
+        END {
+          do { grew = 0; for (i = 1; i <= NR; i++) if (!(pid[i] in sim) && (parent[i] in sim)) { sim[pid[i]] = 1; grew = 1 } } while (grew)
+          for (p in sim) print p
+        }' | xargs renice -n 19 -p >/dev/null 2>&1 || true
       exit 0 ;;
     xcodebuild*-version* | xcodebuild*-showsdks* | xcodebuild*-list* | xcodebuild*-showBuildSettings* | xcodebuild*-find*) exec "$real" "$@" ;;
     xcodebuild*Simulator*id=*)
