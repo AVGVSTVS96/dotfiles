@@ -44,15 +44,27 @@ if [ "$name" != turn ]; then
       id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
       [ -n "$id" ] || exec "$real" "$@"
       is_booted() { "$real" simctl list devices booted | grep -q "($id) (Booted)"; }
-      # A booted simulator no process outside it has named, by id or name, for 30 seconds is idle, since runs leave
-      # theirs booted for the next one; a boot waiting on the cap shuts one idle simulator down.
-      named() { ps -Ao command= | grep -v -e CoreSimulator/Devices/ -e grep | grep -qF -e "$1" -e "$2"; }
+      # A booted simulator is in use while a process outside it names it, by id or name, while an app runs on it, or
+      # for its first 5 minutes after booting, since a check names its simulator only in short simctl calls. One out of
+      # use for 30 seconds is idle, since runs leave theirs booted for the next one; a boot waiting on the cap shuts one
+      # idle simulator down.
+      used() {
+        ps -Ao etime=,command= | awk -v id="$1" -v sim="$2" '
+          index($0, "CoreSimulator/Devices/" id "/data/Containers/Bundle/") { found = 1 }
+          index($0, "CoreSimulator/Devices/" id "/") && / launchd_sim / {
+            n = split($1, part, /[-:]/)
+            up = part[n] + 60 * part[n - 1] + (n > 2 ? 3600 * part[n - 2] : 0) + (n > 3 ? 86400 * part[1] : 0)
+            if (up < 300) found = 1
+          }
+          !index($0, "CoreSimulator/Devices/") && !/awk -v id/ && (index($0, id) || index($0, sim)) { found = 1 }
+          END { exit !found }'
+      }
       free_idle() {
         "$real" simctl list devices booted | sed -n 's/^ *\(.*\) (\([0-9A-F-]\{36\}\)) (Booted).*/\2 \1/p' |
           while read -r other sim; do
-            named "$other" "$sim" && continue
+            used "$other" "$sim" && continue
             sleep 30
-            named "$other" "$sim" || { "$real" simctl shutdown "$other"; break; }
+            used "$other" "$sim" || { "$real" simctl shutdown "$other"; break; }
           done
       }
       wait_for_room() {
