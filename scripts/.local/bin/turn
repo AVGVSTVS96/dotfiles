@@ -45,6 +45,12 @@ if [ "$name" != turn ]; then
       id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
       [ -n "$id" ] || exec "$real" "$@"
       is_booted() { "$real" simctl list devices booted | grep -q "($id) (Booted)"; }
+      # Simulators boot only to reproduce a bug a run is chasing (SIM_REPRO=1): Bassim checks changes on his Duo, and on
+      # Nov 8 simulators cost two Mac lockups, a logout and a forced restart for little they found.
+      if [ -z "${SIM_REPRO:-}${TURN_SIMULATOR:-}" ] && ! is_booted; then
+        echo "turn: simulators are off; check the change on the Duo, or set SIM_REPRO=1 to boot one for a bug you're reproducing" >&2
+        exit 1
+      fi
       # A booted simulator is in use while a process outside it names it, by id or name, or for 5 minutes after it
       # boots or an app starts on it, since a check names its simulator only in short simctl calls and launches its app
       # for each state. An app left running longer, like a probe a run left open, doesn't count. One out of use for 30
@@ -121,7 +127,7 @@ if [ "$name" != turn ]; then
     xcodebuild*-version* | xcodebuild*-showsdks* | xcodebuild*-list* | xcodebuild*-showBuildSettings* | xcodebuild*-find*) exec "$real" "$@" ;;
     xcodebuild*Simulator*id=*)
       id=$(echo "$*" | sed -n 's/.*id=\([0-9A-Fa-f-]\{36\}\).*/\1/p')
-      [ -z "$id" ] || "$shims/xcrun" simctl boot "$id" >/dev/null 2>&1 || true ;;
+      [ -z "$id" ] || "$shims/xcrun" simctl boot "$id" >/dev/null || exit 1 ;;
     xcodebuild*) ;;
     *) exec "$real" "$@" ;;
   esac
