@@ -9,17 +9,18 @@
 # A check's own xcodebuilds, its UI tests' build included, run inside its turn.
 # Waiting runs take turns in the order they came; TURN_FIRST=1 puts one that someone is waiting on first.
 # ~/.config/turn/<pool> holds a pool's number of turns when it should differ from TURN_SLOTS, as while the Mac recovers.
-# A new turn or simulator boot also waits while memory pressure isn't normal (roomy).
+# A new turn or simulator boot also waits while memory pressure isn't normal or less than a quarter of the CPU is idle (roomy).
 set -e
 name=${0##*/}
-# Whether the machine has memory to spare for another simulator or build: macOS's memory pressure is normal, not
-# warn or critical. Free swap isn't a signal, since macOS grows and shrinks swap as it goes. Always true where
-# there's no such sysctl.
+# Whether the machine has room for another simulator or build: macOS's memory pressure is normal, not warn or
+# critical, and a quarter of its CPU is idle, since simulators, builds and installs starting together on Nov 8 took
+# the Mac's load past 595, where loginwindow crashed and logged Bassim out. Free swap isn't a signal, since macOS
+# grows and shrinks swap as it goes. Always true where there's no such sysctl.
 roomy() {
   level=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null) || return 0
-  [ "$level" = 1 ]
+  [ "$level" = 1 ] && [ "$(top -l 2 -n 0 -s 1 | awk '/CPU usage/ { idle = $7 } END { print int(idle) }')" -ge 25 ]
 }
-memory() { echo "memory pressure $(sysctl -n kern.memorystatus_vm_pressure_level) (1 is normal), $(sysctl -n vm.swapusage)"; }
+memory() { echo "memory pressure $(sysctl -n kern.memorystatus_vm_pressure_level) (1 is normal), $(sysctl -n vm.swapusage), $(top -l 1 -n 0 | grep "CPU usage")"; }
 if [ "$name" != turn ]; then
   shims=$(cd "${0%/*}" && pwd -P)
   real=
