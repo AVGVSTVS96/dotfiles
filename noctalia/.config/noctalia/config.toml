@@ -1,16 +1,23 @@
 [shell]
 polkit_agent = true
 setup_wizard_enabled = false
-corner_radius_scale = 0.0
+corner_radius_scale = 1.3
 app_icon_colorize = false
 offline_mode = false
 
 [shell.panel]
 launcher_placement = "floating"
 launcher_position = "center"
-clipboard_placement = "attached"
-wallpaper_placement = "attached"
-control_center_placement = "attached"
+clipboard_placement = "floating"
+clipboard_position = "center"
+wallpaper_placement = "floating"
+control_center_placement = "floating"
+session_placement = "floating"
+open_near_click_control_center = true
+open_near_click_wallpaper = true
+open_near_click_clipboard = true
+open_near_click_session = true
+floating_offset = 6
 
 [shell.launcher]
 categories = false
@@ -27,37 +34,61 @@ high_contrast = false
 [theme]
 mode = "dark"
 shell_mode = "follow"
-source = "community"
-community_palette = "Monochrome"
+source = "builtin"
+builtin = "Tokyo-Night"
 pure_black_dark = false
 
 [bar]
 order = ["main"]
 
 [bar.main]
-position = "right"
+position = "top"
 enabled = true
-auto_hide = true
+auto_hide = false
 smart_auto_hide = false
 show_on_workspace_switch = true
-reserve_space = false
+reserve_space = true
 layer = "top"
-thickness = 46
-background_opacity = 0.92
-border = "outline"
-border_width = 1.0
-shadow = true
-radius = 0
-margin_ends = 330
-margin_edge = 8
+thickness = 40
+background_opacity = 0.0
+border_width = 0.0
+shadow = false
+margin_ends = 0
+margin_edge = 0
 padding = 10
-widget_spacing = 8
+widget_spacing = 10
 scale = 1.0
 font_scale = 1.0
 capsule = false
-start = ["workspaces"]
-center = ["wallhaven", "wallpaper", "clipboard"]
-end = ["volume", "control-center"]
+start = ["group:left"]
+center = ["group:center"]
+end = ["group:right"]
+
+[[bar.main.capsule_group]]
+id = "left"
+members = ["workspaces"]
+fill = "surface"
+opacity = 0.55
+border = "#ffffff1f"
+padding = 10.0
+
+[[bar.main.capsule_group]]
+id = "center"
+members = ["wallhaven", "wallpaper", "clipboard"]
+fill = "surface"
+opacity = 0.55
+border = "#ffffff1f"
+padding = 10.0
+widget_spacing = 14
+
+[[bar.main.capsule_group]]
+id = "right"
+members = ["volume", "control-center"]
+fill = "surface"
+opacity = 0.55
+border = "#ffffff1f"
+padding = 10.0
+widget_spacing = 14
 
 [widget.wallhaven]
 type = "noctalia/wallhaven:wallhaven"
@@ -93,7 +124,7 @@ major_interval = 4
 type = "clock"
 output = "HDMI-A-1"
 cx = 1720.0
-cy = 46.0
+cy = 80.0
 box_width = 240.0
 box_height = 56.0
 rotation = 0.0

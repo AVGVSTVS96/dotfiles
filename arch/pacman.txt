@@ -19,8 +19,10 @@ git-filter-repo
 git-lfs
 github-cli
 go
+grim
 gum
 imagemagick
+inter-font
 jq
 jujutsu
 lazygit
@@ -50,6 +52,8 @@ ttf-jetbrains-mono-nerd
 unzip
 uv
 wl-clipboard
+xdotool
+xorg-server-xvfb
 xwayland-satellite
 yazi
 yt-dlp

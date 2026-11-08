@@ -2,6 +2,6 @@ os:
   editPreset: 'nvim'
 git:
   overrideGpg: true
-  pagers:
-    - pager: delta --dark --paging=never
-    - pager: hunk pager
+  diffRenderers:
+    - command: delta --dark --paging=never
+    - command: hunk pager

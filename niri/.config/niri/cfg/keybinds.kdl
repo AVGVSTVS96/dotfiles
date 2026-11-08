@@ -1,4 +1,7 @@
 binds {
+    Super+Z repeat=false allow-inhibiting=false hotkey-overlay-title="Dictate: said" { spawn "said" "hotkey"; }
+    Super+X repeat=false allow-inhibiting=false hotkey-overlay-title="Review dictation: said" { spawn "said" "hotkey" "interactive"; }
+    Super+A repeat=false allow-inhibiting=false hotkey-overlay-title="Insert last dictation: said" { spawn "said" "hotkey" "insert-last"; }
 
     // ────────────── Keybindings ──────────────
     // https://github.com/YaLTeR/niri/wiki/Configuration:-Key-Bindings
@@ -17,6 +20,7 @@ binds {
     Mod+S                               hotkey-overlay-title="Open Control Center: noctalia controlCenter" { spawn-sh "noctalia msg panel-toggle control-center"; }
     Mod+Shift+S                         hotkey-overlay-title="Open Settings: noctalia settings" { spawn-sh "noctalia msg settings-toggle"; }
     Mod+Space hotkey-overlay-title="Open App Launcher: Noctalia" { spawn-sh "noctalia msg panel-toggle launcher"; }
+    Mod+V                               hotkey-overlay-title="Clipboard History: Noctalia" { spawn-sh "noctalia msg panel-toggle clipboard"; }
     Mod+ALT+L                           hotkey-overlay-title="Lock Screen: noctalia lock" { spawn-sh "noctalia msg session lock"; }
     Mod+Shift+Q                         hotkey-overlay-title="Session Menu: noctalia sessionMenu" { spawn-sh "noctalia msg panel-toggle session"; }
 
