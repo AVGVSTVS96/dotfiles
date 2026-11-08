@@ -3,7 +3,7 @@
 # TURN_SLOTS turns (2 by default) is free, at the lowest CPU priority, so heavy work from every project and agent takes
 # turns instead of all running at once. Through ~/.local/share/turn, first on PATH in .zshenv, xtool, swift and
 # xcodebuild builds and tests take a turn by themselves, their other commands run straight away, and microscope
-# reviews, each a team of agents, take turns of their own (TURN_POOL=reviews), and `xcrun simctl boot` waits while SIMULATORS (3) are booted, starting 2 minutes after the last boot at the soonest.
+# reviews, each a team of agents, take turns of their own (TURN_POOL=reviews), and `xcrun simctl boot` waits while SIMULATORS (2) are booted, starting 2 minutes after the last boot at the soonest.
 # Simulator test runs (xcodebuild test, or a check run as TURN_POOL=sims) take turns of their own too, since they mostly
 # wait on a simulator that's already booted, so they don't queue behind builds and benchmarks, nor those behind them.
 # A check's own xcodebuilds, its UI tests' build included, run inside its turn.
@@ -39,7 +39,7 @@ if [ "$name" != turn ]; then
     "xtool dev"* | "swift build"* | "swift test"* | "swift run"*) ;;
     "microscope review"*) export TURN_POOL=reviews ;;
     "xcrun simctl boot "* | "xcrun simctl bootstatus "*"-b"*)
-      # A simulator boots only while fewer than SIMULATORS (3) are booted and memory has room, one boot starting at a
+      # A simulator boots only while fewer than SIMULATORS (2) are booted and memory has room, one boot starting at a
       # time. The wait for room happens outside the lock, and a boot holds the lock 10 minutes at most, so no stuck
       # boot blocks the machine's others.
       id=$(echo "$3" | grep -E '^[0-9A-F-]{36}$' || "$real" simctl list devices | sed -n "s/^ *$3 (\([0-9A-F-]\{36\}\)).*/\1/p" | head -1)
@@ -69,9 +69,9 @@ if [ "$name" != turn ]; then
           done
       }
       wait_for_room() {
-        while [ "$("$real" simctl list devices booted | grep -c '(Booted)')" -ge "${SIMULATORS:-3}" ] || ! roomy; do
+        while [ "$("$real" simctl list devices booted | grep -c '(Booted)')" -ge "${SIMULATORS:-2}" ] || ! roomy; do
           free_idle
-          [ -n "$told" ] || { echo "turn: $id boots once fewer than ${SIMULATORS:-3} simulators are booted and memory has room ($(memory)); booted:" >&2; "$real" simctl list devices booted | grep '(Booted)' >&2; told=1; }
+          [ -n "$told" ] || { echo "turn: $id boots once fewer than ${SIMULATORS:-2} simulators are booted and memory has room ($(memory)); booted:" >&2; "$real" simctl list devices booted | grep '(Booted)' >&2; told=1; }
           sleep 5
         done
       }
