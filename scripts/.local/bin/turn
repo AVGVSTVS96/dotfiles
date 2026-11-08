@@ -147,8 +147,11 @@ while :; do
   for waiting in "$dir.queue"/*; do
     kill -0 "${waiting##*-}" 2>/dev/null || rm -f "$waiting"
   done
-  if [ "$pool" != reviews ] && ! roomy; then
-    [ "$told" = memory ] || { echo "turn: the next $pool turn waits for memory: $(memory)" >&2; told=memory; }
+  # Turns start 20 seconds apart in every pool, so roomy sees the last start's load before the next one: on Nov 8 at
+  # 9:25 a queue that found room all started at once, and Bassim had to force-restart the Mac.
+  last=/tmp/turn-$(id -u)/last-start
+  if [ "$pool" != reviews ] && { ! roomy || { [ -e "$last" ] && [ $(($(date +%s) - $(stat -f %m "$last" 2>/dev/null || stat -c %Y "$last"))) -lt 20 ]; }; }; then
+    [ "$told" = memory ] || { echo "turn: the next $pool turn waits for room: $(memory)" >&2; told=memory; }
     sleep 5
     continue
   fi
@@ -169,6 +172,7 @@ while :; do
       printf '%s %s: %s\n' "$(date +%H:%M)" "$PWD" "$*" > "$dir/$slot.who"
       export TURN="${TURN:+$TURN }$pool"
       rm -f "$ticket"
+      mkdir -p "${last%/*}" && touch "$last"
       exec $lock "$dir/$slot" nice -n 19 "$@"
     fi
     slot=$((slot + 1))
