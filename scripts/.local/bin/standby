@@ -1,7 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # standby: one machine at a time holds hex (its hub and the Telegram bot, the Claude account pool, Gmail push): the
 # server, or its cloud twin while the server is gone. The twin keeps who holds in ~/.local/state/standby/holder:
-# server, taking, twin or giving. It takes over once the server has been off the tailnet for $GRACE seconds while
+# server, taking, twin or giving. It follows Tailscale's own push of the server going offline and online, and takes
+# over once the server has been offline for $GRACE seconds while
 # the twin itself reaches the internet, growing first ($GROW may restart the twin: the move carries on as it boots).
 # Once the server is back, the twin releases the server's copy at once, so two hubs never poll one bot, and hands
 # hex back after the server has stayed up for $STABLE seconds, then shrinks ($SHRINK).
@@ -19,7 +20,8 @@ dir=$HOME/.local/state/standby
 mkdir -p "$dir"
 holder() { cat "$dir/holder" 2>/dev/null || echo server; }
 hold() { echo "$1" > "$dir/holder.$$" && mv "$dir/holder.$$" "$dir/holder"; echo "standby: holder is $1"; }
-up() { tailscale ping -c 1 --timeout 5s "$SERVER" >/dev/null 2>&1; }
+# Tailscale's coordination server marks the server offline once it stops checking in, and online when it's back.
+up() { tailscale status --json | jq -e --arg host "$SERVER" '[.Peer[] | select(.HostName == $host)][0].Online == true' >/dev/null; }
 online() { curl -fsS -m 10 -o /dev/null https://api.telegram.org; }
 big() { [ "$(nproc)" -ge "$BIG_CPUS" ]; }
 on() { host=$1; shift; ssh -o BatchMode=yes -o ConnectTimeout=5 "$host" "$@"; }
@@ -62,40 +64,46 @@ give() {
   [ -z "$SHRINK" ] || ! big || sh -c "$SHRINK"
 }
 
-# Syncthing is connected to the server and has sent it every change made here, or ten minutes passed.
+# Syncthing is connected to the server and has sent it every change made here (its event stream says when a
+# folder's completion changes), or ten minutes passed.
 synced() {
-  key=$(syncthing cli config gui apikey get)
-  peer=$(syncthing cli show system | jq -r '.myID' | xargs -I{} sh -c 'syncthing cli config devices list | grep -vx {}' | head -1)
-  api() { curl -fsS -m 5 -H "X-API-Key: $key" "http://127.0.0.1:8384/rest/$1"; }
-  for _ in $(seq 120); do
+  local key peer last=0 until=$((SECONDS + 600))
+  key=$(syncthing cli config gui apikey get) || key=""
+  peer=$(syncthing cli config devices list | grep -vx "$(syncthing cli show system | jq -r '.myID')" | head -1) || peer=""
+  api() { curl -fsS -m 70 -H "X-API-Key: $key" "http://127.0.0.1:8384/rest/$1"; }
+  while [ "$SECONDS" -lt "$until" ]; do
     api system/connections | jq -e --arg peer "$peer" '.connections[$peer].connected' >/dev/null 2>&1 &&
       [ "$(api "db/completion?device=$peer" | jq '.needBytes')" = 0 ] && return
-    sleep 5
+    last=$(api "events?events=FolderCompletion,DeviceConnected&since=$last&timeout=60" | jq '[.[].id] | max // '"$last") || sleep 60
   done
   echo "standby: Syncthing hadn't sent everything after 10 minutes; handing back anyway" >&2
 }
 
+# Wakes on each message Tailscale pushes, and when the grace or stable period it waits out ends.
 watch() {
   # A move cut short by a restart finishes first.
   case $(holder) in taking) take ;; giving) give ;; esac
-  since=
+  local since="" period wait
   while :; do
     case $(holder) in
       server)
-        if up || ! online; then since= && rm -f "$dir/gone"; else
-          since=${since:-$(date +%s)}
-          [ -f "$dir/gone" ] || echo "$since" > "$dir/gone"
-          [ $(($(date +%s) - since)) -lt "$GRACE" ] || { take; since=; }
+        if up || ! online; then since="" && rm -f "$dir/gone"; else
+          since=${since:-$SECONDS}
+          [ -f "$dir/gone" ] || date +%s > "$dir/gone"
+          [ $((SECONDS - since)) -lt "$GRACE" ] || { take; since=""; }
         fi ;;
       twin)
         if up; then
+          # The server's copy stops the moment it's back, so two hubs never poll one bot.
           [ -n "$since" ] || on "$SERVER" '.local/bin/standby release' || :
-          since=${since:-$(date +%s)}
-          [ $(($(date +%s) - since)) -lt "$STABLE" ] || { give; since=; }
-        else since=; fi ;;
+          since=${since:-$SECONDS}
+          [ $((SECONDS - since)) -lt "$STABLE" ] || { give; since=""; }
+        else since=""; fi ;;
     esac
-    sleep 15
-  done
+    period=$GRACE && [ "$(holder)" != twin ] || period=$STABLE
+    wait=86400 && [ -z "$since" ] || wait=$((period - (SECONDS - since) + 1))
+    read -r -t "$wait" _ <&3 || [ $? -gt 128 ] || exec 3< <(tailscale debug watch-ipn)
+  done 3< <(tailscale debug watch-ipn)
 }
 
 case "${1:-}" in
