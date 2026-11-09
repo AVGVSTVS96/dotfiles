@@ -1,8 +1,9 @@
 [Unit]
-Description=iikb: deploys the newest Android APK to iikb-android.vercel.app
+Description=iikb: deploys the newest Android APK to iikb-android.vercel.app and sends it to the Firebase Beta testers
 
 [Service]
 Type=oneshot
-Environment=PATH=%h/.bun/bin:/usr/local/bin:/usr/bin
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin
 ExecStart=/bin/sh -c 'git -C %h/Developer/iikb fetch -q origin main && git -C %h/Developer/iikb show origin/main:scripts/android-download | bash -s'
+ExecStart=/bin/sh -c 'git -C %h/Developer/iikb show origin/main:scripts/android-firebase | bash -s'
 TimeoutStartSec=15min
