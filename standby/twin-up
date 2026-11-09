@@ -7,7 +7,7 @@
 # holds hex stays off until standby takes over.
 set -eu
 user=bassim
-: "${TS_AUTHKEY:?a Tailscale auth key}" "${SERVER_ID:?the server's Syncthing device id}"
+: "${TS_AUTHKEY:?a Tailscale auth key}" "${SERVER_ID:?the Syncthing device id of the server}"
 
 # The server's packages, less its desktop.
 pacman-key --init && pacman-key --populate archlinux
