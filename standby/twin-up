@@ -1,0 +1,58 @@
+#!/bin/sh
+# twin-up: makes a fresh Arch Linux cloud machine the server's twin (scripts/.local/bin/standby). Run once as root,
+# with the server reachable over Tailscale:
+#   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> GROW='...' SHRINK='...' sh twin-up
+# It makes the server's user with the same home, joins the tailnet as `twin`, and has Syncthing bring over hex,
+# Claude Code's data, ~/Developer, dotfiles, ~/.local/bin, the account pool's logins and the vault. Everything that
+# holds hex stays off until standby takes over.
+set -eu
+user=bassim
+: "${TS_AUTHKEY:?a Tailscale auth key}" "${SERVER_ID:?the server's Syncthing device id}"
+
+# The server's packages, less its desktop.
+pacman-key --init && pacman-key --populate archlinux
+pacman -Syu --noconfirm --needed base-devel git openssh sudo tailscale syncthing jq sqlite stow fish zsh tmux \
+  bun nodejs npm pnpm uv rustup go ripgrep fd bat eza fzf git-delta git-lfs github-cli jujutsu neovim unzip zip \
+  ffmpeg imagemagick shellcheck sops age aws-cli-v2 xorg-server-xvfb
+
+# Swap, so a burst on the small size doesn't kill Syncthing.
+[ -f /swapfile ] || { fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && echo '/swapfile none swap defaults 0 0' >> /etc/fstab; }
+swapon -a || :
+# Syncthing watches every folder it keeps.
+echo 'fs.inotify.max_user_watches=1048576' > /etc/sysctl.d/90-syncthing.conf && sysctl --system >/dev/null
+
+id "$user" >/dev/null 2>&1 || useradd -m -u 1000 -s /usr/bin/fish "$user"
+echo "$user ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/$user"
+loginctl enable-linger "$user"
+
+systemctl enable --now tailscaled sshd
+tailscale up --auth-key="$TS_AUTHKEY" --hostname=twin --ssh
+
+sudo -iu "$user" sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
+set -eu
+server_id=$1
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.config/systemd/user
+printf 'ROLE=twin\nSERVER=server\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
+curl -fsSL https://claude.ai/install.sh | bash
+
+# Syncthing: only over the tailnet, and only with the server.
+systemctl --user enable --now syncthing.service
+until syncthing cli show system >/dev/null 2>&1; do sleep 1; done
+st() { syncthing cli "$@"; }
+for f in $(st config folders list); do st config folders "$f" delete; done
+st config options global-ann-enabled set false
+st config options local-ann-enabled set false
+st config options relays-enabled set false
+st config options natenabled set false
+st config options uraccepted set -- -1
+st config options raw-listen-addresses 0 set "tcp://$(tailscale ip -4):22000"
+st config devices add --device-id "$server_id" --name server --addresses tcp://server:22000
+for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin proxy:.config/cliproxyapi enclave:.enclave; do
+  st config folders add --id "${spec%%:*}" --label "${spec%%:*}" --path "$HOME/${spec#*:}"
+  st config folders "${spec%%:*}" devices add --device-id "$server_id"
+done
+echo "twin's Syncthing id: $(st show system | jq -r .myID)"
+AS_USER
+echo "twin-up: done. Add the twin's Syncthing id to the server, then once the first sync finishes:"
+echo "  sudo -iu $user sh -c '~/dotfiles/install && systemctl --user daemon-reload && systemctl --user enable --now standby.service'"
