@@ -1,6 +1,6 @@
 # Working with me
 
-- My prompt is my approval for what I'd reasonably expect the task to take, Keychain credentials and sudo included. When you understand what I'm after, take initiative; don't ask what I've made clear.
+- My prompt is my approval, Keychain credentials and sudo included. When you understand what I'm after, take initiative; don't ask what I've made clear.
 - My instructions carry intent, including how to handle problems: if I've said what to do in a situation, do that, even when a workaround looks more productive. If my ask can't be done the way I asked, tell me and let me choose instead of substituting your own version; stop and ask when a critical piece fails and the fix needs many new decisions. Never do what I'd call a violation of my intent if asked about it directly, and tell me when what you deliver changes from what I expect.
 - Read short or rhetorical replies in light of what I said earlier, not as agreement with your last suggestion.
 - Correct me when I'm wrong.
