@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # standby: one machine at a time holds hex (its hub and the Telegram bot, the Claude account pool, Gmail push): the
 # server, or its cloud twin while the server is gone. The twin keeps who holds in ~/.local/state/standby/holder:
-# server, taking, twin or giving. It follows Tailscale's own push of the server going offline and online, and takes
-# over once the server has been offline for $GRACE seconds while
-# the twin itself reaches the internet, growing first ($GROW may restart the twin: the move carries on as it boots).
-# Once the server is back, the twin releases the server's copy at once, so two hubs never poll one bot, and hands
-# hex back after the server has stayed up for $STABLE seconds, then shrinks ($SHRINK).
+# server, taking, twin or giving. An outage sends no signal, so the twin pings the server through the tailnet every
+# $EVERY seconds (Tailscale's own online flag took over 12 minutes to notice a cut-off server in a test), and takes
+# over once the server has missed every ping for $GRACE seconds while the twin itself reaches the internet, growing
+# first ($GROW may restart the twin: the move carries on as it boots).
+# Once the server answers again, the twin releases the server's copy at once, so two hubs never poll one bot, and
+# hands hex back after the server has stayed up for $STABLE seconds, then shrinks ($SHRINK).
 #   standby watch      the twin's standby.service
 #   standby may-hold   ExecCondition of every unit hex-holder.target starts, on both machines
 #   standby release    stops hex here: what holds, every Claude session and job (their records resume elsewhere)
@@ -16,15 +17,14 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 # shellcheck disable=SC1090
 [ ! -f "$env" ] || . "$env"
 # With no twin set up, the server always holds.
-: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=180}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}"
+: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=180}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=30}"
 # The tailnet names that follow hex (Tailscale Services): the holder advertises them, the other machine drains them.
 : "${SERVICES:=svc:hub svc:pages svc:updates}"
 dir=$HOME/.local/state/standby
 mkdir -p "$dir"
 holder() { cat "$dir/holder" 2>/dev/null || echo server; }
 hold() { echo "$1" > "$dir/holder.$$" && mv "$dir/holder.$$" "$dir/holder"; echo "standby: holder is $1"; }
-# Tailscale's coordination server marks the server offline once it stops checking in, and online when it's back.
-up() { tailscale status --json | jq -e --arg host "$SERVER" '[.Peer[] | select(.HostName == $host)][0].Online == true' >/dev/null; }
+up() { tailscale ping -c 1 --timeout=5s "$SERVER" >/dev/null 2>&1; }
 online() { curl -fsS -m 10 -o /dev/null https://api.telegram.org; }
 big() { [ "$(nproc)" -ge "$BIG_CPUS" ]; }
 on() { host=$1; shift; ssh -o BatchMode=yes -o ConnectTimeout=5 "$host" "$@"; }
@@ -95,11 +95,10 @@ synced() {
   echo "standby: Syncthing hadn't sent everything after 10 minutes; handing back anyway" >&2
 }
 
-# Wakes on each message Tailscale pushes, and when the grace or stable period it waits out ends.
 watch() {
   # A move cut short by a restart finishes first.
   case $(holder) in taking) take ;; giving) give ;; esac
-  local since="" period wait
+  local since=""
   while :; do
     case $(holder) in
       server)
@@ -116,10 +115,8 @@ watch() {
           [ $((SECONDS - since)) -lt "$STABLE" ] || { give; since=""; }
         else since=""; fi ;;
     esac
-    period=$GRACE && [ "$(holder)" != twin ] || period=$STABLE
-    wait=86400 && [ -z "$since" ] || wait=$((period - (SECONDS - since) + 1))
-    read -r -t "$wait" _ <&3 || [ $? -gt 128 ] || exec 3< <(tailscale debug watch-ipn)
-  done 3< <(tailscale debug watch-ipn)
+    sleep "$EVERY"
+  done
 }
 
 case "${1:-}" in
