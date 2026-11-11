@@ -31,7 +31,8 @@ may_hold() {
   case $ROLE in
     twin) case $(holder) in taking | twin) ;; *) exit 1 ;; esac ;;
     # A twin that can't be reached holds nothing the server can see: the server holds.
-    *) case $(on "$TWIN" '.local/bin/standby holder' 2>/dev/null || echo server) in taking | twin) exit 1 ;; esac ;;
+    # Bounded, so a twin that can't answer never keeps hex from starting.
+    *) case $(timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=5 "$TWIN" '.local/bin/standby holder' 2>/dev/null || echo server) in taking | twin) exit 1 ;; esac ;;
   esac
 }
 
