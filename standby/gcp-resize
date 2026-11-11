@@ -1,0 +1,12 @@
+#!/bin/sh
+# gcp-resize <machine type>: run from the twin itself (standby's GROW and SHRINK). Starts the resize workflow
+# (resize.yaml) as the twin's own service account and returns; the twin stops and comes back at the new size.
+set -eu
+meta() { curl -fsS -H Metadata-Flavor:Google "http://metadata.google.internal/computeMetadata/v1/$1"; }
+project=$(meta project/project-id)
+zone=$(meta instance/zone | sed 's|.*/||')
+token=$(meta instance/service-accounts/default/token | jq -r .access_token)
+arg=$(jq -nc --arg type "$1" --arg zone "$zone" --arg instance "$(meta instance/name)" '{type: $type, zone: $zone, instance: $instance} | tojson')
+curl -fsS -X POST -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d "{\"argument\": $arg}" \
+  "https://workflowexecutions.googleapis.com/v1/projects/$project/locations/${zone%-*}/workflows/resize/executions" >/dev/null
+echo "gcp-resize: the twin restarts as $1"

@@ -12,8 +12,8 @@ user=bassim
 # The server's packages, less its desktop.
 pacman-key --init && pacman-key --populate archlinux
 pacman -Syu --noconfirm --needed base-devel git openssh sudo tailscale syncthing jq sqlite stow fish zsh tmux \
-  bun nodejs npm pnpm uv rustup go ripgrep fd bat eza fzf git-delta git-lfs github-cli jujutsu neovim unzip zip \
-  ffmpeg imagemagick shellcheck sops age aws-cli-v2 xorg-server-xvfb
+  bun nodejs npm pnpm uv rustup go ripgrep fd bat eza fzf git-delta git-lfs github-cli jujutsu neovim unzip zip nftables \
+  ffmpeg imagemagick shellcheck sops age xorg-server-xvfb
 
 # Swap, so a burst on the small size doesn't kill Syncthing.
 [ -f /swapfile ] || { fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && echo '/swapfile none swap defaults 0 0' >> /etc/fstab; }
@@ -21,18 +21,24 @@ swapon -a || :
 # Syncthing watches every folder it keeps.
 echo 'fs.inotify.max_user_watches=1048576' > /etc/sysctl.d/90-syncthing.conf && sysctl --system >/dev/null
 
-id "$user" >/dev/null 2>&1 || useradd -m -u 1000 -s /usr/bin/fish "$user"
+id "$user" >/dev/null 2>&1 || useradd -m -s /usr/bin/fish "$user"
 echo "$user ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/$user"
 loginctl enable-linger "$user"
 
 systemctl enable --now tailscaled sshd
 tailscale up --auth-key="$TS_AUTHKEY" --hostname=twin --ssh
+# Claude Code finds the account pool at the server's tailnet address: here that port goes to the twin's own copy,
+# which listens on 127.0.0.1 too, while ssh, scp and Syncthing still reach the server itself.
+printf 'table ip twin {\n  chain out {\n    type nat hook output priority -100;\n    ip daddr %s tcp dport 8317 redirect to :8317\n  }\n}\n' \
+  "$(tailscale ip -4 server)" > /etc/nftables.conf
+systemctl enable --now nftables
 
 sudo -iu "$user" sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
 set -eu
 server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.config/systemd/user
+mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.config/systemd/user/cliproxyapi.socket.d
+printf '[Socket]\nListenStream=127.0.0.1:8317\n' > ~/.config/systemd/user/cliproxyapi.socket.d/twin.conf
 printf 'ROLE=twin\nSERVER=server\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
 

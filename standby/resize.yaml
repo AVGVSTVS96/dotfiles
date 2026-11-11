@@ -1,0 +1,24 @@
+# Google Cloud Workflow: stops the twin, sets its machine type to args.type, starts it again.
+# The twin can't do this itself, since stopping it stops whatever asked.
+main:
+  params: [args]
+  steps:
+    - init:
+        assign:
+          - project: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+          - zone: ${args.zone}
+          - instance: ${args.instance}
+    - stop:
+        call: googleapis.compute.v1.instances.stop
+        args: { project: "${project}", zone: "${zone}", instance: "${instance}" }
+    - resize:
+        call: googleapis.compute.v1.instances.setMachineType
+        args:
+          project: ${project}
+          zone: ${zone}
+          instance: ${instance}
+          body:
+            machineType: ${"zones/" + zone + "/machineTypes/" + args.type}
+    - start:
+        call: googleapis.compute.v1.instances.start
+        args: { project: "${project}", zone: "${zone}", instance: "${instance}" }
