@@ -1,0 +1,12 @@
+[Unit]
+Description=hangar: installs and updates the development apps on the phone, over the tailnet
+After=network-online.target
+
+[Service]
+EnvironmentFile=%h/Developer/hangar/config
+ExecStart=%h/Developer/hangar/bin/hangar serve
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
