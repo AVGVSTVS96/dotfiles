@@ -3,7 +3,7 @@
 # with the server reachable over Tailscale:
 #   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> GROW='...' SHRINK='...' sh twin-up
 # It makes the server's user with the same home, joins the tailnet as `twin`, and has Syncthing bring over hex,
-# Claude Code's data, ~/Developer, dotfiles, ~/.local/bin, the account pool's logins and the vault. Everything that
+# Claude Code's data, ~/Developer, hangar's builds, dotfiles, ~/.local/bin, the account pool's logins and the vault. Everything that
 # holds hex stays off until standby takes over.
 set -eu
 user=bassim
@@ -39,7 +39,7 @@ sudo -iu "$user" sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
 set -eu
 server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.config/systemd/user/cliproxyapi.socket.d
+mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar ~/.config/systemd/user/cliproxyapi.socket.d
 printf '[Socket]\nListenStream=127.0.0.1:8317\n' > ~/.config/systemd/user/cliproxyapi.socket.d/twin.conf
 printf 'ROLE=twin\nSERVER=server\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
@@ -56,7 +56,7 @@ st config options natenabled set false
 st config options uraccepted set -- -1
 st config options raw-listen-addresses 0 set "tcp://$(tailscale ip -4):22000"
 st config devices add --device-id "$server_id" --name server --addresses tcp://server:22000
-for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin proxy:.config/cliproxyapi enclave:.enclave voice:.local/share/hex-voice; do
+for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin proxy:.config/cliproxyapi enclave:.enclave voice:.local/share/hex-voice hangar:.local/share/hangar; do
   st config folders add --id "${spec%%:*}" --label "${spec%%:*}" --path "$HOME/${spec#*:}"
   st config folders "${spec%%:*}" devices add --device-id "$server_id"
 done
