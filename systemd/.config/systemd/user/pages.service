@@ -1,0 +1,12 @@
+[Unit]
+Description=pages: private HTML pages on the tailnet
+After=network-online.target tailscaled.service
+
+[Service]
+WorkingDirectory=%h/Developer/pages
+ExecStart=/usr/bin/bun server.ts
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
