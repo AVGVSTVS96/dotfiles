@@ -73,9 +73,9 @@ give() {
   release
   synced
   # hex.db moves as SQLite's own copy of it, never as a live file.
-  sqlite3 "$HOME/hex/state/hex.db" ".backup '$dir/hex.db'"
-  scp -q "$dir/hex.db" "$SERVER:hex/state/hex.db.standby"
-  on "$SERVER" 'cd hex/state && mv hex.db.standby hex.db && rm -f hex.db-wal hex.db-shm && systemctl --user start hex-holder.target && .local/bin/standby advertise'
+  sqlite3 "$HOME/hex/state/hex.db" ".backup '$dir/handback.db'"
+  scp -q "$dir/handback.db" "$SERVER:hex/state/hex.db.standby"
+  on "$SERVER" 'cd hex/state && mv hex.db.standby hex.db && rm -f hex.db-wal hex.db-shm && systemctl --user start hex-holder.target && "$HOME/.local/bin/standby" advertise'
   hold server
   [ -z "$SHRINK" ] || ! big || sh -c "$SHRINK"
 }
