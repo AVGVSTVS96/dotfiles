@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# standby/test: runs standby's hand-back and the server's guard between two pretend machines, "server" and "twin",
+# each a folder standing in for its home, with stand-ins for systemctl, ssh, scp, tailscale, sqlite3 and Syncthing's
+# API. Nothing real is started or stopped. Usage: sh standby/test
+set -u
+standby=$(cd "$(dirname "$0")/.." && pwd)/scripts/.local/bin/standby
+root=$(mktemp -d)
+trap '[ -n "${KEEP:-}" ] || rm -rf "$root"' EXIT
+bin=$root/bin
+mkdir -p "$bin"
+pass=0 fail=0
+check() { if eval "$2"; then pass=$((pass + 1)); echo "  ok   $1"; else fail=$((fail + 1)); echo "  FAIL $1"; fi; }
+
+# systemctl --user: hex-holder.target starts hex.service only where standby may-hold says so, as ExecCondition does.
+cat > "$bin/systemctl" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = --user ] && shift
+units=$HOME/units
+case $1 in
+  start) [ "$2" = hex-holder.target ] && "$HOME/.local/bin/standby" may-hold && echo hex.service >> "$units" ;;
+  stop) rm -f "$units" ;;
+  is-active) shift; [ "$1" = -q ] && shift; grep -qx "$1" "$units" 2>/dev/null; exit ;;
+esac
+exit 0
+EOF
+# ssh <options> <host> <command>: runs the command as the other machine, as long as that machine is reachable.
+cat > "$bin/ssh" <<'EOF'
+#!/usr/bin/env bash
+while [ "${1#-}" != "$1" ]; do shift 2; done
+host=$1; shift
+[ ! -f "$ROOT/$host/down" ] || exit 255
+HOME=$ROOT/$host exec bash -c "$*"
+EOF
+cat > "$bin/scp" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = -q ] && shift
+host=${2%%:*}
+[ ! -f "$ROOT/$host/down" ] || exit 1
+cp "$1" "$ROOT/$host/${2#*:}"
+EOF
+cat > "$bin/sqlite3" <<'EOF'
+#!/usr/bin/env bash
+[ ! -f "$HOME/backup-fails" ] || { echo "Error: cannot open" >&2; exit 1; }
+to=${2#.backup \'}; to=${to%\'}
+cp "$1" "$to"
+EOF
+cat > "$bin/tailscale" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = serve ] && echo "$2" > "$HOME/names"
+exit 0
+EOF
+cat > "$bin/curl" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  *system/connections*) echo '{"connections":{"":{"connected":true}}}' ;;
+  *db/completion*) echo '{"needBytes":0}' ;;
+esac
+EOF
+printf '#!/bin/sh\nexit 1\n' > "$bin/syncthing"
+printf '#!/bin/sh\nexit 0\n' > "$bin/claude"
+chmod +x "$bin"/*
+export PATH=$bin:$PATH ROOT=$root
+
+# Fresh machines: the twin holds hex, the server's is stopped (fenced), as after an outage.
+setup() {
+  rm -rf "$root/server" "$root/twin"
+  for host in server twin; do
+    mkdir -p "$root/$host/.local/bin" "$root/$host/.config" "$root/$host/hex/state" "$root/$host/.local/state/standby"
+    ln -s "$standby" "$root/$host/.local/bin/standby"
+    echo "$host data" > "$root/$host/hex/state/hex.db"
+  done
+  # The server streams its copies of hex.db to the twin as a folder of that name (hex-db.service).
+  mkdir -p "$root/twin/.local/state/standby/hex.db"
+  printf 'ROLE=server\nTWIN=twin\nEVERY=0\nSTUCK=1\n' > "$root/server/.config/standby.env"
+  printf 'ROLE=twin\nSERVER=server\nBIG_CPUS=1\n' > "$root/twin/.config/standby.env"
+  echo twin > "$root/twin/.local/state/standby/holder"
+  echo hex.service > "$root/twin/units"
+}
+as() { local host=$1; shift; HOME=$root/$host "$@"; }
+active() { grep -qx hex.service "$root/$1/units" 2>/dev/null; }
+holder() { cat "$root/twin/.local/state/standby/holder"; }
+
+echo "hand-back"
+setup
+as twin "$standby" give >"$root/log" 2>&1
+check "the server runs hex" "active server"
+check "the twin doesn't" "! active twin"
+check "the server has the twin's hex.db" "grep -q 'twin data' '$root/server/hex/state/hex.db'"
+check "the server serves hex's names" "[ \"\$(cat '$root/server/names')\" = advertise ]"
+check "the twin drained them" "[ \"\$(cat '$root/twin/names')\" = drain ]"
+check "the twin says the server holds" "[ \"\$(holder)\" = server ]"
+
+echo "hand-back whose copy of hex.db fails"
+setup
+touch "$root/twin/backup-fails"
+as twin "$standby" give >"$root/log" 2>&1
+check "the server still runs hex" "active server"
+check "from its own hex.db" "grep -q 'server data' '$root/server/hex/state/hex.db'"
+check "the twin says the server holds" "[ \"\$(holder)\" = server ]"
+
+echo "hand-back to a server that went away again"
+setup
+touch "$root/server/down"
+as twin "$standby" give >"$root/log" 2>&1
+check "the twin runs hex again" "active twin"
+check "and serves hex's names" "[ \"\$(cat '$root/twin/names')\" = advertise ]"
+check "the twin still holds" "[ \"\$(holder)\" = twin ]"
+
+echo "server guard"
+setup
+echo hex.service > "$root/server/units"
+as server timeout 2 "$standby" watch >/dev/null 2>&1
+check "stops the server's hex while the twin holds" "! active server"
+setup
+echo giving > "$root/twin/.local/state/standby/holder"
+as server timeout 3 "$standby" watch >/dev/null 2>&1
+check "starts it when a hand-back is stuck" "active server"
+setup
+touch "$root/twin/down"
+as server timeout 2 "$standby" watch >/dev/null 2>&1
+check "starts it when the twin can't be reached" "active server"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+as server timeout 2 "$standby" watch >/dev/null 2>&1
+check "starts it when no machine holds hex" "active server"
+
+echo "$pass passed, $fail failed"
+[ "$fail" = 0 ]

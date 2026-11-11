@@ -1,5 +1,5 @@
 [Unit]
-Description=standby: the cloud twin takes hex over while the server is gone, and hands it back
+Description=standby: the cloud twin takes hex over while the server is gone and hands it back; on the server, keeps exactly one machine running hex
 After=network-online.target tailscaled.service
 
 [Service]

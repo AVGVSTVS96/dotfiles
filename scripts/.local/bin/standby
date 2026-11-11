@@ -6,18 +6,22 @@
 # over once the server has missed every ping for $GRACE seconds while the twin itself reaches the internet, growing
 # first ($GROW may restart the twin: the move carries on as it boots).
 # Once the server answers again, the twin releases the server's copy at once, so two hubs never poll one bot, and
-# hands hex back after the server has stayed up for $STABLE seconds, then shrinks ($SHRINK).
-#   standby watch      the twin's standby.service
+# hands hex back after the server has stayed up for $STABLE seconds, then shrinks ($SHRINK). A hand-back that fails
+# anywhere still ends with one machine running hex: the server if it can, else the twin again.
+# The server runs a guard of its own: it stops its hex while the twin holds, and starts it whenever no machine does
+# (the twin unreachable, or a hand-back stuck for $STUCK seconds).
+#   standby watch      standby.service: the twin's watch, or the server's guard
 #   standby may-hold   ExecCondition of every unit hex-holder.target starts, on both machines
 #   standby release    stops hex here: what holds, every Claude session and job (their records resume elsewhere)
 #   standby advertise  serve hex's tailnet names from here (give runs it on the server)
+#   standby back       on the server: take the twin's hex.db if it came, and run hex here (give runs it)
 #   standby holder | take | give
 set -eu
 env=${STANDBY_ENV:-$HOME/.config/standby.env}
 # shellcheck disable=SC1090
 [ ! -f "$env" ] || . "$env"
 # With no twin set up, the server always holds.
-: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=180}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=30}"
+: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=180}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=30}" "${STUCK:=900}"
 # The tailnet names that follow hex (Tailscale Services): the holder advertises them, the other machine drains them.
 : "${SERVICES:=svc:hub svc:pages svc:updates}"
 dir=$HOME/.local/state/standby
@@ -27,7 +31,9 @@ hold() { echo "$1" > "$dir/holder.$$" && mv "$dir/holder.$$" "$dir/holder"; echo
 up() { tailscale ping -c 1 --timeout=5s "$SERVER" >/dev/null 2>&1; }
 online() { curl -fsS -m 10 -o /dev/null https://api.telegram.org; }
 big() { [ "$(nproc)" -ge "$BIG_CPUS" ]; }
-on() { host=$1; shift; ssh -o BatchMode=yes -o ConnectTimeout=5 "$host" "$@"; }
+on() { host=$1; shift; timeout 60 ssh -o BatchMode=yes -o ConnectTimeout=5 "$host" "$@"; }
+# What standby says on the other machine. ssh lands in its login shell (fish), so the path is spelled out.
+there() { local host=$1; shift; on "$host" "\"\$HOME/.local/bin/standby\" $*"; }
 tell() { "$HOME/hex/.hex/bin/hex" deliver hex --to="${TELL:--1004422245734}" --user standby "$1" || :; }
 
 may_hold() {
@@ -35,9 +41,12 @@ may_hold() {
     twin) case $(holder) in taking | twin) ;; *) exit 1 ;; esac ;;
     # A twin that can't be reached holds nothing the server can see: the server holds.
     # Bounded, so a twin that can't answer never keeps hex from starting.
-    *) case $(timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=5 "$TWIN" '.local/bin/standby holder' 2>/dev/null || echo server) in taking | twin) exit 1 ;; esac ;;
+    *) case $(twin_holds) in taking | twin) exit 1 ;; esac ;;
   esac
 }
+
+# Who holds, as the twin says, or "none" when it can't answer within 10 seconds.
+twin_holds() { timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=5 "$TWIN" "\"\$HOME/.local/bin/standby\" holder" 2>/dev/null || echo none; }
 
 serve() { for service in $SERVICES; do tailscale serve "$1" "$service" >/dev/null 2>&1 || :; done; }
 
@@ -71,13 +80,52 @@ take() {
 give() {
   hold giving
   release
-  synced
-  # hex.db moves as SQLite's own copy of it, never as a live file.
-  sqlite3 "$HOME/hex/state/hex.db" ".backup '$dir/handback.db'"
-  scp -q "$dir/handback.db" "$SERVER:hex/state/hex.db.standby"
-  on "$SERVER" 'cd hex/state && mv hex.db.standby hex.db && rm -f hex.db-wal hex.db-shm && systemctl --user start hex-holder.target && "$HOME/.local/bin/standby" advertise'
-  hold server
-  [ -z "$SHRINK" ] || ! big || sh -c "$SHRINK"
+  synced || :
+  # hex.db moves as SQLite's own copy of it, never as a live file, under its own name: the server streams its
+  # copies into $dir/hex.db (hex-db.service).
+  rm -f "$dir/handback.db"
+  sqlite3 "$HOME/hex/state/hex.db" ".backup '$dir/handback.db'" && scp -q "$dir/handback.db" "$SERVER:hex/state/hex.db.standby" ||
+    echo "standby: hex.db didn't reach the server, so it starts from its own" >&2
+  there "$SERVER" back || :
+  if on "$SERVER" systemctl --user is-active -q hex.service; then
+    hold server
+    [ -z "$SHRINK" ] || ! big || sh -c "$SHRINK"
+  else
+    # The server can't run hex, so the twin keeps it, and tries again after the server stays up $STABLE seconds.
+    hold twin
+    systemctl --user start hex-holder.target || :
+    serve advertise
+    tell "hex couldn't move back to the server, so it stays on the cloud twin and tries again in $((STABLE / 60)) minutes."
+  fi
+}
+
+back() {
+  local db=$HOME/hex/state/hex.db
+  if [ -f "$db.standby" ] && ! systemctl --user is-active -q hex.service; then
+    mv "$db.standby" "$db" && rm -f "$db-wal" "$db-shm"
+  fi
+  rm -f "$db.standby"
+  systemctl --user start hex-holder.target
+  serve advertise
+}
+
+# The server's side: its hex runs exactly when the twin's doesn't.
+guard() {
+  local stuck="" idle=0
+  while :; do
+    case $(twin_holds) in
+      taking | twin) stuck="" idle=0; ! systemctl --user is-active -q hex.service || release ;;
+      giving) stuck=${stuck:-$SECONDS}; [ $((SECONDS - stuck)) -lt "$STUCK" ] || idle=2 ;;
+      *) stuck="" idle=$((idle + 1)) ;;
+    esac
+    # Stopped across two checks, so a restart in progress isn't raced.
+    if [ "$idle" -ge 2 ] && ! systemctl --user is-active -q hex.service; then
+      echo "standby: no machine holds hex, so the server starts it" >&2
+      back || :
+    fi
+    systemctl --user is-active -q hex.service && idle=0
+    sleep "$EVERY"
+  done
 }
 
 # Syncthing is connected to the server and has sent it every change made here (its event stream says when a
@@ -96,6 +144,7 @@ synced() {
 }
 
 watch() {
+  [ "$ROLE" = twin ] || { guard; return; }
   # A move cut short by a restart finishes first.
   case $(holder) in taking) take ;; giving) give ;; esac
   local since=""
@@ -110,7 +159,7 @@ watch() {
       twin)
         if up; then
           # The server's copy stops the moment it's back, so two hubs never poll one bot.
-          [ -n "$since" ] || on "$SERVER" '.local/bin/standby release' || :
+          [ -n "$since" ] || there "$SERVER" release || :
           since=${since:-$SECONDS}
           [ $((SECONDS - since)) -lt "$STABLE" ] || { give; since=""; }
         else since=""; fi ;;
@@ -127,5 +176,6 @@ case "${1:-}" in
   holder) holder ;;
   take) take ;;
   give) give ;;
-  *) echo "usage: standby watch|may-hold|release|advertise|holder|take|give" >&2; exit 2 ;;
+  back) back ;;
+  *) echo "usage: standby watch|may-hold|release|advertise|back|holder|take|give" >&2; exit 2 ;;
 esac
