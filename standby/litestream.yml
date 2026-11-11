@@ -1,0 +1,9 @@
+# The server streams hex.db to the twin (hex-db.service), which restores it as it takes hex over (standby take).
+dbs:
+  - path: ${HOME}/hex/state/hex.db
+    replica:
+      type: sftp
+      host: ${TWIN_HOST}:22
+      user: ${USER}
+      key-path: ${HOME}/.ssh/id_ed25519
+      path: .local/state/standby/hex.db

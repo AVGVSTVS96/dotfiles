@@ -1,0 +1,16 @@
+[Unit]
+Description=Streams hex.db to the cloud twin, so it takes hex over with every thread and turn (standby)
+PartOf=hex-holder.target
+After=tailscaled.service
+
+[Service]
+# TWIN_HOST: the twin's tailnet address, set only on the server.
+EnvironmentFile=%h/.config/standby.env
+ExecCondition=/bin/sh -c '[ -n "$TWIN_HOST" ]'
+ExecCondition=%h/.local/bin/standby may-hold
+ExecStart=%h/.local/bin/litestream replicate -config %h/dotfiles/standby/litestream.yml
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -47,6 +47,14 @@ release() {
 take() {
   hold taking
   if ! big && [ -n "$GROW" ]; then sh -c "$GROW"; exec sleep infinity; fi
+  # The server streamed hex.db here as it changed (hex-db.service): hex starts from its latest copy.
+  db=$HOME/hex/state/hex.db
+  rm -f "$db.standby"
+  if litestream restore -o "$db.standby" "file://$dir/hex.db"; then
+    mv "$db.standby" "$db" && rm -f "$db-wal" "$db-shm"
+  else
+    echo "standby: no copy of hex.db from the server; hex starts from the one here" >&2
+  fi
   systemctl --user start hex-holder.target
   hold twin
   gone=$(cat "$dir/gone" 2>/dev/null || date +%s)

@@ -1,6 +1,6 @@
 [Unit]
 Description=hex as its holder runs it (the server, or its cloud twin while the server is gone: standby)
-Wants=hex.service cliproxyapi.service hex-mail.service
+Wants=hex.service cliproxyapi.service hex-mail.service hex-db.service
 
 [Install]
 WantedBy=default.target
