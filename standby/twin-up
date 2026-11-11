@@ -7,7 +7,7 @@
 # holds hex stays off until standby takes over.
 set -eu
 user=bassim
-: "${TS_AUTHKEY:?a Tailscale auth key}" "${SERVER_ID:?the Syncthing device id of the server}"
+: "${TS_AUTHKEY:=}" "${SERVER_ID:?the Syncthing device id of the server}"
 
 # The server's packages, less its desktop.
 pacman-key --init && pacman-key --populate archlinux
@@ -26,12 +26,14 @@ echo "$user ALL=(ALL) NOPASSWD: ALL" > "/etc/sudoers.d/$user"
 loginctl enable-linger "$user"
 
 systemctl enable --now tailscaled sshd
-tailscale up --auth-key="$TS_AUTHKEY" --hostname=twin --ssh
+tailscale status >/dev/null 2>&1 || tailscale up --auth-key="$TS_AUTHKEY" --hostname=twin
 # Claude Code finds the account pool at the server's tailnet address: here that port goes to the twin's own copy,
 # which listens on 127.0.0.1 too, while ssh, scp and Syncthing still reach the server itself.
-printf 'table ip twin {\n  chain out {\n    type nat hook output priority -100;\n    ip daddr %s tcp dport 8317 redirect to :8317\n  }\n}\n' \
+printf 'destroy table ip twin\ntable ip twin {\n  chain out {\n    type nat hook output priority -100;\n    ip daddr %s tcp dport 8317 redirect to :8317\n  }\n}\n' \
   "$(tailscale ip -4 server)" > /etc/nftables.conf
-systemctl enable --now nftables
+systemctl enable nftables
+# A kernel the upgrade above replaced can't load nftables until the next boot.
+nft -f /etc/nftables.conf 2>/dev/null || echo 'twin-up: the redirect starts once the twin reboots onto its new kernel'
 
 sudo -iu "$user" sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
 set -eu
@@ -60,5 +62,5 @@ for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bi
 done
 echo "twin's Syncthing id: $(st show system | jq -r .myID)"
 AS_USER
-echo "twin-up: done. Add the twin's Syncthing id to the server, then once the first sync finishes:"
+echo "twin-up: done. Copy the server's ~/.ssh here (both machines ssh each other as bassim), add the twin's Syncthing id to the server, then once the first sync finishes:"
 echo "  sudo -iu $user sh -c '~/dotfiles/install && systemctl --user daemon-reload && systemctl --user enable --now standby.service'"
