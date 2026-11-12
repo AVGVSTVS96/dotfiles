@@ -55,7 +55,7 @@ note() { printf '{"at":%s,"on":"%s","event":"%s","detail":"%s"}\n' "$(now)" "$RO
 publish() {
   [ -d "$PAGE_DATA" ] || return 0
   tail -n 30 "$dir/events" 2>/dev/null | jq -sc --arg role "$ROLE" --arg place "$PLACE" --arg latlon "$LATLON" --arg holder "$1" --argjson rtt "${rtt:-null}" --argjson seen "$(now)" \
-    '{role: $role, place: $place, latlon: ($latlon | split(",") | map(tonumber)), holder: $holder, seen: $seen, rtt: $rtt, cpus: '"$(nproc)"', events: .}' > "$PAGE_DATA/.jump-$ROLE.json" &&
+    '{role: $role, place: $place, latlon: ($latlon | split(",") | map(tonumber)), holder: $holder, seen: $seen, rtt: $rtt, cpus: '"$(nproc)"', grace: '"$GRACE"', stable: '"$STABLE"', events: .}' > "$PAGE_DATA/.jump-$ROLE.json" &&
     mv "$PAGE_DATA/.jump-$ROLE.json" "$PAGE_DATA/jump-$ROLE.json" || :
 }
 
