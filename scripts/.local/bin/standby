@@ -15,6 +15,7 @@
 #   standby release    stops hex here: what holds, every Claude session and job (their records resume elsewhere)
 #   standby advertise  serve hex's tailnet names from here (give runs it on the server)
 #   standby back       on the server: take the twin's hex.db if it came, and run hex here (give runs it)
+#   standby drill [off] on the twin: act as if the server were gone, without touching it
 #   standby holder | take | give
 set -eu
 env=${STANDBY_ENV:-$HOME/.config/standby.env}
@@ -28,7 +29,7 @@ dir=$HOME/.local/state/standby
 mkdir -p "$dir"
 holder() { cat "$dir/holder" 2>/dev/null || echo server; }
 hold() { echo "$1" > "$dir/holder.$$" && mv "$dir/holder.$$" "$dir/holder"; echo "standby: holder is $1"; }
-up() { tailscale ping -c 1 --timeout=5s "$SERVER" >/dev/null 2>&1; }
+up() { [ ! -f "$dir/drill" ] && tailscale ping -c 1 --timeout=5s "$SERVER" >/dev/null 2>&1; }
 online() { curl -fsS -m 10 -o /dev/null https://api.telegram.org; }
 big() { [ "$(nproc)" -ge "$BIG_CPUS" ]; }
 on() { host=$1; shift; timeout 60 ssh -o BatchMode=yes -o ConnectTimeout=5 "$host" "$@"; }
@@ -61,7 +62,10 @@ release() {
 
 take() {
   hold taking
-  if ! big && [ -n "$GROW" ]; then sh -c "$GROW"; exec sleep infinity; fi
+  if ! big && [ -n "$GROW" ] && sh -c "$GROW"; then
+    sleep 300
+    echo "standby: the twin didn't grow in 5 minutes, so hex starts at this size" >&2
+  fi
   # The server streamed hex.db here as it changed (hex-db.service): hex starts from its latest copy.
   db=$HOME/hex/state/hex.db
   rm -f "$db.standby"
@@ -74,6 +78,7 @@ take() {
   serve advertise
   hold twin
   gone=$(cat "$dir/gone" 2>/dev/null || date +%s)
+  [ ! -f "$dir/drill" ] || tell "Failover drill: the twin acts as if the server were gone. The server itself keeps running."
   tell "The server has been unreachable since $(date -d "@$gone" '+%-I:%M%p'), so hex moved to the cloud twin ($(nproc) CPUs). Threads and jobs that were running pick up where they stopped. hex moves back once the server stays up for $((STABLE / 60)) minutes."
 }
 
@@ -174,8 +179,9 @@ case "${1:-}" in
   release) release ;;
   advertise) serve advertise ;;
   holder) holder ;;
+  drill) if [ "${2:-}" = off ]; then rm -f "$dir/drill"; else touch "$dir/drill"; fi ;;
   take) take ;;
   give) give ;;
   back) back ;;
-  *) echo "usage: standby watch|may-hold|release|advertise|back|holder|take|give" >&2; exit 2 ;;
+  *) echo "usage: standby watch|may-hold|release|advertise|back|drill [off]|holder|take|give" >&2; exit 2 ;;
 esac

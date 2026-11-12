@@ -125,5 +125,20 @@ rm "$root/twin/units"
 as server timeout 2 "$standby" watch >/dev/null 2>&1
 check "starts it when no machine holds hex" "active server"
 
+echo "drill"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+echo hex.service > "$root/server/units"
+printf 'GRACE=0\nSTABLE=0\nEVERY=0\n' >> "$root/twin/.config/standby.env"
+as twin "$standby" drill
+as twin timeout 3 "$standby" watch >/dev/null 2>&1
+check "the twin takes over while the server answers" "active twin && [ \"\$(holder)\" = twin ]"
+as server timeout 2 "$standby" watch >/dev/null 2>&1
+check "the server's guard stops its hex" "! active server"
+as twin "$standby" drill off
+as twin timeout 3 "$standby" watch >/dev/null 2>&1
+check "after the drill hex goes back to the server" "active server && ! active twin && [ \"\$(holder)\" = server ]"
+
 echo "$pass passed, $fail failed"
 [ "$fail" = 0 ]
