@@ -56,6 +56,17 @@ case "$*" in
   *db/completion*) echo '{"needBytes":0}' ;;
 esac
 EOF
+# logind: a machine with a file named shutdown is going down.
+cat > "$bin/systemd-inhibit" <<'EOF'
+#!/usr/bin/env bash
+while [ "${1#--}" != "$1" ]; do shift; done
+exec "$@"
+EOF
+cat > "$bin/gdbus" <<'EOF'
+#!/usr/bin/env bash
+[ ! -f "$HOME/shutdown" ] || echo "/org/freedesktop/login1: org.freedesktop.login1.Manager.PrepareForShutdown (true,)"
+exec sleep 60
+EOF
 printf '#!/bin/sh\nexit 1\n' > "$bin/syncthing"
 printf '#!/bin/sh\nexit 0\n' > "$bin/claude"
 chmod +x "$bin"/*
@@ -139,6 +150,34 @@ check "the server's guard stops its hex" "! active server"
 as twin "$standby" drill off
 as twin timeout 3 "$standby" watch >/dev/null 2>&1
 check "after the drill hex goes back to the server" "active server && ! active twin && [ \"\$(holder)\" = server ]"
+
+echo "jump"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+echo hex.service > "$root/server/units"
+as server "$standby" jump >"$root/log" 2>&1
+check "hex runs on the twin" "active twin && ! active server && [ \"\$(holder)\" = twin ]"
+check "from the server's hex.db" "grep -q 'server data' '$root/twin/hex/state/hex.db'"
+check "the twin serves hex's names" "[ \"\$(cat '$root/twin/names')\" = advertise ]"
+
+echo "jump to a twin that's gone"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+echo hex.service > "$root/server/units"
+touch "$root/twin/down"
+as server "$standby" jump >"$root/log" 2>&1
+check "hex keeps running on the server" "active server && grep -q 'server data' '$root/server/hex/state/hex.db'"
+
+echo "shutdown"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+echo hex.service > "$root/server/units"
+touch "$root/server/shutdown"
+as server timeout 3 "$standby" watch >/dev/null 2>&1
+check "a reboot of the server moves hex to the twin first" "active twin && ! active server && [ \"\$(holder)\" = twin ]"
 
 echo "$pass passed, $fail failed"
 [ "$fail" = 0 ]
