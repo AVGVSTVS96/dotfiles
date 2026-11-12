@@ -35,9 +35,10 @@ systemctl enable nftables
 # A kernel the upgrade above replaced can't load nftables until the next boot.
 nft -f /etc/nftables.conf 2>/dev/null || echo 'twin-up: the redirect starts once the twin reboots onto its new kernel'
 
-sudo -iu "$user" sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
+# Not a login shell: fish would drop the empty arguments.
+sudo -u "$user" -H sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
 set -eu
-server_id=$1
+cd && server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar ~/.config/systemd/user/cliproxyapi.socket.d
 printf '[Socket]\nListenStream=127.0.0.1:8317\n' > ~/.config/systemd/user/cliproxyapi.socket.d/twin.conf
