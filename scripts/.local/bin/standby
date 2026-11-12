@@ -28,7 +28,7 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 : "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}"
 # The tailnet names that follow hex (Tailscale Services): the holder advertises them, the other machine drains them.
 : "${SERVICES:=svc:hub svc:pages svc:updates}"
-: "${PLACE:=the cloud twin}" "${PAGE_DATA:=$HOME/Developer/pages/data}"
+: "${PLACE:=the $ROLE}" "${LATLON:=}" "${PAGE_DATA:=$HOME/Developer/pages/data}"
 dir=$HOME/.local/state/standby
 mkdir -p "$dir"
 holder() { cat "$dir/holder" 2>/dev/null || echo server; }
@@ -54,8 +54,8 @@ tell() { "$HOME/hex/.hex/bin/hex" deliver hex --to="${TELL:--1004422245734}" --u
 note() { printf '{"at":%s,"on":"%s","event":"%s","detail":"%s"}\n' "$(now)" "$ROLE" "$1" "${2:-}" >> "$dir/events"; publish "${holds:-}"; }
 publish() {
   [ -d "$PAGE_DATA" ] || return 0
-  tail -n 30 "$dir/events" 2>/dev/null | jq -sc --arg role "$ROLE" --arg place "$PLACE" --arg holder "$1" --argjson rtt "${rtt:-null}" --argjson seen "$(now)" \
-    '{role: $role, place: $place, holder: $holder, seen: $seen, rtt: $rtt, cpus: '"$(nproc)"', events: .}' > "$PAGE_DATA/.jump-$ROLE.json" &&
+  tail -n 30 "$dir/events" 2>/dev/null | jq -sc --arg role "$ROLE" --arg place "$PLACE" --arg latlon "$LATLON" --arg holder "$1" --argjson rtt "${rtt:-null}" --argjson seen "$(now)" \
+    '{role: $role, place: $place, latlon: ($latlon | split(",") | map(tonumber)), holder: $holder, seen: $seen, rtt: $rtt, cpus: '"$(nproc)"', events: .}' > "$PAGE_DATA/.jump-$ROLE.json" &&
     mv "$PAGE_DATA/.jump-$ROLE.json" "$PAGE_DATA/jump-$ROLE.json" || :
 }
 
@@ -168,7 +168,7 @@ jump() {
   start=$(now)
   touch "$dir/jumping"
   note jumping "$1"
-  tell "$1, so hex is jumping to $PLACE."
+  tell "$1, so hex is jumping to its twin."
   synced || :
   release
   rm -f "$dir/jump.db"
