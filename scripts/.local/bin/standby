@@ -253,7 +253,7 @@ watch() {
       twin)
         if up; then
           # The server's copy stops the moment it's back, so two hubs never poll one bot.
-          [ -n "$since" ] || there "$SERVER" release || :
+          [ -n "$since" ] || { note back; there "$SERVER" release || :; }
           since=${since:-$SECONDS}
           [ $((SECONDS - since)) -lt "$STABLE" ] || { give; since=""; }
         else since=""; fi ;;
