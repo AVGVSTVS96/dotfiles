@@ -1,0 +1,25 @@
+# Resizes the standby twin on Hetzner Cloud (standby's GROW and SHRINK). Hetzner changes a machine's type only while
+# it's off, so this runs here rather than on the twin itself, which carries on as it boots.
+name: twin-resize
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: Hetzner server type, like cpx62 or cpx32
+        required: true
+concurrency: twin-resize
+jobs:
+  resize:
+    runs-on: ubuntu-latest
+    env:
+      HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+      TYPE: ${{ inputs.type }}
+    steps:
+      - run: |
+          curl -fsSL https://github.com/hetznercloud/cli/releases/latest/download/hcloud-linux-amd64.tar.gz | tar xz hcloud
+          [ "$(./hcloud server describe twin -o format='{{.ServerType.Name}}')" != "$TYPE" ] || exit 0
+          ./hcloud server shutdown twin
+          for _ in $(seq 24); do [ "$(./hcloud server describe twin -o format='{{.Status}}')" = off ] && break; sleep 5; done
+          ./hcloud server poweroff twin || :
+          ./hcloud server change-type --keep-disk twin "$TYPE"
+          ./hcloud server poweron twin
