@@ -101,13 +101,15 @@ release() {
   rest
 }
 
-# Transcripts and job records written in the last 10 minutes, which Syncthing may not have carried yet.
-recent() { (cd "$HOME" && find .claude/projects hex/state/jobs -mmin -10 -type f -print0 2>/dev/null); }
+# Transcripts and job records written in the last day, which Syncthing may not have carried yet: a session idle for
+# hours still writes as it stops, and Syncthing can be an hour behind.
+recent() { (cd "$HOME" && find .claude/projects hex/state/jobs -mmin -1440 -type f -print0 2>/dev/null); }
+sizes() { recent | (cd "$HOME" && xargs -0r stat --printf '%s %n\0'); }
 
 # Before the cut they go over whole, rsync sending what differs, with the sizes they had kept here, so the cut sends a
 # transcript only what it gained since: Claude Code only ever appends to one.
 carry() {
-  recent | (cd "$HOME" && xargs -0r stat --printf '%s %n\0') > "$dir/carried" &&
+  sizes > "$dir/carried" &&
     recent | (cd "$HOME" && rsync -a --from0 --files-from=- -e "${rsh[*]}" . "$other:")
 }
 
@@ -128,15 +130,15 @@ payload() {
   rm -rf "$out" && mkdir -p "$out/whole" "$out/tails" && : > "$out/grew"
   [ ! -f "$db-wal" ] || cp "$db-wal" "$out/hex.db-wal"
   while IFS=' ' read -r -d '' size name; do had[$name]=$size; done < "$dir/carried"
-  while IFS= read -r -d '' name; do
-    now=$(stat -c %s "$HOME/$name") size=${had[$name]:-}
+  while IFS=' ' read -r -d '' now name; do
+    size=${had[$name]:-}
     if [ -n "$size" ] && [ "${name%.jsonl}" != "$name" ] && [ "$now" -ge "$size" ]; then
       [ "$now" -gt "$size" ] || continue
       mkdir -p "$out/tails/${name%/*}" && tail -c +$((size + 1)) "$HOME/$name" > "$out/tails/$name" && printf '%s %s\0' "$size" "$name" >> "$out/grew"
     else
       mkdir -p "$out/whole/${name%/*}" && cp -p "$HOME/$name" "$out/whole/$name"
     fi
-  done < <(recent)
+  done < <(sizes)
   tar -c -C "$out" .
 }
 
@@ -158,9 +160,25 @@ ahead() {
   grep -q HEX_AHEAD "$HOME/hex/.hex/bin/hex" || { echo "standby: this hex can't start ahead yet" >&2; return 1; }
   ! systemctl --user is-active -q hex.service || { echo "standby: hex already runs here" >&2; return 1; }
   touch "$ahead" && systemctl --user start hex.service || return
-  # Building the hub reads its code into memory, which takes a quarter second off its start on a twin that just booted.
-  bun build --target=bun --outdir="$dir/warm" "$HOME/hex/.hex/hub/serve.ts" "$HOME"/hex/.hex/channels/*/bot.ts >/dev/null 2>&1 || :
+  # The hub's code builds, which also reads it into memory: a quarter second off its start on a twin that just booted.
+  bun build --target=bun --outdir="$dir/warm" "$HOME/hex/.hex/hub/serve.ts" "$HOME"/hex/.hex/channels/*/bot.ts >/dev/null ||
+    { echo "standby: the hub's code doesn't build here" >&2; return 1; }
+  # Ready is hex waiting for its turn with this machine's settings, which a start that dies on them never reaches.
+  local tries=0
+  until pgrep -u "$USER" -f -- "$ahead" >/dev/null; do
+    [ $((tries += 1)) -le 60 ] || { echo "standby: hex didn't get as far as its wait here" >&2; return 1; }
+    sleep 0.5
+  done
   echo ready
+}
+
+# hex serves once its hub polls the bot, which it says in its log; one that can't start never does.
+polling() {
+  local since=$1 tries=0
+  until journalctl --user -u hex.service --since "@$((since / 1000))" -o cat 2>/dev/null | grep -q 'polling as'; do
+    [ $((tries += 1)) -le 60 ] || { echo "standby: hex isn't polling here" >&2; return 1; }
+    sleep 0.5
+  done
 }
 
 # What starting ahead started, when the cut never came.
@@ -174,7 +192,6 @@ stop_all() {
     systemctl --user kill -s KILL hex-jobs.slice hex-sessions.slice || :
     systemctl --user stop hex.service hex-jobs.slice hex-sessions.slice || :
   }
-  claude daemon stop --any >/dev/null 2>&1 || :
   rm -f "$HOME/hex/state/moving"
 }
 
@@ -187,20 +204,23 @@ hand() {
   sqlite3 -cmd '.timeout 3000' "$db" 'pragma wal_checkpoint(truncate)' >/dev/null || :
   ship || ship || { systemctl --user start hex-db.service || :; return 1; }
   carry || :
-  coproc landing { on "$other" "\"\$HOME/.local/bin/standby\" $1 -"; }
+  coproc landing { timeout 120 "${rsh[@]}" "$other" "\"\$HOME/.local/bin/standby\" $1 -"; }
   while read -r line <&"${landing[0]}" && [ "$line" != ready ]; do :; done
   [ "$line" = ready ] || { echo "standby: $other couldn't start hex ahead" >&2; wait "$landing_PID"; return 1; }
   echo "standby: $other is ready"
   sqlite3 -readonly "$db" 'select 1' '.shell sleep 60' >/dev/null 2>&1 &
   keep=$!
+  local to=${landing[1]} stopped
   cut=$(now)
   stop_all
-  local to=${landing[1]}
+  stopped=$(since_s "$cut")
   if [ "$(sig)" = "$shipped" ] || ship; then { echo "$cut"; payload; } >&"$to"; fi
   exec {to}>&-
+  echo "standby: cut sent in $(since_s "$cut")s (all stopped after ${stopped}s)"
   kill "$keep" 2>/dev/null || :
-  echo "standby: cut sent in $(since_s "$cut")s"
-  wait "$landing_PID" || return
+  claude daemon stop --any >/dev/null 2>&1 || :
+  wait "$landing_PID" || { echo "standby: hex isn't serving on $other, so it stays here" >&2; return 1; }
+  echo "standby: hex serves on $other $(since_s "$cut")s after the cut"
   release
 }
 
@@ -220,6 +240,7 @@ back() {
   if [ "${1:-}" = - ]; then
     { ahead && land; } || { unready; return 1; }
     arrive db
+    polling "$cut" || { release; return 1; }
   else
     arrive "${1:-}"
   fi
@@ -235,6 +256,7 @@ take() {
   if [ "$cut" = - ]; then
     { ahead && land; } || { unready; holds=server; hold server; return 1; }
     arrive db
+    polling "$cut" || { release; holds=server; hold server; return 1; }
   else
     note gone "$(date -d "@$(cat "$dir/gone" 2>/dev/null || date +%s)" '+%-I:%M:%S%p')"
     if ! big && [ -n "$GROW" ] && sh -c "$GROW"; then
@@ -268,8 +290,7 @@ give() {
   holds=giving
   hold giving
   note returning
-  hand back || :
-  if on "$SERVER" systemctl --user is-active -q hex.service; then
+  if hand back; then
     holds=server
     hold server
     note home "$(since_s "${cut:-$start}")"

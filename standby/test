@@ -69,6 +69,9 @@ cat > "$bin/gdbus" <<'EOF'
 exec sleep 60
 EOF
 printf '#!/bin/sh\nexit 0\n' > "$bin/claude"
+printf '#!/bin/sh\nexit 0\n' > "$bin/bun"
+# A hub that starts says it polls, except on a machine with a file named hub-dies.
+printf '#!/bin/sh\n[ -f "$HOME/hub-dies" ] || echo "telegram hub: polling as @bot"\n' > "$bin/journalctl"
 chmod +x "$bin"/*
 export PATH=$bin:$PATH ROOT=$root
 unset XDG_RUNTIME_DIR
@@ -110,7 +113,7 @@ setup
 mkdir -p "$root/twin/.claude/projects/-home-bassim-hex" "$root/twin/.claude/projects/old"
 echo turn > "$root/twin/.claude/projects/-home-bassim-hex/a b.jsonl"
 echo old > "$root/twin/.claude/projects/old/old.jsonl"
-touch -d '-30 minutes' "$root/twin/.claude/projects/old/old.jsonl"
+touch -d '-2 days' "$root/twin/.claude/projects/old/old.jsonl"
 as twin "$standby" give >"$root/log" 2>&1
 check "the server has the transcript, with what its session wrote as it stopped" "[ \"\$(cat '$root/server/.claude/projects/-home-bassim-hex/a b.jsonl')\" = \"\$(printf 'turn\\nlast')\" ]"
 check "older ones are left to Syncthing" "[ ! -e '$root/server/.claude/projects/old/old.jsonl' ]"
@@ -121,6 +124,13 @@ touch "$root/twin/copy-fails"
 as twin "$standby" give >"$root/log" 2>&1
 check "the twin keeps running hex" "active twin && ! active server"
 check "from its own hex.db" "grep -q 'twin data' '$root/twin/hex/state/hex.db'"
+check "the twin still holds" "[ \"\$(holder)\" = twin ]"
+
+echo "hand-back to a server whose hex can't start"
+setup
+touch "$root/server/hub-dies"
+as twin "$standby" give >"$root/log" 2>&1
+check "the twin runs hex again" "active twin && ! active server"
 check "the twin still holds" "[ \"\$(holder)\" = twin ]"
 
 echo "hand-back to a server that went away again"
@@ -188,6 +198,15 @@ echo hex.service > "$root/server/units"
 echo old > "$root/twin/hex/.hex/bin/hex"
 as server "$standby" jump >"$root/log" 2>&1
 check "hex keeps running on the server" "active server && ! active twin && [ \"\$(holder)\" = server ]"
+
+echo "jump to a twin whose hex can't start"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+echo hex.service > "$root/server/units"
+touch "$root/twin/hub-dies"
+as server "$standby" jump >"$root/log" 2>&1
+check "hex runs on the server again" "active server && ! active twin && [ \"\$(holder)\" = server ]"
 
 echo "jump to a twin that's gone"
 setup
