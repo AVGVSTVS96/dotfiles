@@ -1,0 +1,12 @@
+#!/bin/sh
+# vault-env <item> <file>: writes each field of a vault item to <file> as an EnvironmentFile, named as its variable.
+# It rewrites <file> only when the item changed, so a start that comes often, like a jump, doesn't wait on the vault.
+set -eu
+item=$1 out=$2
+[ "$out" -nt "${ENCLAVE_HOME:-$HOME/.enclave}/items/$item.enclave" ] && exit 0
+fields=$(enclave list "$item" | sed -n "s/^$item: //p" | tr -d ' ' | tr , ' ')
+[ -n "$fields" ] || { echo "vault-env: the vault has no item $item" >&2; exit 1; }
+set --
+for field in $fields; do set -- "$@" "$field=$item/$field"; done
+umask 077
+exec enclave run "$@" sh -c 'out=$1; shift; for name; do printf "%s=%s\n" "$name" "$(printenv "$name")"; done >"$out.part" && mv "$out.part" "$out"' sh "$out" $fields

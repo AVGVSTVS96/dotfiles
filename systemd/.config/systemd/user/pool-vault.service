@@ -1,0 +1,7 @@
+[Unit]
+Description=pool-vault: keep the account pool's logins and settings in the vault, so a new machine's pool starts signed in
+
+[Service]
+Type=oneshot
+ExecCondition=%h/.local/bin/standby may-hold
+ExecStart=%h/.local/bin/vault-files pool %h/.config/cliproxyapi/config.yaml %h/.config/cliproxyapi/accounts.json %h/.config/cliproxyapi/auths

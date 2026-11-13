@@ -1,0 +1,22 @@
+#!/bin/sh
+# vault-files <item> <path>...: keeps each file, or each file in a folder, in a vault item, under its path from $HOME.
+# vault-files <item>: writes them back where they were, leaving any that are already there, as on a new machine.
+set -eu
+item=$1
+shift
+enclave=$HOME/.local/bin/enclave
+if [ $# -gt 0 ]; then
+  for path; do
+    for file in "$path" "$path"/*; do
+      [ -f "$file" ] && "$enclave" save "$item" "${file#"$HOME"/}" <"$file" >/dev/null
+    done
+  done
+  exit 0
+fi
+umask 077
+"$enclave" list "$item" | sed -n "s/^$item: //p" | sed 's/, /\n/g' | while IFS= read -r field; do
+  [ -e "$HOME/$field" ] && continue
+  mkdir -p "$(dirname "$HOME/$field")"
+  "$enclave" get "$item" "$field" </dev/null >"$HOME/$field"
+  echo "restored ~/$field"
+done

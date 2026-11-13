@@ -1,0 +1,8 @@
+[Unit]
+Description=vault-push: commit the vault and push it to its private repo, so a copy lives off this machine
+
+[Service]
+Type=oneshot
+ExecCondition=%h/.local/bin/standby may-hold
+WorkingDirectory=%h/.enclave
+ExecStart=/bin/sh -c 'git add -A && { git diff --cached --quiet || git commit -qm "chore: vault changed"; } && git push -q origin main'
