@@ -1,0 +1,22 @@
+// Build output and installs each machine makes for itself.
+(?d)node_modules
+(?d)target
+(?d).next
+(?d).turbo
+(?d).venv
+(?d).cache
+(?d)DerivedData
+(?d).build
+*.sock
+.~lock*
+// What each machine's Claude Code keeps for itself.
+/jobs
+/daemon*
+/shell-snapshots
+/telemetry
+/statsig
+/debug
+/ide
+/session-env
+/paste-cache
+/file-history

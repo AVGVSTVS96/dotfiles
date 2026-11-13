@@ -1,0 +1,32 @@
+// Agents' worktrees and scratch install their own packages. hex runs from the rest on either machine (both Linux x86-64).
+(?d)**/worktrees/**/node_modules
+(?d)/scratch/**/node_modules
+// Build output each machine makes for itself.
+(?d)target
+(?d).next
+(?d).turbo
+(?d).venv
+(?d).cache
+(?d)DerivedData
+(?d).build
+*.sock
+.~lock*
+// Browser and Electron caches, which each machine refills for itself.
+(?d)Cache_Data
+(?d)Code Cache
+(?d)GPUCache
+(?d)GrShaderCache
+(?d)GraphiteDawnCache
+(?d)DawnGraphiteCache
+(?d)DawnWebGPUCache
+(?d)ShaderCache
+(?d)CacheStorage
+(?d)ScriptCache
+(?d)component_crx_cache
+// Moves as a SQLite copy at hand-back (standby), never as a live file.
+/state/hex.db
+/state/hex.db-wal
+/state/hex.db-shm
+/state/hex.bell
+/state/hub.pid
+/state/*.sock

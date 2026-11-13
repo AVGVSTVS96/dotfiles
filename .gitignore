@@ -60,5 +60,5 @@ pi/.pi/exa-usage.json
 pi/.pi/agent/extensions/herdr-agent-state.ts
 pi/.pi/agent/models-store.json
 pi/.pi/agent/trust.json
-.stignore
-.stfolder/
+/.stignore
+/.stfolder/
