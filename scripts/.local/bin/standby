@@ -164,7 +164,7 @@ ahead() {
 }
 
 # What starting ahead started, when the cut never came.
-unready() { [ ! -e "$ahead" ] || { rm -f "$ahead"; systemctl --user stop hex.service || :; }; }
+unready() { [ ! -e "$ahead" ] || { systemctl --user stop hex.service || :; rm -f "$ahead"; }; }
 
 # The cut: the hub, sessions and jobs stop together. A session or job still going after $SETTLE seconds is killed, as
 # what it wrote is on disk, and it resumes on the other machine (jobs keep their records, bin/job --ended).
