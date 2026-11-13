@@ -12,7 +12,7 @@ user=bassim
 # The server's packages, less its desktop.
 pacman-key --init && pacman-key --populate archlinux
 pacman -Syu --noconfirm --needed base-devel git openssh sudo tailscale syncthing jq sqlite stow fish zsh tmux \
-  bun nodejs npm pnpm uv rustup go ripgrep fd bat eza fzf git-delta git-lfs github-cli jujutsu neovim unzip zip nftables rsync \
+  bun nodejs npm pnpm uv rustup go ripgrep fd bat eza fzf git-delta git-lfs github-cli jujutsu neovim unzip zip rsync \
   ffmpeg imagemagick shellcheck sops age xorg-server-xvfb
 
 # Swap, so a burst on the small size doesn't kill Syncthing.
@@ -27,13 +27,10 @@ loginctl enable-linger "$user"
 
 systemctl enable --now tailscaled sshd
 tailscale status >/dev/null 2>&1 || tailscale up --auth-key="$TS_AUTHKEY" --hostname=twin
-# Claude Code finds the account pool at the server's tailnet address: here that port goes to the twin's own copy,
-# which listens on 127.0.0.1 too, while ssh, scp and Syncthing still reach the server itself.
-printf 'destroy table ip twin\ntable ip twin {\n  chain out {\n    type nat hook output priority -100;\n    ip daddr %s tcp dport 8317 redirect to :8317\n  }\n}\n' \
-  "$(tailscale ip -4 server)" > /etc/nftables.conf
-systemctl enable nftables
-# A kernel the upgrade above replaced can't load nftables until the next boot.
-nft -f /etc/nftables.conf 2>/dev/null || echo 'twin-up: the redirect starts once the twin reboots onto its new kernel'
+# Claude Code's settings, shared with the server, name the account pool at the server's tailnet address. Here the
+# machine's own managed settings, which win over them, name the twin's copy of the pool.
+mkdir -p /etc/claude-code
+echo '{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:8317"}}' > /etc/claude-code/managed-settings.json
 
 # Not a login shell: fish would drop the empty arguments.
 sudo -u "$user" -H sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
@@ -41,7 +38,8 @@ set -eu
 cd && server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar ~/.config/systemd/user/cliproxyapi.socket.d
-printf '[Socket]\nListenStream=127.0.0.1:8317\n' > ~/.config/systemd/user/cliproxyapi.socket.d/twin.conf
+# The pool's one socket: it takes what systemd hands it only when there's one, and else binds the server's address.
+printf '[Socket]\nListenStream=\nListenStream=127.0.0.1:8317\n' > ~/.config/systemd/user/cliproxyapi.socket.d/twin.conf
 printf 'ROLE=twin\nSERVER=server\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
 
