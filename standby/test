@@ -11,15 +11,22 @@ mkdir -p "$bin"
 pass=0 fail=0
 check() { if eval "$2"; then pass=$((pass + 1)); echo "  ok   $1"; else fail=$((fail + 1)); echo "  FAIL $1"; fi; }
 
-# systemctl --user: hex-holder.target starts hex.service only where standby may-hold says so, as ExecCondition does,
-# and not at all on a machine with a file named broken.
+# systemctl --user: hex-holder.target and hex.service start hex.service only where standby may-hold says so, as
+# ExecCondition does, and not at all on a machine with a file named broken; a start while hex-ahead is there is noted
+# in started. As they stop, the hub writes to hex.db's WAL and a session to its recent transcript, if there are those.
 cat > "$bin/systemctl" <<'EOF'
 #!/usr/bin/env bash
 [ "$1" = --user ] && shift
 units=$HOME/units
+ahead=$HOME/.local/state/standby/hex-ahead
 case $1 in
-  start) [ "$2" = hex-holder.target ] && [ ! -f "$HOME/broken" ] && "$HOME/.local/bin/standby" may-hold && echo hex.service >> "$units" ;;
-  stop) case " $* " in *" hex-holder.target "* | *" hex.service "*) rm -f "$units" ;; esac ;;
+  start) case $2 in hex-holder.target | hex.service) ;; *) exit 0 ;; esac
+    [ ! -f "$HOME/broken" ] && "$HOME/.local/bin/standby" may-hold || exit
+    grep -qx hex.service "$units" 2>/dev/null || { echo hex.service >> "$units"; [ ! -f "$ahead" ] || echo ahead >> "$HOME/started"; } ;;
+  stop) case " $* " in *" hex-holder.target "* | *" hex.service "*)
+      grep -qx hex.service "$units" 2>/dev/null && [ -f "$HOME/hex/state/hex.db-wal" ] && echo "last write" >> "$HOME/hex/state/hex.db-wal"
+      rm -f "$units" ;; esac
+    case " $* " in *" hex-sessions.slice "*) find "$HOME/.claude/projects" -name '*.jsonl' -mmin -10 -exec sh -c 'echo last >> "$1"' _ {} \; 2>/dev/null ;; esac ;;
   is-active) shift; [ "$1" = -q ] && shift; grep -qx "$1" "$units" 2>/dev/null; exit ;;
 esac
 exit 0
@@ -37,18 +44,13 @@ cat > "$bin/rsync" <<'EOF'
 #!/usr/bin/env bash
 to=${*: -1} from=${*: -2:1}
 host=${to%%:*}
-[ ! -f "$ROOT/$host/down" ] || exit 1
+[ ! -f "$ROOT/$host/down" ] && [ ! -f "$HOME/copy-fails" ] || exit 1
 case " $* " in
   *" --files-from=- "*) while IFS= read -r -d '' file; do mkdir -p "$ROOT/$host/${file%/*}" && cp "$file" "$ROOT/$host/$file"; done ;;
   *) mkdir -p "$ROOT/$host/$(dirname "${to#*:}")" && cp "$from" "$ROOT/$host/${to#*:}" ;;
 esac
 EOF
-cat > "$bin/sqlite3" <<'EOF'
-#!/usr/bin/env bash
-[ ! -f "$HOME/backup-fails" ] || { echo "Error: cannot open" >&2; exit 1; }
-to=${2#.backup \'}; to=${to%\'}
-cp "$1" "$to"
-EOF
+printf '#!/bin/sh\nexit 0\n' > "$bin/sqlite3"
 cat > "$bin/tailscale" <<'EOF'
 #!/usr/bin/env bash
 [ "$1" = serve ] && echo "$2" >> "$HOME/names.$3"
@@ -73,6 +75,7 @@ setup() {
   for host in server twin; do
     mkdir -p "$root/$host/.local/bin" "$root/$host/.config" "$root/$host/hex/state" "$root/$host/.local/state/standby"
     ln -s "$standby" "$root/$host/.local/bin/standby"
+    mkdir -p "$root/$host/hex/.hex/bin" && echo 'HEX_AHEAD' > "$root/$host/hex/.hex/bin/hex"
     echo "$host data" > "$root/$host/hex/state/hex.db"
   done
   # The server streams its copies of hex.db to the twin as a folder of that name (hex-db.service).
@@ -105,12 +108,12 @@ echo turn > "$root/twin/.claude/projects/-home-bassim-hex/a b.jsonl"
 echo old > "$root/twin/.claude/projects/old/old.jsonl"
 touch -d '-30 minutes' "$root/twin/.claude/projects/old/old.jsonl"
 as twin "$standby" give >"$root/log" 2>&1
-check "the server has the transcript" "grep -q turn '$root/server/.claude/projects/-home-bassim-hex/a b.jsonl'"
+check "the server has the transcript, with what its session wrote as it stopped" "[ \"\$(cat '$root/server/.claude/projects/-home-bassim-hex/a b.jsonl')\" = \"\$(printf 'turn\\nlast')\" ]"
 check "older ones are left to Syncthing" "[ ! -e '$root/server/.claude/projects/old/old.jsonl' ]"
 
 echo "hand-back whose copy of hex.db fails"
 setup
-touch "$root/twin/backup-fails"
+touch "$root/twin/copy-fails"
 as twin "$standby" give >"$root/log" 2>&1
 check "the twin keeps running hex" "active twin && ! active server"
 check "from its own hex.db" "grep -q 'twin data' '$root/twin/hex/state/hex.db'"
@@ -163,11 +166,24 @@ setup
 echo server > "$root/twin/.local/state/standby/holder"
 rm "$root/twin/units"
 echo hex.service > "$root/server/units"
+echo "server wal" > "$root/server/hex/state/hex.db-wal"
 as server "$standby" jump >"$root/log" 2>&1
 check "hex runs on the twin" "active twin && ! active server && [ \"\$(holder)\" = twin ]"
 check "from the server's hex.db" "grep -q 'server data' '$root/twin/hex/state/hex.db'"
+check "and its WAL, with the hub's last write" "[ \"\$(cat '$root/twin/hex/state/hex.db-wal')\" = \"\$(printf 'server wal\\nlast write')\" ]"
+check "the twin's hex started ahead of the cut" "grep -qx ahead '$root/twin/started'"
+check "and goes now" "[ ! -e '$root/twin/.local/state/standby/hex-ahead' ]"
 check "the twin serves hex's names, bassim.run's among them" "names twin advertise"
 check "the server drained them" "names server drain"
+
+echo "jump to a twin whose hex can't start ahead"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+echo hex.service > "$root/server/units"
+echo old > "$root/twin/hex/.hex/bin/hex"
+as server "$standby" jump >"$root/log" 2>&1
+check "hex keeps running on the server" "active server && ! active twin && [ \"\$(holder)\" = server ]"
 
 echo "jump to a twin that's gone"
 setup

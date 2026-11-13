@@ -12,24 +12,25 @@
 # (the twin unreachable, or a hand-back stuck for $STUCK seconds). It also senses its own end coming: it holds a
 # shutdown and sleep delay lock, and when a reboot, poweroff or sleep begins, hex jumps to the twin before the
 # server goes, without growing it. And hex that won't start on the server jumps too.
-# A move with both machines up (a jump, a hand-back) leaves only the hub away, for the few seconds between its
-# stop on one machine and its start on the other: everything slow happens while hex still runs, and each other
-# piece stops on the old machine once the new one serves it.
+# A move with both machines up (a jump, a hand-back) is a cut: the arriving machine starts hex ahead, ready but
+# waiting (HEX_AHEAD), while everything slow happens and hex still runs here; then the hub, sessions and jobs stop
+# here and what they wrote since goes down a stream that's already open, so hex is away for one trip across it and
+# the hub's start. Each other piece stops on the old machine once the new one serves it.
 # Each move says what happened in Telegram and on the jump page ($PAGE_DATA/jump-<role>.json).
 #   standby watch      standby.service: the twin's watch, or the server's guard
 #   standby may-hold   ExecCondition of every unit hex-holder.target starts, on both machines
 #   standby release    stops hex here: what holds, every Claude session and job (their records resume elsewhere)
 #   standby advertise  serve hex's tailnet names from here (give runs it on the server)
-#   standby back [db]  on the server: run hex here, from the twin's hex.db when give sent it
+#   standby back [db|-] on the server: run hex here, from the twin's hex.db when give sent it ("-": ahead of a cut)
 #   standby jump       on the server: move hex to the twin now (what a shutdown does)
 #   standby drill [off] on the twin: act as if the server were gone, without touching it
-#   standby holder | take | give
+#   standby holder | take [-] | give
 set -eu
 env=${STANDBY_ENV:-$HOME/.config/standby.env}
 # shellcheck disable=SC1090
 [ ! -f "$env" ] || . "$env"
 # With no twin set up, the server always holds.
-: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}" "${DEAD:=6}"
+: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}" "${DEAD:=6}" "${SETTLE:=1}"
 # The tailnet names that follow hex (Tailscale Services): the holder advertises them, the other machine drains them.
 # svc:gate is Caddy, which serves every https://<name>.bassim.run. Caddy and pages run on both machines all the time,
 # so a page answers from either while its name moves.
@@ -37,6 +38,8 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 : "${PLACE:=the $ROLE}" "${LATLON:=}" "${PAGE_DATA:=$HOME/Developer/pages/data}"
 dir=$HOME/.local/state/standby
 db=$HOME/hex/state/hex.db
+# hex.service's HEX_AHEAD (systemd/.../hex.service.d/ahead.conf): while it exists, hex here is ready but waits.
+ahead=${XDG_RUNTIME_DIR:-$dir}/hex-ahead
 mkdir -p "$dir"
 other=$TWIN
 [ "$ROLE" != twin ] || other=$SERVER
@@ -98,52 +101,136 @@ release() {
   rest
 }
 
-# Syncthing carries a change some seconds after it's made, so what sessions and jobs wrote last goes over now.
+# Transcripts and job records written in the last 10 minutes, which Syncthing may not have carried yet.
+recent() { (cd "$HOME" && find .claude/projects hex/state/jobs -mmin -10 -type f -print0 2>/dev/null); }
+
+# Before the cut they go over whole, rsync sending what differs, with the sizes they had kept here, so the cut sends a
+# transcript only what it gained since: Claude Code only ever appends to one.
 carry() {
-  (cd "$HOME" && find .claude/projects hex/state/jobs -mmin -10 -type f -print0 2>/dev/null |
-    rsync -a --from0 --files-from=- -e "${rsh[*]}" . "$other:") || echo "standby: the last transcripts didn't reach $other; Syncthing brings them" >&2
+  recent | (cd "$HOME" && xargs -0r stat --printf '%s %n\0') > "$dir/carried" &&
+    recent | (cd "$HOME" && rsync -a --from0 --files-from=- -e "${rsh[*]}" . "$other:")
 }
 
-# hex.db goes over as SQLite's own copy of it, made in memory, and rsync sends only what differs from the copy the
-# other machine has: its own hex.db at first, then what the last ship left there.
+# hex.db's main file goes ahead while hex runs, right after a checkpoint: SQLite writes it again only at the next one,
+# so at the cut its WAL holds all that's new. $shipped is the file as it went, to tell whether it changed since.
+sig() { stat -c '%s %.9Y %i' "$db" 2>/dev/null; }
 ship() {
-  local copy=${XDG_RUNTIME_DIR:-$dir}/standby-hex.db sent=0
-  sqlite3 "$db" ".backup '$copy'" && rsync --inplace --mkpath --copy-dest="${db%/*}" -e "${rsh[*]}" "$copy" "$other:${dir#"$HOME"/}/in/hex.db" || sent=1
-  rm -f "$copy"
-  return "$sent"
+  local was
+  was=$(sig)
+  rsync --inplace --mkpath --copy-dest="${db%/*}" -e "${rsh[*]}" "$db" "$other:${dir#"$HOME"/}/in/hex.db" && [ "$(sig)" = "$was" ] && shipped=$was
 }
 
-# hand <what lands hex on the other machine>: hex.db is shipped twice, while hex runs and again once the hub has
-# stopped, so the second sends only the moments between. The other machine is told when the hub stopped ($cut).
+# What the cut sends, as one tar: hex.db's WAL, new and rewritten files whole, and for each transcript that grew, what
+# it gained, with the size it had (grew).
+payload() {
+  local out=$dir/out size name now
+  local -A had=()
+  rm -rf "$out" && mkdir -p "$out/whole" "$out/tails" && : > "$out/grew"
+  [ ! -f "$db-wal" ] || cp "$db-wal" "$out/hex.db-wal"
+  while IFS=' ' read -r -d '' size name; do had[$name]=$size; done < "$dir/carried"
+  while IFS= read -r -d '' name; do
+    now=$(stat -c %s "$HOME/$name") size=${had[$name]:-}
+    if [ -n "$size" ] && [ "${name%.jsonl}" != "$name" ] && [ "$now" -ge "$size" ]; then
+      [ "$now" -gt "$size" ] || continue
+      mkdir -p "$out/tails/${name%/*}" && tail -c +$((size + 1)) "$HOME/$name" > "$out/tails/$name" && printf '%s %s\0' "$size" "$name" >> "$out/grew"
+    else
+      mkdir -p "$out/whole/${name%/*}" && cp -p "$HOME/$name" "$out/whole/$name"
+    fi
+  done < <(recent)
+  tar -c -C "$out" .
+}
+
+# The arriving side reads the cut from the stream: when the hub stopped ($cut), then the payload, put in place.
+land() {
+  local in=$dir/landed size name
+  read -r cut && [ -n "$cut" ] || return
+  rm -rf "$in" "$dir/in/hex.db-wal" && mkdir -p "$in" && tar -x -C "$in" || return
+  [ ! -f "$in/hex.db-wal" ] || mv "$in/hex.db-wal" "$dir/in/hex.db-wal"
+  cp -a "$in/whole/." "$HOME/"
+  while IFS=' ' read -r -d '' size name; do
+    dd if="$in/tails/$name" of="$HOME/$name" bs=1M seek="$size" oflag=seek_bytes conv=notrunc status=none
+  done < "$in/grew"
+}
+
+# hex here starts ahead of a cut, ready but waiting while $ahead exists. A hex that wouldn't wait would poll the bot
+# alongside the other machine's, which knocks that one off.
+ahead() {
+  grep -q HEX_AHEAD "$HOME/hex/.hex/bin/hex" || { echo "standby: this hex can't start ahead yet" >&2; return 1; }
+  ! systemctl --user is-active -q hex.service || { echo "standby: hex already runs here" >&2; return 1; }
+  touch "$ahead" && systemctl --user start hex.service && echo ready
+}
+
+# What starting ahead started, when the cut never came.
+unready() { [ ! -e "$ahead" ] || { rm -f "$ahead"; systemctl --user stop hex.service || :; }; }
+
+# The cut: the hub, sessions and jobs stop together. A session or job still going after $SETTLE seconds is killed, as
+# what it wrote is on disk, and it resumes on the other machine (jobs keep their records, bin/job --ended).
+stop_all() {
+  touch "$HOME/hex/state/moving"
+  timeout "$SETTLE" systemctl --user stop hex.service hex-jobs.slice hex-sessions.slice || {
+    systemctl --user kill -s KILL hex-jobs.slice hex-sessions.slice || :
+    systemctl --user stop hex.service hex-jobs.slice hex-sessions.slice || :
+  }
+  claude daemon stop --any >/dev/null 2>&1 || :
+  rm -f "$HOME/hex/state/moving"
+}
+
+# hand <take|back>: moves hex to the other machine, which starts it ahead over the stream this opens. Litestream stops
+# first, since its checkpoints write hex.db's main file. A reader kept open through the cut means the hub's close isn't
+# the last, which would checkpoint too.
 hand() {
-  ship || return
-  rest
-  carry
+  local line keep landing_PID
+  systemctl --user stop hex-db.service || :
+  sqlite3 -cmd '.timeout 3000' "$db" 'pragma wal_checkpoint(truncate)' >/dev/null || :
+  ship || ship || { systemctl --user start hex-db.service || :; return 1; }
+  carry || :
+  coproc landing { on "$other" "\"\$HOME/.local/bin/standby\" $1 -"; }
+  while read -r line <&"${landing[0]}" && [ "$line" != ready ]; do :; done
+  [ "$line" = ready ] || { echo "standby: $other couldn't start hex ahead" >&2; wait "$landing_PID"; return 1; }
+  echo "standby: $other is ready"
+  sqlite3 -readonly "$db" 'select 1' '.shell sleep 60' >/dev/null 2>&1 &
+  keep=$!
   cut=$(now)
-  systemctl --user stop hex.service || :
-  ship && there "$other" "$@" "$cut" || return
+  stop_all
+  local to=${landing[1]}
+  if [ "$(sig)" = "$shipped" ] || ship; then { echo "$cut"; payload; } >&"$to"; fi
+  exec {to}>&-
+  kill "$keep" 2>/dev/null || :
+  echo "standby: cut sent in $(since_s "$cut")s"
+  wait "$landing_PID" || return
   release
-  carry
 }
 
 # arrive [db]: run hex here, from the hex.db a move or a restore put in $dir/in when told one came.
 arrive() {
-  if [ "${1:-}" = db ] && ! systemctl --user is-active -q hex.service; then
-    mv "$dir/in/hex.db" "$db" && rm -f "$db-wal" "$db-shm"
+  if [ "${1:-}" = db ] && { [ -e "$ahead" ] || ! systemctl --user is-active -q hex.service; }; then
+    mv "$dir/in/hex.db" "$db" && rm -f "$db-wal" "$db-shm" && { [ ! -f "$dir/in/hex.db-wal" ] || mv "$dir/in/hex.db-wal" "$db-wal"; }
   fi
-  rm -f "$dir/in/hex.db"
+  rm -f "$dir/in/hex.db" "$dir/in/hex.db-wal" "$ahead"
+  echo "standby: hex goes here"
   systemctl --user start hex-holder.target
   serve advertise
 }
 
-# take [<ms the hub stopped on the server> | "" <why>]: run hex here. A jump ships hex.db as the server lets go; after
+# back [db|-]: the server's side of a hand-back: "-" starts hex ahead and takes the cut from the stream.
+back() {
+  if [ "${1:-}" = - ]; then
+    { ahead && land; } || { unready; return 1; }
+    arrive db
+  else
+    arrive "${1:-}"
+  fi
+}
+
+# take [- | "" <why>]: run hex here. A jump ("-") starts hex ahead and takes the cut from the stream; after
 # an outage, or when hex can't run on the server, hex starts from the copy the server streamed here (hex-db.service),
 # once the twin has grown.
 take() {
   local cut=${1:-} why=${2:-Lost the server}
   holds=taking
   hold taking
-  if [ -n "$cut" ]; then
+  if [ "$cut" = - ]; then
+    { ahead && land; } || { unready; holds=server; hold server; return 1; }
     arrive db
   else
     note gone "$(date -d "@$(cat "$dir/gone" 2>/dev/null || date +%s)" '+%-I:%M:%S%p')"
@@ -178,7 +265,7 @@ give() {
   holds=giving
   hold giving
   note returning
-  hand back db || :
+  hand back || :
   if on "$SERVER" systemctl --user is-active -q hex.service; then
     holds=server
     hold server
@@ -234,6 +321,8 @@ sense() {
 # after the server started it can't run here, so it jumps.
 guard() {
   local stuck="" idle=0
+  # A jump this process didn't finish (standby restarted mid-way) holds the guard no longer.
+  rm -f "$dir/jumping"
   while :; do
     [ ! -f "$dir/jumping" ] || { sleep "$EVERY"; continue; }
     holds=$(twin_holds)
@@ -295,6 +384,6 @@ case "${1:-}" in
   take) take "${2:-}" "${3:-}" ;;
   jump) jump "${2:-hex was told to jump}" ;;
   give) give ;;
-  back) arrive "${2:-}" ;;
+  back) back "${2:-}" ;;
   *) echo "usage: standby watch|may-hold|release|advertise|back [db]|jump|drill [off]|holder|take|give" >&2; exit 2 ;;
 esac
