@@ -31,4 +31,6 @@
 /state/.hex.db-litestream
 /state/hex.bell
 /state/hub.pid
+// Only the machine hex is leaving is moving.
+/state/moving
 /state/*.sock
