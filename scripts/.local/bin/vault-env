@@ -9,4 +9,5 @@ fields=$(enclave list "$item" | sed -n "s/^$item: //p" | tr -d ' ' | tr , ' ')
 set --
 for field in $fields; do set -- "$@" "$field=$item/$field"; done
 umask 077
-exec enclave run "$@" sh -c 'out=$1; shift; for name; do printf "%s=%s\n" "$name" "$(printenv "$name")"; done >"$out.part" && mv "$out.part" "$out"' sh "$out" $fields
+# Each value is single-quoted, which systemd and sh (hex's .env) both read literally, so a value with a space stays one value.
+exec enclave run "$@" sh -c 'out=$1; shift; for name; do value=$(printenv "$name"); case $value in *\'"'"'*) echo "vault-env: $name has a single quote, which an EnvironmentFile can'"'"'t share with sh" >&2; exit 1;; esac; printf "%s='"'"'%s'"'"'\n" "$name" "$value"; done >"$out.part" && mv "$out.part" "$out"' sh "$out" $fields
