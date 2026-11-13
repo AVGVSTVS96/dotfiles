@@ -320,6 +320,14 @@ sense() {
   done < <(gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1)
 }
 
+# hex serves here once its hub has stayed up a check: a hub that can't start dies within seconds, while the unit that
+# keeps trying looks active.
+serving() {
+  local pid
+  pid=$(systemctl --user show -p MainPID --value hex.service) && [ "${pid:-0}" != 0 ] || return
+  pid=$(pgrep -P "$pid" -f hub/serve.ts) && [ "$(ps -o etimes= -p "$pid")" -ge "$EVERY" ]
+}
+
 # The server's side: its hex runs exactly when the twin's doesn't. hex that still isn't running here $DEAD checks
 # after the server started it can't run here, so it jumps.
 guard() {
@@ -336,7 +344,7 @@ guard() {
       *) stuck="" idle=$((idle + 1)) ;;
     esac
     # Stopped across two checks, so a restart in progress isn't raced.
-    if [ "$idle" -ge 2 ] && ! systemctl --user is-active -q hex.service; then
+    if [ "$idle" -ge 2 ] && ! serving; then
       if [ "$idle" -ge "$DEAD" ] && [ "$holds" = server ] && there "$TWIN" take '""' "'hex stopped running on the server'"; then
         idle=0
       else
@@ -344,7 +352,7 @@ guard() {
         arrive || :
       fi
     fi
-    systemctl --user is-active -q hex.service && idle=0
+    ! serving || idle=0
     sleep "$EVERY"
   done
 }
