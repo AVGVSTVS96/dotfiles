@@ -157,7 +157,10 @@ land() {
 ahead() {
   grep -q HEX_AHEAD "$HOME/hex/.hex/bin/hex" || { echo "standby: this hex can't start ahead yet" >&2; return 1; }
   ! systemctl --user is-active -q hex.service || { echo "standby: hex already runs here" >&2; return 1; }
-  touch "$ahead" && systemctl --user start hex.service && echo ready
+  touch "$ahead" && systemctl --user start hex.service || return
+  # Building the hub reads its code into memory, which takes a quarter second off its start on a twin that just booted.
+  bun build --target=bun --outdir="$dir/warm" "$HOME/hex/.hex/hub/serve.ts" "$HOME"/hex/.hex/channels/*/bot.ts >/dev/null 2>&1 || :
+  echo ready
 }
 
 # What starting ahead started, when the cut never came.
