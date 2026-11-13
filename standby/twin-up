@@ -65,3 +65,7 @@ echo "twin's Syncthing id: $(st show system | jq -r .myID)"
 AS_USER
 echo "twin-up: done. Copy the server's ~/.ssh and each folder's .stignore here (both machines ssh each other as bassim), add the twin's Syncthing id to the server, then once the first sync finishes:"
 echo "  sudo -iu $user sh -c '~/dotfiles/install && systemctl --user daemon-reload && systemctl --user enable --now standby.service'"
+echo "and give it Caddy for https://<name>.bassim.run, with svc:gate drained until standby advertises it:"
+echo "  sudo -iu $user bash -c 'mkdir -p ~/.config/caddy && printf \"GATE_DOMAIN=bassim.run\\nHEX_APPS=127.0.0.1\\n\" > ~/.config/caddy/env &&"
+echo "    ln -sf ~/Developer/fleet/machines-skill/server/caddy/Caddyfile ~/.config/caddy/ && systemctl --user link ~/Developer/fleet/machines-skill/server/caddy/caddy.service &&"
+echo "    systemctl --user enable --now caddy && tailscale serve --service=svc:gate --tcp=443 --proxy-protocol=2 tcp://127.0.0.1:4443 >/dev/null; tailscale serve drain svc:gate'"

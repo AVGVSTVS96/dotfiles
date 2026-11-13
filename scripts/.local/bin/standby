@@ -27,7 +27,8 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 # With no twin set up, the server always holds.
 : "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}"
 # The tailnet names that follow hex (Tailscale Services): the holder advertises them, the other machine drains them.
-: "${SERVICES:=svc:hub svc:pages svc:updates}"
+# svc:gate is Caddy, which runs on both machines and serves every https://<name>.bassim.run.
+: "${SERVICES:=svc:hub svc:pages svc:updates svc:gate}"
 : "${PLACE:=the $ROLE}" "${LATLON:=}" "${PAGE_DATA:=$HOME/Developer/pages/data}"
 dir=$HOME/.local/state/standby
 mkdir -p "$dir"

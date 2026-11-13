@@ -46,7 +46,7 @@ cp "$1" "$to"
 EOF
 cat > "$bin/tailscale" <<'EOF'
 #!/usr/bin/env bash
-[ "$1" = serve ] && echo "$2" > "$HOME/names"
+[ "$1" = serve ] && echo "$2" >> "$HOME/names.$3"
 exit 0
 EOF
 cat > "$bin/curl" <<'EOF'
@@ -88,6 +88,8 @@ setup() {
   echo hex.service > "$root/twin/units"
 }
 as() { local host=$1; shift; HOME=$root/$host "$@"; }
+# Every name that follows hex, svc:gate (https://<name>.bassim.run) among them, was last advertised or drained here.
+names() { for service in svc:hub svc:pages svc:updates svc:gate; do [ "$(tail -1 "$root/$1/names.$service" 2>/dev/null)" = "$2" ] || return; done; }
 active() { grep -qx hex.service "$root/$1/units" 2>/dev/null; }
 holder() { cat "$root/twin/.local/state/standby/holder"; }
 
@@ -97,8 +99,8 @@ as twin "$standby" give >"$root/log" 2>&1
 check "the server runs hex" "active server"
 check "the twin doesn't" "! active twin"
 check "the server has the twin's hex.db" "grep -q 'twin data' '$root/server/hex/state/hex.db'"
-check "the server serves hex's names" "[ \"\$(cat '$root/server/names')\" = advertise ]"
-check "the twin drained them" "[ \"\$(cat '$root/twin/names')\" = drain ]"
+check "the server serves hex's names, bassim.run's among them" "names server advertise"
+check "the twin drained them" "names twin drain"
 check "the twin says the server holds" "[ \"\$(holder)\" = server ]"
 
 echo "hand-back whose copy of hex.db fails"
@@ -114,7 +116,7 @@ setup
 touch "$root/server/down"
 as twin "$standby" give >"$root/log" 2>&1
 check "the twin runs hex again" "active twin"
-check "and serves hex's names" "[ \"\$(cat '$root/twin/names')\" = advertise ]"
+check "and serves hex's names" "names twin advertise"
 check "the twin still holds" "[ \"\$(holder)\" = twin ]"
 
 echo "server guard"
@@ -159,7 +161,8 @@ echo hex.service > "$root/server/units"
 as server "$standby" jump >"$root/log" 2>&1
 check "hex runs on the twin" "active twin && ! active server && [ \"\$(holder)\" = twin ]"
 check "from the server's hex.db" "grep -q 'server data' '$root/twin/hex/state/hex.db'"
-check "the twin serves hex's names" "[ \"\$(cat '$root/twin/names')\" = advertise ]"
+check "the twin serves hex's names, bassim.run's among them" "names twin advertise"
+check "the server drained them" "names server drain"
 
 echo "jump to a twin that's gone"
 setup
