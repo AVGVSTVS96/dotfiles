@@ -4,4 +4,4 @@ Description=pool-vault: keep the account pool's logins and settings in the vault
 [Service]
 Type=oneshot
 ExecCondition=%h/.local/bin/standby may-hold
-ExecStart=%h/.local/bin/vault-files pool %h/.config/cliproxyapi/config.yaml %h/.config/cliproxyapi/accounts.json %h/.config/cliproxyapi/auths
+ExecStart=%h/.local/bin/vault-files pool %h/.config/cliproxyapi/config.yaml %h/.config/cliproxyapi/accounts.json %h/.config/cliproxyapi/key %h/.config/cliproxyapi/auths

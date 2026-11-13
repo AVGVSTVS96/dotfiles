@@ -5,6 +5,7 @@ Description=pool-vault: watch the account pool's logins and settings, which it r
 PathChanged=%h/.config/cliproxyapi/auths
 PathChanged=%h/.config/cliproxyapi/config.yaml
 PathChanged=%h/.config/cliproxyapi/accounts.json
+PathChanged=%h/.config/cliproxyapi/key
 
 [Install]
 WantedBy=default.target
