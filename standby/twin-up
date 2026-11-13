@@ -58,6 +58,8 @@ st config devices add --device-id "$server_id" --name server --addresses tcp://s
 for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin proxy:.config/cliproxyapi enclave:.enclave voice:.local/share/hex-voice hangar:.local/share/hangar; do
   st config folders add --id "${spec%%:*}" --label "${spec%%:*}" --path "$HOME/${spec#*:}"
   st config folders "${spec%%:*}" devices add --device-id "$server_id"
+  # The watcher carries each change; a full rescan of a big folder holds back new files for minutes, so it runs daily.
+  st config folders "${spec%%:*}" rescan-intervals set 86400
 done
 echo "twin's Syncthing id: $(st show system | jq -r .myID)"
 AS_USER
