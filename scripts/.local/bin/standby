@@ -30,7 +30,7 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 # shellcheck disable=SC1090
 [ ! -f "$env" ] || . "$env"
 # With no twin set up, the server always holds.
-: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}" "${DEAD:=6}" "${SETTLE:=1}"
+: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}" "${DEAD:=6}" "${SETTLE:=0.5}"
 # The tailnet names that follow hex (Tailscale Services): the holder advertises them, the other machine drains them.
 # svc:gate is Caddy, which serves every https://<name>.bassim.run. Caddy and pages run on both machines all the time,
 # so a page answers from either while its name moves.
