@@ -64,7 +64,7 @@ done
 echo "twin's Syncthing id: $(st show system | jq -r .myID)"
 AS_USER
 echo "twin-up: done. Copy the server's ~/.ssh here (both machines ssh each other as bassim), add the twin's Syncthing id to the server, then once the first sync finishes (install puts each folder's Syncthing ignore file in place):"
-echo "  sudo -iu $user sh -c '~/dotfiles/install && systemctl --user daemon-reload && systemctl --user enable --now standby.service'"
+echo "  sudo -iu $user sh -c '~/dotfiles/install && systemctl --user daemon-reload && systemctl --user enable --now standby.service systemd-tmpfiles-clean.timer'"
 echo "and give it Caddy for https://<name>.bassim.run, with svc:gate drained until standby advertises it:"
 echo "  sudo -iu $user bash -c 'mkdir -p ~/.config/caddy && printf \"GATE_DOMAIN=bassim.run\\nHEX_APPS=127.0.0.1\\n\" > ~/.config/caddy/env &&"
 echo "    ln -sf ~/Developer/fleet/machines-skill/server/caddy/Caddyfile ~/.config/caddy/ && systemctl --user link ~/Developer/fleet/machines-skill/server/caddy/caddy.service &&"
