@@ -224,10 +224,12 @@ guard() {
 # Syncthing is connected to the server and has sent it every change made here (its event stream says when a
 # folder's completion changes), or ten minutes passed.
 synced() {
-  local key peer last=0 until=$((SECONDS + 600))
+  local key peer other=$TWIN last=0 until=$((SECONDS + 600))
+  [ "$ROLE" != twin ] || other=$SERVER
   key=$(syncthing cli config gui apikey get) || key=""
-  peer=$(syncthing cli config devices list | grep -vx "$(syncthing cli show system | jq -r '.myID')" | head -1) || peer=""
   api() { curl -fsS -m 70 -H "X-API-Key: $key" "http://127.0.0.1:8384/rest/$1"; }
+  # The Syncthing device named as standby.env names the other machine.
+  peer=$(api config/devices | jq -r --arg name "$other" '.[] | select(.name == $name) | .deviceID') || peer=""
   while [ "$SECONDS" -lt "$until" ]; do
     api system/connections | jq -e --arg peer "$peer" '.connections[$peer].connected' >/dev/null 2>&1 &&
       [ "$(api "db/completion?device=$peer" | jq '.needBytes')" = 0 ] && return

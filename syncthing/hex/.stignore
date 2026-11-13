@@ -27,6 +27,8 @@
 /state/hex.db
 /state/hex.db-wal
 /state/hex.db-shm
+/state/hex.db.standby
+/state/.hex.db-litestream
 /state/hex.bell
 /state/hub.pid
 /state/*.sock

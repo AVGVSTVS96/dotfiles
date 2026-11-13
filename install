@@ -10,7 +10,7 @@ mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
 
 case "$(uname -s)" in
-  Darwin) os="brew completions ghostty launchd nushell pi zed zsh" nofold="" ;;
+  Darwin) os="brew completions ghostty launchd nushell pi zed zsh" ;;
   Linux)
     # Wallpaper downloads stay out of the repo; the machine's SSH access list stays its own.
     # Fish is the login shell, so zsh only gets .zshenv: agents' shell commands run in zsh.
@@ -18,13 +18,15 @@ case "$(uname -s)" in
     mkdir -p "$HOME/Pictures/Wallpapers" "$HOME/.config/systemd/user/app-com.t3tools.T3Code-.scope.d" \
       "$HOME/.config/systemd/user/hex.service.d" "$HOME/.config/systemd/user/hex-mail.service.d" "$HOME/.config/systemd/user/cliproxyapi.service.d" "$HOME/.config/systemd/user/syncthing.service.d" "$HOME/.config/systemd/user/pages.service.d" "$HOME/.config/systemd/user/hex-voice-updates.service.d"
     set -- --ignore=authorized_keys --ignore='\.zshrc' "$@"
-    os="ghostty-linux niri noctalia systemd wallpapers zsh" nofold=syncthing
+    os="ghostty-linux niri noctalia systemd wallpapers zsh"
+    # Syncthing's ignore rules for the folders it shares with the twin, as real files: a link a checkout left dangling
+    # would sync everything, live hex.db included.
+    (cd syncthing && find . -name .stignore -exec install -D -m 644 {} "$HOME/{}" \;)
     ;;
 esac
 
 stow --target="$HOME" --ignore='secrets\.env' "$@" $os \
   agent-browser bat fastfetch fish gh gh-dash git graphite herdr \
   lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi
-# Agent homes fill with sessions and installed skills, and Syncthing's ignore files sit in the folders it shares with
-# the twin, so only files are linked into them.
-stow --target="$HOME" --no-folding "$@" agent-skills claude codex $nofold
+# Agent homes fill with sessions and installed skills, so only files are linked into them.
+stow --target="$HOME" --no-folding "$@" agent-skills claude codex
