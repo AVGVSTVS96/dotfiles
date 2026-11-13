@@ -1,0 +1,7 @@
+[Unit]
+Description=pages: rebuild the records page's data from hex when it changed
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=%h/Developer/pages/tools/records/feed
