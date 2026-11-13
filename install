@@ -9,6 +9,36 @@ cd "$(dirname "$0")"
 mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
 
+changing=yes
+for flag; do
+  case $flag in --no | --si* | --del*) changing=no ;; --*) ;; -*[nD]*) changing=no ;; esac
+done
+
+# What a machine already put where a link goes stops stow: fish's stock config, an installer's copy, a link made by
+# hand or synced from another machine. A dangling link or the same content gives way; anything else stays as .orig.
+# Only when those are all of a stow's conflicts, so a stow that would still abort changes nothing.
+yields="existing target is not owned by stow: |existing target is neither a link nor a directory: |over existing target .* since neither"
+place() {
+  conflicts=$(stow -n --target="$HOME" "$@" 2>&1 | grep '^  \* ' || true)
+  if [ $changing = yes ] && [ -n "$conflicts" ] && ! printf '%s\n' "$conflicts" | grep -qvE "$yields"; then
+    printf '%s\n' "$conflicts" |
+      sed -n 's/.*existing target is not owned by stow: //p; s/.*existing target is neither a link nor a directory: //p
+        s/.*over existing target \(.*\) since neither.*/\1/p' |
+      while IFS= read -r target; do
+        for package; do [ -e "$package/$target" ] || [ -L "$package/$target" ] && break; done
+        if [ ! -e "$HOME/$target" ] || diff -r "$HOME/$target" "$package/$target" >/dev/null 2>&1; then
+          rm -rf "$HOME/$target"
+        else
+          kept=$target.orig n=1
+          while [ -e "$HOME/$kept" ] || [ -L "$HOME/$kept" ]; do kept=$target.orig$n n=$((n + 1)); done
+          mv "$HOME/$target" "$HOME/$kept"
+          echo "install: kept the $target that was there as $kept"
+        fi
+      done
+  fi
+  stow --target="$HOME" "$@"
+}
+
 case "$(uname -s)" in
   Darwin) os="brew completions ghostty launchd nushell pi zed zsh" ;;
   Linux)
@@ -21,12 +51,12 @@ case "$(uname -s)" in
     os="ghostty-linux niri noctalia systemd wallpapers zsh"
     # Syncthing's ignore rules for the folders it shares with the twin, as real files: a link a checkout left dangling
     # would sync everything, live hex.db included.
-    (cd syncthing && find . -name .stignore -exec install -D -m 644 {} "$HOME/{}" \;)
+    [ $changing = no ] || (cd syncthing && find . -name .stignore -exec install -D -m 644 {} "$HOME/{}" \;)
     ;;
 esac
 
-stow --target="$HOME" --ignore='secrets\.env' "$@" $os \
+place --ignore='secrets\.env' "$@" $os \
   agent-browser bat fastfetch fish gh gh-dash git graphite herdr \
   lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi
 # Agent homes fill with sessions and installed skills, so only files are linked into them.
-stow --target="$HOME" --no-folding "$@" agent-skills claude codex
+place --no-folding "$@" agent-skills claude codex
