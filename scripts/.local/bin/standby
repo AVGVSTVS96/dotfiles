@@ -113,28 +113,21 @@ rest() {
 # point <machine | "">: tells the jobs here where hex runs, or "" while it moves there.
 point() { [ -e "$elsewhere" ] && [ "$(cat "$elsewhere")" = "$1" ] || { mkdir -p "${elsewhere%/*}" && echo "$1" > "$elsewhere"; }; }
 
-# A job here carries on only while its record (bin/job's, shared with the other machine) still says it runs here.
-# One the other machine started again, or whose record is gone (it ended there, or its owner was told to start it
-# again), stops, without a word, since its owner heard already.
-dedupe() {
-  local unit units="" here
-  here=$(uname -n)
-  for unit in $(systemctl --user show -p Id -p Slice $(systemctl --user list-units --type=service --state=active --plain --no-legend | awk '{ print $1 }') 2>/dev/null |
-    awk -F= '/^Id=/ { id = $2 } /^Slice=hex-jobs.slice$/ { sub(/\.service$/, "", id); print id }'); do
-    grep -qF "\"machine\":\"$here\"" "$HOME/hex/state/jobs/$unit.json" 2>/dev/null || units="$units $unit"
-  done
-  [ -n "$units" ] || return 0
-  touch "$HOME/hex/state/moving"
-  # shellcheck disable=SC2086
-  systemctl --user stop $units || :
-  rm -f "$HOME/hex/state/moving"
-}
-
+# hex still running here while the other machine holds is a stale copy, as after an outage: its jobs stop, keeping
+# their records, and carry on over there, where the ones already started again are left be. With hex stopped here,
+# the jobs are ones a move left to finish here.
 release() {
+  local stale=""
+  ! systemctl --user is-active -q hex.service || stale=1
   serve drain
   systemctl --user stop hex-holder.target || :
-  rest
-  [ "$jobs" != stay ] || dedupe
+  if [ -n "$stale" ] && [ "$jobs" = stay ]; then
+    local jobs=move
+    rest
+    on "$other" '"$HOME/hex/.hex/bin/job" --resume' || :
+  else
+    rest
+  fi
 }
 
 # Transcripts and job records written in the last day, which Syncthing may not have carried yet: a session idle for
