@@ -88,6 +88,7 @@ setup() {
     mkdir -p "$root/$host/.local/bin" "$root/$host/.config" "$root/$host/hex/state" "$root/$host/.local/state/standby"
     ln -s "$standby" "$root/$host/.local/bin/standby"
     mkdir -p "$root/$host/hex/.hex/bin" && echo 'HEX_AHEAD' > "$root/$host/hex/.hex/bin/hex"
+    echo 'hex/elsewhere' > "$root/$host/hex/.hex/bin/job.ts"
     echo "$host data" > "$root/$host/hex/state/hex.db"
   done
   # The server streams its copies of hex.db to the twin as a folder of that name (hex-db.service).
@@ -231,6 +232,15 @@ check "the twin's hex started ahead of the cut" "grep -qx ahead '$root/twin/star
 check "and goes now" "[ ! -e '$root/twin/.local/state/standby/hex-ahead' ]"
 check "the twin serves hex's names, bassim.run's among them" "names twin advertise"
 check "the server drained them" "names server drain"
+
+echo "jump with a hex that doesn't know jobs can stay"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+printf 'hex.service\nhex-jobs.slice\n' > "$root/server/units"
+: > "$root/server/hex/.hex/bin/job.ts"
+as server "$standby" jump >"$root/log" 2>&1
+check "moves its jobs as before" "active twin && ! working server && [ -z \"\$(where server)\" ]"
 
 echo "jump while the twin already holds"
 setup

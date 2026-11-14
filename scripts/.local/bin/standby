@@ -244,6 +244,8 @@ stop_all() {
 # the last, which would checkpoint too.
 hand() {
   local line keep landing_PID
+  # Jobs stay only with a hex that reaches the machine it moved to from them, and leaves them be as it lands.
+  [ "$jobs" != stay ] || grep -q hex/elsewhere "$HOME/hex/.hex/bin/job.ts" 2>/dev/null || local jobs=move
   systemctl --user stop hex-db.service || :
   sqlite3 -cmd '.timeout 3000' "$db" 'pragma wal_checkpoint(truncate)' >/dev/null || :
   ship || ship || { systemctl --user start hex-db.service || :; return 1; }
