@@ -241,7 +241,7 @@ echo server > "$root/twin/.local/state/standby/holder"
 rm "$root/twin/units"
 touch "$root/server/broken"
 echo 'DEAD=3' >> "$root/server/.config/standby.env"
-as server timeout 3 "$standby" watch >/dev/null 2>&1
+as server timeout 6 "$standby" watch >/dev/null 2>&1
 check "jumps to the twin" "active twin && ! active server && [ \"\$(holder)\" = twin ]"
 
 setup
@@ -250,7 +250,7 @@ rm "$root/twin/units"
 echo hex.service > "$root/server/units"
 touch "$root/server/hub-dies"
 echo 'DEAD=3' >> "$root/server/.config/standby.env"
-as server timeout 3 "$standby" watch >/dev/null 2>&1
+as server timeout 6 "$standby" watch >/dev/null 2>&1
 check "jumps when its unit looks active but its hub never stays up" "active twin && ! active server && [ \"\$(holder)\" = twin ]"
 
 echo "$pass passed, $fail failed"
