@@ -1,0 +1,8 @@
+[Unit]
+Description=hex audit: send page taps to the Memory topic
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/hex
+ExecStart=%h/hex/.hex/bin/hex deliver hex --to=-1004422245734:6240 --beside --user "hex audit page" "Bassim answered on the hex audit page (t-1108): read ~/Developer/pages/data/hex-audit.json for his Approve, Deny and written answers, and act on what is new."

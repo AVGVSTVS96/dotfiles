@@ -1,0 +1,8 @@
+[Unit]
+Description=hex audit: watch the audit page's answers
+
+[Path]
+PathChanged=%h/Developer/pages/data/hex-audit.json
+
+[Install]
+WantedBy=default.target
