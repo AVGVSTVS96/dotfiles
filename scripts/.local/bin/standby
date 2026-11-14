@@ -113,21 +113,20 @@ rest() {
 # point <machine | "">: tells the jobs here where hex runs, or "" while it moves there.
 point() { [ -e "$elsewhere" ] && [ "$(cat "$elsewhere")" = "$1" ] || { mkdir -p "${elsewhere%/*}" && echo "$1" > "$elsewhere"; }; }
 
-# A job running here and on the other machine too was started there while this one couldn't be reached: the copy
-# here stops, keeping the record they share.
+# A job here carries on only while its record (bin/job's, shared with the other machine) still says it runs here.
+# One the other machine started again, or whose record is gone (it ended there, or its owner was told to start it
+# again), stops, without a word, since its owner heard already.
 dedupe() {
-  local units="" both
-  for record in "$HOME"/hex/state/jobs/*.json; do
-    [ -e "$record" ] || continue
-    record=${record##*/}
-    ! systemctl --user is-active -q "${record%.json}" || units="$units ${record%.json}"
+  local unit units="" here
+  here=$(uname -n)
+  for unit in $(systemctl --user show -p Id -p Slice $(systemctl --user list-units --type=service --state=active --plain --no-legend | awk '{ print $1 }') 2>/dev/null |
+    awk -F= '/^Id=/ { id = $2 } /^Slice=hex-jobs.slice$/ { sub(/\.service$/, "", id); print id }'); do
+    grep -qF "\"machine\":\"$here\"" "$HOME/hex/state/jobs/$unit.json" 2>/dev/null || units="$units $unit"
   done
   [ -n "$units" ] || return 0
-  both=$(on "$other" "\"\$HOME/hex/.hex/bin/job\" --running$units" | awk '$1 == "active" { print $2 }') || return 0
-  [ -n "$both" ] || return 0
   touch "$HOME/hex/state/moving"
   # shellcheck disable=SC2086
-  systemctl --user stop $both || :
+  systemctl --user stop $units || :
   rm -f "$HOME/hex/state/moving"
 }
 
