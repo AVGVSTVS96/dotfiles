@@ -16,6 +16,8 @@
 # waiting (HEX_AHEAD), while everything slow happens and hex still runs here; then the hub, sessions and jobs stop
 # here and what they wrote since goes down a stream that's already open, so hex is away for one trip across it and
 # the hub's start. Each other piece stops on the old machine once the new one serves it.
+# Jobs already running on the machine hex leaves keep running there until they end; only new work starts where hex
+# lands. A shutdown, reboot or sleep moves them instead, since they'd die with the machine.
 # Each move says what happened in Telegram and on the jump page ($PAGE_DATA/jump-<role>.json).
 #   standby watch      standby.service: the twin's watch, or the server's guard
 #   standby may-hold   ExecCondition of every unit hex-holder.target starts, on both machines
@@ -38,6 +40,11 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 : "${PLACE:=the $ROLE}" "${LATLON:=}" "${PAGE_DATA:=$HOME/Developer/pages/data}"
 dir=$HOME/.local/state/standby
 db=$HOME/hex/state/hex.db
+# hex reads where it runs from here while it runs on the other machine, so the jobs it left here reach it, and it
+# won't start or update here meanwhile (hex's bin/hex, bin/job, bin/update).
+elsewhere=${XDG_STATE_HOME:-$HOME/.local/state}/hex/elsewhere
+# stay: a move leaves this machine's jobs running; move: they stop, and carry on where hex lands.
+jobs=stay
 # hex.service's HEX_AHEAD (systemd/.../hex.service.d/ahead.conf): while it exists, hex here is ready but waits.
 ahead=${XDG_RUNTIME_DIR:-$dir}/hex-ahead
 mkdir -p "$dir"
@@ -87,10 +94,15 @@ twin_holds() { timeout 10 "${rsh[@]}" "$TWIN" "\"\$HOME/.local/bin/standby\" hol
 
 serve() { for service in $SERVICES; do tailscale serve "$1" "$service" >/dev/null 2>&1 || :; done; }
 
-# Stops the sessions and jobs here. Jobs keep their records (bin/job --ended), and both resume wherever hex starts next.
+# Stops the sessions here, and the jobs too unless they stay. Stopped jobs keep their records (bin/job --ended), and
+# both resume wherever hex starts next.
 rest() {
-  touch "$HOME/hex/state/moving"
-  systemctl --user stop hex-jobs.slice hex-sessions.slice || :
+  if [ "$jobs" = stay ]; then
+    systemctl --user stop hex-sessions.slice || :
+  else
+    touch "$HOME/hex/state/moving"
+    systemctl --user stop hex-jobs.slice hex-sessions.slice || :
+  fi
   claude daemon stop --any >/dev/null 2>&1 || :
   rm -f "$HOME/hex/state/moving"
 }
@@ -160,14 +172,12 @@ land() {
 ahead() {
   grep -q HEX_AHEAD "$HOME/hex/.hex/bin/hex" || { echo "standby: this hex can't start ahead yet" >&2; return 1; }
   ! systemctl --user is-active -q hex.service || { echo "standby: hex already runs here" >&2; return 1; }
-  touch "$ahead" && systemctl --user start hex.service || return
-  # hex's own code builds (packages left to bun install), which also reads it into memory for a faster start.
-  bun build --target=bun --packages=external --outdir="$dir/warm" "$HOME/hex/.hex/hub/serve.ts" "$HOME"/hex/.hex/channels/*/bot.ts >/dev/null ||
-    { echo "standby: the hub's code doesn't build here" >&2; return 1; }
-  # Ready is hex waiting for its turn with this machine's settings, which a start that dies on them never reaches.
+  : > "$ahead" && systemctl --user start hex.service || return
+  # The hub writes ready into $ahead once it has loaded its code and opened Telegram's connection, with this machine's
+  # settings, which a start that dies on them never gets past.
   local tries=0
-  until pgrep -u "$USER" -f -- "$ahead" >/dev/null; do
-    [ $((tries += 1)) -le 60 ] || { echo "standby: hex didn't get as far as its wait here" >&2; return 1; }
+  until [ "$(cat "$ahead" 2>/dev/null)" = ready ]; do
+    [ $((tries += 1)) -le 60 ] || { echo "standby: hex didn't get ready here" >&2; return 1; }
     sleep 0.5
   done
   echo ready
@@ -186,13 +196,19 @@ polling() {
 # What starting ahead started, when the cut never came.
 unready() { [ ! -e "$ahead" ] || { systemctl --user stop hex.service || :; rm -f "$ahead"; }; }
 
-# The cut: the hub is told to stop and every session and job is killed in the same moment, since what they wrote is
-# on disk and they resume on the other machine, so the cut waits only for the hub. Their units finish stopping after
-# the cut is sent (release), with state/moving there until then so jobs keep their records (bin/job --ended).
+# The cut: the hub is told to stop and every session (and job that moves) is killed in the same moment, since what
+# they wrote is on disk and they resume on the other machine, so the cut waits only for the hub. Their units finish
+# stopping after the cut is sent (release), with state/moving there until then so jobs keep their records
+# (bin/job --ended).
 stop_all() {
-  touch "$HOME/hex/state/moving"
+  local slices=hex-sessions.slice
+  if [ "$jobs" != stay ]; then
+    touch "$HOME/hex/state/moving"
+    slices="hex-jobs.slice $slices"
+  fi
   systemctl --user stop --no-block hex.service || :
-  systemctl --user kill -s KILL hex-jobs.slice hex-sessions.slice 2>/dev/null || :
+  # shellcheck disable=SC2086
+  systemctl --user kill -s KILL $slices 2>/dev/null || :
   systemctl --user stop hex.service || :
 }
 
@@ -222,6 +238,8 @@ hand() {
   claude daemon stop --any >/dev/null 2>&1 || :
   wait "$landing_PID" || { echo "standby: hex isn't serving on $other, so it stays here" >&2; rest; return 1; }
   echo "standby: hex serves on $other $(since_s "$cut")s after the cut"
+  # The jobs that stay here reach hex there from now on, once what they tell it can't land in a hex.db the cut replaces.
+  [ "$jobs" != stay ] || { mkdir -p "${elsewhere%/*}" && echo "$other" > "$elsewhere"; }
   release
 }
 
@@ -230,7 +248,7 @@ arrive() {
   if [ "${1:-}" = db ] && { [ -e "$ahead" ] || ! systemctl --user is-active -q hex.service; }; then
     mv "$dir/in/hex.db" "$db" && rm -f "$db-wal" "$db-shm" && { [ ! -f "$dir/in/hex.db-wal" ] || mv "$dir/in/hex.db-wal" "$db-wal"; }
   fi
-  rm -f "$dir/in/hex.db" "$dir/in/hex.db-wal" "$ahead"
+  rm -f "$dir/in/hex.db" "$dir/in/hex.db-wal" "$ahead" "$elsewhere"
   echo "standby: hex goes here"
   systemctl --user start hex-holder.target
   serve advertise
@@ -300,7 +318,8 @@ give() {
     hold server
     note home "$(since_s "${cut:-$start}")"
     on "$SERVER" "\$HOME/hex/.hex/bin/hex" deliver hex --to="${TELL:--1004422245734}" --beside --user standby "'The server is back, and so is hex: it was away for $(since_s "${cut:-$start}")s.'" || :
-    [ -z "$SHRINK" ] || ! big || sh -c "$SHRINK"
+    # Shrinking restarts the twin, so it waits for the jobs that stayed here to end.
+    [ -z "$SHRINK" ] || ! big || touch "$dir/shrink"
   else
     # The server can't run hex, so the twin keeps it, and tries again after the server stays up $STABLE seconds.
     holds=twin
@@ -311,9 +330,10 @@ give() {
   fi
 }
 
-# The server's side: hex moves to the twin. If the twin can't take it, hex starts here again.
+# The server's side: hex moves to the twin, its jobs with it when they'd die here ("move"). If the twin can't take
+# it, hex starts here again.
 jump() {
-  local start cut=""
+  local start cut="" jobs=${2:-stay}
   start=$(now)
   touch "$dir/jumping"
   note jumping "$1"
@@ -339,8 +359,8 @@ sense() {
   lock
   while read -r line; do
     case $line in
-      *"PrepareForShutdown (true"*) jump "The server is shutting down"; pkill -P "$lock" ;;
-      *"PrepareForSleep (true"*) jump "The server is going to sleep"; pkill -P "$lock" ;;
+      *"PrepareForShutdown (true"*) jump "The server is shutting down" move; pkill -P "$lock" ;;
+      *"PrepareForSleep (true"*) jump "The server is going to sleep" move; pkill -P "$lock" ;;
       *"PrepareForSleep (false"*) lock ;;
     esac
   done < <(gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1)
@@ -365,7 +385,7 @@ guard() {
     holds=$(twin_holds)
     publish "$holds"
     case $holds in
-      taking | twin) stuck="" idle=0; ! systemctl --user is-active -q hex.service || release ;;
+      taking | twin) stuck="" idle=0; ! systemctl --user is-active -q hex.service || jobs=move release ;;
       giving) stuck=${stuck:-$SECONDS}; [ $((SECONDS - stuck)) -lt "$STUCK" ] || idle=2 ;;
       *) stuck="" idle=$((idle + 1)) ;;
     esac
@@ -392,6 +412,7 @@ watch() {
     holds=$(holder)
     case $holds in
       server)
+        [ ! -f "$dir/shrink" ] || systemctl --user is-active -q hex-jobs.slice || { rm -f "$dir/shrink"; sh -c "$SHRINK" || :; }
         if up || ! online; then since="" && rm -f "$dir/gone"; else
           [ -n "$since" ] || note silent
           since=${since:-$SECONDS}
@@ -414,7 +435,9 @@ watch() {
 case "${1:-}" in
   watch) watch ;;
   may-hold) may_hold ;;
-  release) release ;;
+  # hex still running here is a stale copy whose jobs carry on where hex runs; with hex stopped, the jobs here are ones
+  # a move left to finish.
+  release) ! systemctl --user is-active -q hex.service || jobs=move; release ;;
   advertise) serve advertise ;;
   holder) holder ;;
   drill) if [ "${2:-}" = off ]; then rm -f "$dir/drill"; else touch "$dir/drill"; fi ;;
