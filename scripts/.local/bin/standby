@@ -62,7 +62,7 @@ big() { [ "$(nproc)" -ge "$BIG_CPUS" ]; }
 on() { host=$1; shift; timeout 60 "${rsh[@]}" "$host" "$@"; }
 # What standby says on the other machine. ssh lands in its login shell (fish), so the path is spelled out.
 there() { local host=$1; shift; on "$host" "\"\$HOME/.local/bin/standby\" $*"; }
-tell() { "$HOME/hex/.hex/bin/hex" deliver hex --to="${TELL:--1004422245734}" --user standby "$1" || :; }
+tell() { "$HOME/hex/.hex/bin/hex" deliver hex --to="${TELL:--1004422245734}" --beside --user standby "$1" || :; }
 
 # The jump page: each machine writes only its own file, which Syncthing carries to the other and pages streams.
 note() { printf '{"at":%s,"on":"%s","event":"%s","detail":"%s"}\n' "$(now)" "$ROLE" "$1" "${2:-}" >> "$dir/events"; publish "${holds:-}"; }
@@ -295,7 +295,7 @@ give() {
     holds=server
     hold server
     note home "$(since_s "${cut:-$start}")"
-    on "$SERVER" "\$HOME/hex/.hex/bin/hex" deliver hex --to="${TELL:--1004422245734}" --user standby "'The server is back, and so is hex: it was away for $(since_s "${cut:-$start}")s.'" || :
+    on "$SERVER" "\$HOME/hex/.hex/bin/hex" deliver hex --to="${TELL:--1004422245734}" --beside --user standby "'The server is back, and so is hex: it was away for $(since_s "${cut:-$start}")s.'" || :
     [ -z "$SHRINK" ] || ! big || sh -c "$SHRINK"
   else
     # The server can't run hex, so the twin keeps it, and tries again after the server stays up $STABLE seconds.
