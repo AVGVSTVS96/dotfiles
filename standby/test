@@ -180,7 +180,13 @@ printf '#!/bin/sh\necho resumed > "$HOME/resumed"\n' > "$root/twin/hex/.hex/bin/
 as server timeout 2 "$standby" watch >/dev/null 2>&1
 check "stops the jobs of that stale hex" "! working server"
 check "and the twin carries them on" "[ -e '$root/twin/resumed' ]"
-check "which reaches hex on the twin" "[ \"\$(where server)\" = twin ]"
+check "the server points at the twin" "[ \"\$(where server)\" = twin ]"
+setup
+echo taking > "$root/twin/.local/state/standby/holder"
+printf 'hex.service\nhex-jobs.slice\n' > "$root/server/units"
+printf '#!/bin/sh\necho resumed > "$HOME/resumed"\n' > "$root/twin/hex/.hex/bin/job" && chmod +x "$root/twin/hex/.hex/bin/job"
+as server timeout 2 "$standby" watch >/dev/null 2>&1
+check "a twin still taking over is left to resume them as its hex starts" "! working server && [ ! -e '$root/twin/resumed' ]"
 setup
 echo giving > "$root/twin/.local/state/standby/holder"
 as server timeout 3 "$standby" watch >/dev/null 2>&1

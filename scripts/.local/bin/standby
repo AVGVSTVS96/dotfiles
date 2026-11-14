@@ -105,9 +105,9 @@ rest() {
   else
     touch "$HOME/hex/state/moving"
     systemctl --user stop hex-jobs.slice hex-sessions.slice || :
+    rm -f "$HOME/hex/state/moving"
   fi
   claude daemon stop --any >/dev/null 2>&1 || :
-  rm -f "$HOME/hex/state/moving"
 }
 
 # point <machine | "">: tells the jobs here where hex runs, or "" while it moves there.
@@ -124,7 +124,8 @@ release() {
   if [ -n "$stale" ] && [ "$jobs" = stay ]; then
     local jobs=move
     rest
-    on "$other" '"$HOME/hex/.hex/bin/job" --resume' || :
+    # A twin still taking over resumes them itself as its hex starts.
+    [ "$ROLE" = twin ] || [ "$(twin_holds)" != twin ] || on "$other" '"$HOME/hex/.hex/bin/job" --resume' || :
   else
     rest
   fi
