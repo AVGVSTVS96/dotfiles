@@ -175,7 +175,8 @@ ahead() {
 # hex serves once its hub polls the bot, which it says in its log; one that can't start never does.
 polling() {
   local since=$1 tries=0
-  until journalctl --user -u hex.service --since "@$((since / 1000))" -o cat 2>/dev/null | grep -q 'polling as'; do
+  # The whole user journal: a unit filter misses lines of processes that end quickly, which may be the next hub's too.
+  until journalctl --user --since "@$((since / 1000))" -o cat 2>/dev/null | grep -q 'telegram hub: polling as'; do
     [ $((tries += 1)) -le 60 ] || { echo "standby: hex isn't polling here" >&2; return 1; }
     sleep 0.5
   done
