@@ -24,6 +24,7 @@ case $1 in
     [ ! -f "$HOME/broken" ] && "$HOME/.local/bin/standby" may-hold || exit
     grep -qx hex.service "$units" 2>/dev/null || { echo hex.service >> "$units"; [ ! -f "$ahead" ] || { echo ahead >> "$HOME/started"; [ -f "$HOME/hub-dies" ] || echo ready > "$ahead"; }; } ;;
   stop) case " $* " in *" hex-jobs.slice "*) sed -i '/^hex-jobs.slice$/d' "$units" 2>/dev/null ;; esac
+    for unit in "${@:2}"; do case $unit in hex*) ;; *) sed -i "/^$unit\$/d" "$units" 2>/dev/null ;; esac; done
     case " $* " in *" hex-holder.target "* | *" hex.service "*)
       grep -qx hex.service "$units" 2>/dev/null && [ -f "$HOME/hex/state/hex.db-wal" ] && echo "last write" >> "$HOME/hex/state/hex.db-wal"
       sed -i '/^hex.service$/d' "$units" 2>/dev/null ;; esac
@@ -168,7 +169,20 @@ setup
 printf 'hex.service\nhex-jobs.slice\n' > "$root/server/units"
 as server timeout 2 "$standby" watch >/dev/null 2>&1
 check "stops the server's hex while the twin holds" "! active server"
-check "and its stale jobs, which carry on on the twin" "! working server"
+setup
+printf 'hex.service\nhex-jobs.slice\nbuild\nsolo\n' > "$root/server/units"
+echo build >> "$root/twin/units"
+mkdir -p "$root/server/hex/state/jobs" && touch "$root/server/hex/state/jobs/build.json" "$root/server/hex/state/jobs/solo.json"
+cat > "$root/twin/hex/.hex/bin/job" <<'JOB'
+#!/usr/bin/env bash
+[ "$1" = --running ] && shift && for unit; do grep -qx "$unit" "$HOME/units" && echo "active $unit"; done
+exit 0
+JOB
+chmod +x "$root/twin/hex/.hex/bin/job"
+as server timeout 2 "$standby" watch >/dev/null 2>&1
+check "stops a job that the twin started again while it couldn't reach the server" "! grep -qx build '$root/server/units'"
+check "and leaves one only the server runs" "grep -qx solo '$root/server/units'"
+check "which reaches hex on the twin" "[ \"\$(where server)\" = twin ]"
 setup
 echo giving > "$root/twin/.local/state/standby/holder"
 as server timeout 3 "$standby" watch >/dev/null 2>&1
@@ -187,13 +201,14 @@ echo "drill"
 setup
 echo server > "$root/twin/.local/state/standby/holder"
 rm "$root/twin/units"
-echo hex.service > "$root/server/units"
+printf 'hex.service\nhex-jobs.slice\n' > "$root/server/units"
 printf 'GRACE=0\nSTABLE=0\nEVERY=0\n' >> "$root/twin/.config/standby.env"
 as twin "$standby" drill
 as twin timeout 3 "$standby" watch >/dev/null 2>&1
 check "the twin takes over while the server answers" "active twin && [ \"\$(holder)\" = twin ]"
 as server timeout 2 "$standby" watch >/dev/null 2>&1
 check "the server's guard stops its hex" "! active server"
+check "and leaves its jobs running, reaching hex on the twin" "working server && [ \"\$(where server)\" = twin ]"
 as twin "$standby" drill off
 as twin timeout 3 "$standby" watch >/dev/null 2>&1
 check "after the drill hex goes back to the server" "active server && ! active twin && [ \"\$(holder)\" = server ]"

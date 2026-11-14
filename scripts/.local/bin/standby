@@ -110,10 +110,32 @@ rest() {
   rm -f "$HOME/hex/state/moving"
 }
 
+# point <machine | "">: tells the jobs here where hex runs, or "" while it moves there.
+point() { [ -e "$elsewhere" ] && [ "$(cat "$elsewhere")" = "$1" ] || { mkdir -p "${elsewhere%/*}" && echo "$1" > "$elsewhere"; }; }
+
+# A job running here and on the other machine too was started there while this one couldn't be reached: the copy
+# here stops, keeping the record they share.
+dedupe() {
+  local units="" both
+  for record in "$HOME"/hex/state/jobs/*.json; do
+    [ -e "$record" ] || continue
+    record=${record##*/}
+    ! systemctl --user is-active -q "${record%.json}" || units="$units ${record%.json}"
+  done
+  [ -n "$units" ] || return 0
+  both=$(on "$other" "\"\$HOME/hex/.hex/bin/job\" --running$units" | awk '$1 == "active" { print $2 }') || return 0
+  [ -n "$both" ] || return 0
+  touch "$HOME/hex/state/moving"
+  # shellcheck disable=SC2086
+  systemctl --user stop $both || :
+  rm -f "$HOME/hex/state/moving"
+}
+
 release() {
   serve drain
   systemctl --user stop hex-holder.target || :
   rest
+  [ "$jobs" != stay ] || dedupe
 }
 
 # Transcripts and job records written in the last day, which Syncthing may not have carried yet: a session idle for
@@ -343,7 +365,7 @@ jump() {
   case $(twin_holds) in
     taking | twin)
       echo "standby: hex already runs on the twin" >&2
-      [ "$jobs" = stay ] || { rest; on "$TWIN" '"$HOME/hex/.hex/bin/job" --resume' || :; }
+      [ "$jobs" = stay ] || { rest; carry || :; on "$TWIN" '"$HOME/hex/.hex/bin/job" --resume' || :; }
       return ;;
   esac
   start=$(now)
@@ -397,7 +419,8 @@ guard() {
     holds=$(twin_holds)
     publish "$holds"
     case $holds in
-      taking | twin) stuck="" idle=0; ! systemctl --user is-active -q hex.service || jobs=move release ;;
+      taking | twin) stuck="" idle=0; ! systemctl --user is-active -q hex.service || release
+        if [ "$holds" = twin ]; then point "$TWIN"; else point ""; fi ;;
       giving) stuck=${stuck:-$SECONDS}; [ $((SECONDS - stuck)) -lt "$STUCK" ] || idle=2 ;;
       *) stuck="" idle=$((idle + 1)) ;;
     esac
@@ -424,6 +447,7 @@ watch() {
     holds=$(holder)
     case $holds in
       server)
+        point "$SERVER"
         [ ! -f "$dir/shrink" ] || busy || { rm -f "$dir/shrink"; sh -c "$SHRINK" || :; }
         if up || ! online; then since="" && rm -f "$dir/gone"; else
           [ -n "$since" ] || note silent
@@ -447,9 +471,7 @@ watch() {
 case "${1:-}" in
   watch) watch ;;
   may-hold) may_hold ;;
-  # hex still running here is a stale copy whose jobs carry on where hex runs; with hex stopped, the jobs here are ones
-  # a move left to finish.
-  release) ! systemctl --user is-active -q hex.service || jobs=move; release ;;
+  release) release ;;
   advertise) serve advertise ;;
   holder) holder ;;
   drill) if [ "${2:-}" = off ]; then rm -f "$dir/drill"; else touch "$dir/drill"; fi ;;
