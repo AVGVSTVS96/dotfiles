@@ -1,0 +1,14 @@
+#!/bin/sh
+# vault-push: commits the vault and pushes it to its private repo, so a copy lives off this machine.
+# Syncthing keeps the vault's files the same on the server and its twins, but each keeps its own .git: what's on disk
+# is the vault, and commits another machine pushed join its history as parents, never as content.
+set -eu
+cd "$HOME/.enclave"
+[ -d .git ] || git init -q -b main
+git remote get-url origin >/dev/null 2>&1 || git remote add origin https://github.com/AVGVSTVS96/vault.git
+git fetch -q origin main
+git rev-parse -q --verify HEAD >/dev/null || git reset -q origin/main
+git add -A
+git diff --cached --quiet || git commit -qm "chore: vault changed"
+git merge-base --is-ancestor origin/main HEAD || git merge -q -s ours -m "chore: vault changed on two machines" origin/main
+git push -q origin HEAD:main
