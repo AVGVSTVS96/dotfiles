@@ -41,7 +41,7 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 dir=$HOME/.local/state/standby
 db=$HOME/hex/state/hex.db
 # hex reads where it runs from here while it runs on the other machine, so the jobs it left here reach it, and it
-# won't start or update here meanwhile (hex's bin/hex, bin/job, bin/update).
+# won't start or update here meanwhile (hex's bin/hex, bin/job, bin/update): empty while hex moves, then the machine.
 elsewhere=${XDG_STATE_HOME:-$HOME/.local/state}/hex/elsewhere
 # stay: a move leaves this machine's jobs running; move: they stop, and carry on where hex lands.
 jobs=stay
@@ -91,6 +91,9 @@ may_hold() {
 
 # Who holds, as the twin says, or "none" when it can't answer within 10 seconds.
 twin_holds() { timeout 10 "${rsh[@]}" "$TWIN" "\"\$HOME/.local/bin/standby\" holder" 2>/dev/null || echo none; }
+
+# Jobs run here: their slice has processes. An empty slice can still read active.
+busy() { [ "$(systemctl --user show -p TasksCurrent --value hex-jobs.slice 2>/dev/null)" -gt 0 ] 2>/dev/null; }
 
 serve() { for service in $SERVICES; do tailscale serve "$1" "$service" >/dev/null 2>&1 || :; done; }
 
@@ -202,7 +205,9 @@ unready() { [ ! -e "$ahead" ] || { systemctl --user stop hex.service || :; rm -f
 # (bin/job --ended).
 stop_all() {
   local slices=hex-sessions.slice
-  if [ "$jobs" != stay ]; then
+  if [ "$jobs" = stay ]; then
+    mkdir -p "${elsewhere%/*}" && : > "$elsewhere"
+  else
     touch "$HOME/hex/state/moving"
     slices="hex-jobs.slice $slices"
   fi
@@ -238,8 +243,8 @@ hand() {
   claude daemon stop --any >/dev/null 2>&1 || :
   wait "$landing_PID" || { echo "standby: hex isn't serving on $other, so it stays here" >&2; rest; return 1; }
   echo "standby: hex serves on $other $(since_s "$cut")s after the cut"
-  # The jobs that stay here reach hex there from now on, once what they tell it can't land in a hex.db the cut replaces.
-  [ "$jobs" != stay ] || { mkdir -p "${elsewhere%/*}" && echo "$other" > "$elsewhere"; }
+  # The jobs that stay here reach hex there from now on: what they say can no longer land in a hex.db the cut replaces.
+  [ "$jobs" != stay ] || echo "$other" > "$elsewhere"
   release
 }
 
@@ -334,6 +339,13 @@ give() {
 # it, hex starts here again.
 jump() {
   local start cut="" jobs=${2:-stay}
+  # The twin holds already: there's nothing to hand over, only jobs here that would die with the server.
+  case $(twin_holds) in
+    taking | twin)
+      echo "standby: hex already runs on the twin" >&2
+      [ "$jobs" = stay ] || { rest; on "$TWIN" '"$HOME/hex/.hex/bin/job" --resume' || :; }
+      return ;;
+  esac
   start=$(now)
   touch "$dir/jumping"
   note jumping "$1"
@@ -412,7 +424,7 @@ watch() {
     holds=$(holder)
     case $holds in
       server)
-        [ ! -f "$dir/shrink" ] || systemctl --user is-active -q hex-jobs.slice || { rm -f "$dir/shrink"; sh -c "$SHRINK" || :; }
+        [ ! -f "$dir/shrink" ] || busy || { rm -f "$dir/shrink"; sh -c "$SHRINK" || :; }
         if up || ! online; then since="" && rm -f "$dir/gone"; else
           [ -n "$since" ] || note silent
           since=${since:-$SECONDS}
