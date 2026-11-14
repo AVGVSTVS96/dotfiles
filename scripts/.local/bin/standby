@@ -30,7 +30,7 @@ env=${STANDBY_ENV:-$HOME/.config/standby.env}
 # shellcheck disable=SC1090
 [ ! -f "$env" ] || . "$env"
 # With no twin set up, the server always holds.
-: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}" "${DEAD:=6}" "${SETTLE:=0.5}"
+: "${ROLE:=server}" "${SERVER:=server}" "${TWIN:=twin}" "${GRACE:=60}" "${STABLE:=300}" "${GROW:=}" "${SHRINK:=}" "${BIG_CPUS:=8}" "${EVERY:=10}" "${STUCK:=900}" "${DEAD:=6}"
 # The tailnet names that follow hex (Tailscale Services): the holder advertises them, the other machine drains them.
 # svc:gate is Caddy, which serves every https://<name>.bassim.run. Caddy and pages run on both machines all the time,
 # so a page answers from either while its name moves.
@@ -103,8 +103,9 @@ release() {
 
 # Transcripts and job records written in the last day, which Syncthing may not have carried yet: a session idle for
 # hours still writes as it stops, and Syncthing can be an hour behind.
-recent() { (cd "$HOME" && find .claude/projects hex/state/jobs -mmin -1440 -type f -print0 2>/dev/null); }
-sizes() { recent | (cd "$HOME" && xargs -0r stat --printf '%s %n\0'); }
+# Syncthing's own half-written copies (.syncthing.*) stay behind. recent <find test> narrows it further.
+recent() { (cd "$HOME" && find .claude/projects hex/state/jobs -mmin -1440 -type f ! -name '.syncthing.*' "$@" -print0 2>/dev/null); }
+sizes() { recent "$@" | (cd "$HOME" && xargs -0r stat --printf '%s %n\0'); }
 
 # Before the cut they go over whole, rsync sending what differs, with the sizes they had kept here, so the cut sends a
 # transcript only what it gained since: Claude Code only ever appends to one.
@@ -122,8 +123,8 @@ ship() {
   rsync --inplace --mkpath --copy-dest="${db%/*}" -e "${rsh[*]}" "$db" "$other:${dir#"$HOME"/}/in/hex.db" && [ "$(sig)" = "$was" ] && shipped=$was
 }
 
-# What the cut sends, as one tar: hex.db's WAL, new and rewritten files whole, and for each transcript that grew, what
-# it gained, with the size it had (grew).
+# What the cut sends, as one tar, of what changed since carry: hex.db's WAL, new and rewritten files whole, and for
+# each transcript that grew, what it gained, with the size it had (grew).
 payload() {
   local out=$dir/out size name now
   local -A had=()
@@ -138,7 +139,7 @@ payload() {
     else
       mkdir -p "$out/whole/${name%/*}" && cp -p "$HOME/$name" "$out/whole/$name"
     fi
-  done < <(sizes)
+  done < <(sizes -newer "$dir/carried")
   tar -c -C "$out" .
 }
 
@@ -185,15 +186,14 @@ polling() {
 # What starting ahead started, when the cut never came.
 unready() { [ ! -e "$ahead" ] || { systemctl --user stop hex.service || :; rm -f "$ahead"; }; }
 
-# The cut: the hub, sessions and jobs stop together. A session or job still going after $SETTLE seconds is killed, as
-# what it wrote is on disk, and it resumes on the other machine (jobs keep their records, bin/job --ended).
+# The cut: the hub is told to stop and every session and job is killed in the same moment, since what they wrote is
+# on disk and they resume on the other machine, so the cut waits only for the hub. Their units finish stopping after
+# the cut is sent (release), with state/moving there until then so jobs keep their records (bin/job --ended).
 stop_all() {
   touch "$HOME/hex/state/moving"
-  timeout "$SETTLE" systemctl --user stop hex.service hex-jobs.slice hex-sessions.slice || {
-    systemctl --user kill -s KILL hex-jobs.slice hex-sessions.slice || :
-    systemctl --user stop hex.service hex-jobs.slice hex-sessions.slice || :
-  }
-  rm -f "$HOME/hex/state/moving"
+  systemctl --user stop --no-block hex.service || :
+  systemctl --user kill -s KILL hex-jobs.slice hex-sessions.slice 2>/dev/null || :
+  systemctl --user stop hex.service || :
 }
 
 # hand <take|back>: moves hex to the other machine, which starts it ahead over the stream this opens. Litestream stops
@@ -220,7 +220,7 @@ hand() {
   echo "standby: cut sent in $(since_s "$cut")s (all stopped after ${stopped}s)"
   kill "$keep" 2>/dev/null || :
   claude daemon stop --any >/dev/null 2>&1 || :
-  wait "$landing_PID" || { echo "standby: hex isn't serving on $other, so it stays here" >&2; return 1; }
+  wait "$landing_PID" || { echo "standby: hex isn't serving on $other, so it stays here" >&2; rest; return 1; }
   echo "standby: hex serves on $other $(since_s "$cut")s after the cut"
   release
 }
