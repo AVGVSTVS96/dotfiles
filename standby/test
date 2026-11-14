@@ -54,7 +54,8 @@ to=${*: -1} from=${*: -2:1}
 host=${to%%:*}
 [ ! -f "$ROOT/$host/down" ] && [ ! -f "$HOME/copy-fails" ] || exit 1
 case " $* " in
-  *" --files-from=- "*) while IFS= read -r -d '' file; do mkdir -p "$ROOT/$host/${file%/*}" && cp "$file" "$ROOT/$host/$file"; done ;;
+  *" --files-from=- "*) update=; case " $* " in *" --update "*) update=-u ;; esac
+    while IFS= read -r -d '' file; do mkdir -p "$ROOT/$host/${file%/*}" && cp -p $update "$file" "$ROOT/$host/$file"; done ;;
   *) mkdir -p "$ROOT/$host/$(dirname "${to#*:}")" && cp "$from" "$ROOT/$host/${to#*:}" ;;
 esac
 EOF
@@ -135,6 +136,15 @@ check "and stays its size while they run" "[ ! -e '$root/twin/shrunk' ]"
 sed -i '/^hex-jobs.slice$/d' "$root/twin/units"
 as twin timeout 2 "$standby" watch >/dev/null 2>&1
 check "then shrinks once they end" "[ -e '$root/twin/shrunk' ]"
+
+echo "hand-back while a job that stayed on the server still writes"
+setup
+echo hex-jobs.slice >> "$root/server/units"
+mkdir -p "$root/server/hex/state/jobs" "$root/twin/hex/state/jobs"
+echo "old" > "$root/twin/hex/state/jobs/stayed.log" && touch -d '-5 minutes' "$root/twin/hex/state/jobs/stayed.log"
+echo "live" > "$root/server/hex/state/jobs/stayed.log"
+as twin "$standby" give >"$root/log" 2>&1
+check "the server keeps the job's own newer files" "[ \"\$(cat '$root/server/hex/state/jobs/stayed.log')\" = live ]"
 
 echo "hand-back to a server whose hub gets ready but never polls"
 setup

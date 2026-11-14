@@ -95,6 +95,10 @@ twin_holds() { timeout 10 "${rsh[@]}" "$TWIN" "\"\$HOME/.local/bin/standby\" hol
 # Jobs run here: their slice has processes. An empty slice can still read active.
 busy() { [ "$(systemctl --user show -p TasksCurrent --value hex-jobs.slice 2>/dev/null)" -gt 0 ] 2>/dev/null; }
 
+# The server missed every ping: it's gone, with its jobs, which hex here carries on as it starts (bin/job --resume),
+# even if growing the twin restarts it first. In a drill the server only acts gone.
+gone() { [ -f "$dir/drill" ] || { mkdir -p "${elsewhere%/*}" && echo "$SERVER" > "${elsewhere%/*}/gone"; }; }
+
 serve() { for service in $SERVICES; do tailscale serve "$1" "$service" >/dev/null 2>&1 || :; done; }
 
 # Stops the sessions here, and the jobs too unless they stay. Stopped jobs keep their records (bin/job --ended), and
@@ -139,9 +143,10 @@ sizes() { recent "$@" | (cd "$HOME" && xargs -0r stat --printf '%s %n\0'); }
 
 # Before the cut they go over whole, rsync sending what differs, with the sizes they had kept here, so the cut sends a
 # transcript only what it gained since: Claude Code only ever appends to one.
+# What's newer on the other machine stays: the files of jobs that stayed there (land's cp -u likewise).
 carry() {
   sizes > "$dir/carried" &&
-    recent | (cd "$HOME" && rsync -a --from0 --files-from=- -e "${rsh[*]}" . "$other:")
+    recent | (cd "$HOME" && rsync -a --update --from0 --files-from=- -e "${rsh[*]}" . "$other:")
 }
 
 # hex.db's main file goes ahead while hex runs, right after a checkpoint: SQLite writes it again only at the next one,
@@ -179,7 +184,7 @@ land() {
   read -r cut && [ -n "$cut" ] || return
   rm -rf "$in" "$dir/in/hex.db-wal" && mkdir -p "$in" && tar -x -C "$in" || return
   [ ! -f "$in/hex.db-wal" ] || mv "$in/hex.db-wal" "$dir/in/hex.db-wal"
-  cp -a "$in/whole/." "$HOME/"
+  cp -a -u "$in/whole/." "$HOME/"
   while IFS=' ' read -r -d '' size name; do
     dd if="$in/tails/$name" of="$HOME/$name" bs=1M seek="$size" oflag=seek_bytes conv=notrunc status=none
   done < "$in/grew"
@@ -309,8 +314,6 @@ take() {
       sleep 300
       echo "standby: the twin didn't grow in 5 minutes, so hex starts at this size" >&2
     fi
-    # A server that doesn't answer is gone, with its jobs: hex carries them on here as it starts. In a drill it answers.
-    [ -f "$dir/drill" ] || up || { mkdir -p "${elsewhere%/*}" && echo "$SERVER" > "${elsewhere%/*}/gone"; }
     mkdir -p "$dir/in" && rm -f "$dir/in/hex.db"
     if litestream restore -o "$dir/in/hex.db" "file://$dir/hex.db"; then
       arrive db
@@ -450,7 +453,7 @@ watch() {
           [ -n "$since" ] || note silent
           since=${since:-$SECONDS}
           [ -f "$dir/gone" ] || date +%s > "$dir/gone"
-          [ $((SECONDS - since)) -lt "$GRACE" ] || { take; since=""; }
+          [ $((SECONDS - since)) -lt "$GRACE" ] || { gone; take; since=""; }
         fi ;;
       twin)
         if up; then
