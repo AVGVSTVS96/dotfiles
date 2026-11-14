@@ -1,0 +1,13 @@
+[Unit]
+Description=iikb: screenshots the keyboard on the real iPhone Duo each time hangar opens a new build there, and reports changes no commit explains
+After=hangar.service
+
+[Service]
+WorkingDirectory=%h/Developer/iikb
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/Developer/iikb/scripts/duoshots watch
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
