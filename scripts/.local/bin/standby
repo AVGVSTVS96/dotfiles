@@ -248,6 +248,8 @@ hand() {
   sqlite3 -cmd '.timeout 3000' "$db" 'pragma wal_checkpoint(truncate)' >/dev/null || :
   ship || ship || { systemctl --user start hex-db.service || :; return 1; }
   carry || :
+  # Jobs that go with hex die here at the cut, so hex there carries them on even once this machine is off.
+  [ "$jobs" = stay ] || on "$other" "mkdir -p ~/.local/state/hex && echo $(uname -n) > ~/.local/state/hex/gone" || :
   coproc landing { timeout 120 "${rsh[@]}" "$other" "\"\$HOME/.local/bin/standby\" $1 -"; }
   while read -r line <&"${landing[0]}" && [ "$line" != ready ]; do :; done
   [ "$line" = ready ] || { echo "standby: $other couldn't start hex ahead" >&2; wait "$landing_PID"; return 1; }

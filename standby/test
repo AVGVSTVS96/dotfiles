@@ -332,6 +332,7 @@ touch "$root/server/shutdown"
 as server timeout 3 "$standby" watch >/dev/null 2>&1
 check "a reboot of the server moves hex to the twin first" "active twin && ! active server && [ \"\$(holder)\" = twin ]"
 check "and its jobs with it" "! working server"
+check "which the twin carries on even once the server is off" "[ \"\$(cat '$root/twin/.local/state/hex/gone' 2>/dev/null)\" = server ]"
 
 echo "sleep"
 setup
