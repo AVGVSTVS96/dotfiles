@@ -115,17 +115,17 @@ point() { [ -e "$elsewhere" ] && [ "$(cat "$elsewhere")" = "$1" ] || { mkdir -p 
 
 # hex still running here while the other machine holds is a stale copy, as after an outage: its jobs stop, keeping
 # their records, and carry on over there, where the ones already started again are left be. With hex stopped here,
-# the jobs are ones a move left to finish here.
+# the jobs are ones a move left to finish here, and so are they when hex here is one a move just started ("arrived").
 release() {
   local stale=""
-  ! systemctl --user is-active -q hex.service || stale=1
+  [ "${1:-}" = arrived ] || ! systemctl --user is-active -q hex.service || stale=1
   serve drain
   systemctl --user stop hex-holder.target || :
   if [ -n "$stale" ] && [ "$jobs" = stay ]; then
     local jobs=move
     rest
     # A twin still taking over resumes them itself as its hex starts.
-    [ "$ROLE" = twin ] || [ "$(twin_holds)" != twin ] || on "$other" '"$HOME/hex/.hex/bin/job" --resume' || :
+    [ "$ROLE" = twin ] || [ "$(twin_holds)" != twin ] || { carry || :; on "$other" '"$HOME/hex/.hex/bin/job" --resume' || :; }
   else
     rest
   fi
@@ -282,7 +282,7 @@ back() {
     { ahead && land; } || { unready; return 1; }
     echo "standby: the cut landed $(since_s "$cut")s after it" >&2
     arrive db
-    polling "$cut" || { release; return 1; }
+    polling "$cut" || { release arrived; return 1; }
     echo "standby: hex polls $(since_s "$cut")s after the cut" >&2
   else
     arrive "${1:-}"
@@ -300,7 +300,7 @@ take() {
     { ahead && land; } || { unready; holds=server; hold server; return 1; }
     echo "standby: the cut landed $(since_s "$cut")s after it" >&2
     arrive db
-    polling "$cut" || { release; holds=server; hold server; return 1; }
+    polling "$cut" || { release arrived; holds=server; hold server; return 1; }
     echo "standby: hex polls $(since_s "$cut")s after the cut" >&2
   else
     note gone "$(date -d "@$(cat "$dir/gone" 2>/dev/null || date +%s)" '+%-I:%M:%S%p')"
@@ -309,6 +309,8 @@ take() {
       sleep 300
       echo "standby: the twin didn't grow in 5 minutes, so hex starts at this size" >&2
     fi
+    # A server that doesn't answer is gone, with its jobs: hex carries them on here as it starts. In a drill it answers.
+    [ -f "$dir/drill" ] || up || { mkdir -p "${elsewhere%/*}" && echo "$SERVER" > "${elsewhere%/*}/gone"; }
     mkdir -p "$dir/in" && rm -f "$dir/in/hex.db"
     if litestream restore -o "$dir/in/hex.db" "file://$dir/hex.db"; then
       arrive db
@@ -407,8 +409,8 @@ serving() {
 # after the server started it can't run here, so it jumps.
 guard() {
   local stuck="" idle=0
-  # A jump this process didn't finish (standby restarted mid-way) holds the guard no longer.
-  rm -f "$dir/jumping"
+  # A jump this process didn't finish (standby restarted mid-way) holds the guard no longer, nor marks jobs as moving.
+  rm -f "$dir/jumping" "$HOME/hex/state/moving"
   while :; do
     [ ! -f "$dir/jumping" ] || { sleep "$EVERY"; continue; }
     holds=$(twin_holds)

@@ -62,6 +62,8 @@ printf '#!/bin/sh\nexit 0\n' > "$bin/sqlite3"
 cat > "$bin/tailscale" <<'EOF'
 #!/usr/bin/env bash
 [ "$1" = serve ] && echo "$2" >> "$HOME/names.$3"
+# A ping reaches the machine unless it's down.
+if [ "$1" = ping ]; then [ ! -f "$ROOT/${*: -1}/down" ] || exit 1; echo "pong in 1ms"; fi
 exit 0
 EOF
 # A running hex.service has a hub that's been up 100 seconds, except on a machine with a file named hub-dies.
@@ -78,9 +80,10 @@ EOF
 # Each pretend machine is named for its folder.
 printf '#!/bin/sh\nbasename "$HOME"\n' > "$bin/uname"
 printf '#!/bin/sh\nexit 0\n' > "$bin/claude"
+printf '#!/bin/sh\nexit 0\n' > "$bin/curl"
 printf '#!/bin/sh\nexit 0\n' > "$bin/bun"
 # A hub that starts says it polls, except on a machine with a file named hub-dies.
-printf '#!/bin/sh\n[ -f "$HOME/hub-dies" ] || echo "telegram hub: polling as @bot"\n' > "$bin/journalctl"
+printf '#!/bin/sh\n[ -f "$HOME/hub-dies" ] || [ -f "$HOME/no-poll" ] || echo "telegram hub: polling as @bot"\n' > "$bin/journalctl"
 chmod +x "$bin"/*
 export PATH=$bin:$PATH ROOT=$root
 unset XDG_RUNTIME_DIR
@@ -133,6 +136,14 @@ sed -i '/^hex-jobs.slice$/d' "$root/twin/units"
 as twin timeout 2 "$standby" watch >/dev/null 2>&1
 check "then shrinks once they end" "[ -e '$root/twin/shrunk' ]"
 
+echo "hand-back to a server whose hub gets ready but never polls"
+setup
+echo hex-jobs.slice >> "$root/server/units"
+touch "$root/server/no-poll"
+as twin "$standby" give >"$root/log" 2>&1
+check "the twin keeps hex" "active twin && ! active server"
+check "and the server's jobs keep running" "working server"
+
 echo "hand-back right after a transcript was written"
 setup
 mkdir -p "$root/twin/.claude/projects/-home-bassim-hex" "$root/twin/.claude/projects/old"
@@ -171,6 +182,10 @@ check "the twin still holds" "[ \"\$(holder)\" = twin ]"
 
 echo "server guard"
 setup
+touch "$root/server/hex/state/moving"
+as server timeout 2 "$standby" watch >/dev/null 2>&1
+check "clears a move's mark that a cut-short jump left" "[ ! -e '$root/server/hex/state/moving' ]"
+setup
 printf 'hex.service\nhex-jobs.slice\n' > "$root/server/units"
 as server timeout 2 "$standby" watch >/dev/null 2>&1
 check "stops the server's hex while the twin holds" "! active server"
@@ -201,6 +216,16 @@ rm "$root/twin/units"
 as server timeout 2 "$standby" watch >/dev/null 2>&1
 check "starts it when no machine holds hex" "active server"
 
+echo "outage"
+setup
+echo server > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+printf 'GRACE=0\nEVERY=0\n' >> "$root/twin/.config/standby.env"
+touch "$root/server/down"
+as twin timeout 3 "$standby" watch >/dev/null 2>&1
+check "the twin takes over a server that doesn't answer" "active twin"
+check "and tells its hex the server is gone, so the server's jobs carry on there" "[ \"\$(cat '$root/twin/.local/state/hex/gone' 2>/dev/null)\" = server ]"
+
 echo "drill"
 setup
 echo server > "$root/twin/.local/state/standby/holder"
@@ -210,6 +235,7 @@ printf 'GRACE=0\nSTABLE=0\nEVERY=0\n' >> "$root/twin/.config/standby.env"
 as twin "$standby" drill
 as twin timeout 3 "$standby" watch >/dev/null 2>&1
 check "the twin takes over while the server answers" "active twin && [ \"\$(holder)\" = twin ]"
+check "without calling the server gone" "[ ! -e '$root/twin/.local/state/hex/gone' ]"
 as server timeout 2 "$standby" watch >/dev/null 2>&1
 check "the server's guard stops its hex" "! active server"
 check "and moves its jobs to the twin, as an outage would" "! working server"
