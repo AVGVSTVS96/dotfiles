@@ -240,8 +240,10 @@ arrive() {
 back() {
   if [ "${1:-}" = - ]; then
     { ahead && land; } || { unready; return 1; }
+    echo "standby: the cut landed $(since_s "$cut")s after it" >&2
     arrive db
     polling "$cut" || { release; return 1; }
+    echo "standby: hex polls $(since_s "$cut")s after the cut" >&2
   else
     arrive "${1:-}"
   fi
@@ -256,8 +258,10 @@ take() {
   hold taking
   if [ "$cut" = - ]; then
     { ahead && land; } || { unready; holds=server; hold server; return 1; }
+    echo "standby: the cut landed $(since_s "$cut")s after it" >&2
     arrive db
     polling "$cut" || { release; holds=server; hold server; return 1; }
+    echo "standby: hex polls $(since_s "$cut")s after the cut" >&2
   else
     note gone "$(date -d "@$(cat "$dir/gone" 2>/dev/null || date +%s)" '+%-I:%M:%S%p')"
     if ! big && [ -n "$GROW" ] && sh -c "$GROW"; then
