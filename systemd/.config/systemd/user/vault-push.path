@@ -1,9 +1,0 @@
-[Unit]
-Description=vault-push: watch the vault for saved or removed items
-
-[Path]
-PathChanged=%h/.enclave/items
-PathChanged=%h/.enclave/proton.json
-
-[Install]
-WantedBy=default.target

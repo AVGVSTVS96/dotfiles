@@ -37,9 +37,7 @@ sudo -u "$user" -H sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
 set -eu
 cd && server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar ~/.config/systemd/user/cliproxyapi.socket.d
-# The pool's one socket: it takes what systemd hands it only when there's one, and else binds the server's address.
-printf '[Socket]\nListenStream=\nListenStream=127.0.0.1:8317\n' > ~/.config/systemd/user/cliproxyapi.socket.d/twin.conf
+mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar
 printf 'ROLE=twin\nSERVER=server\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
 
@@ -62,8 +60,6 @@ done
 echo "twin's Syncthing id: $(st show system | jq -r .myID)"
 AS_USER
 echo "twin-up: done. Copy the server's ~/.ssh here (both machines ssh each other as bassim), add the twin's Syncthing id to the server, then once the first sync finishes (install puts each folder's Syncthing ignore file in place):"
-echo "  sudo -iu $user sh -c '~/dotfiles/install && systemctl --user link ~/hex/.hex/systemd/hex.service ~/hex/.hex/systemd/hex-sessions.slice && systemctl --user enable --now standby.service systemd-tmpfiles-clean.timer'"
-echo "and give it Caddy for https://<name>.bassim.run, with svc:gate drained until standby advertises it:"
-echo "  sudo -iu $user bash -c 'mkdir -p ~/.config/caddy && printf \"GATE_DOMAIN=bassim.run\\nHEX_APPS=127.0.0.1\\n\" > ~/.config/caddy/env &&"
-echo "    ln -sf ~/Developer/fleet/machines-skill/server/caddy/Caddyfile ~/.config/caddy/ && systemctl --user link ~/Developer/fleet/machines-skill/server/caddy/caddy.service &&"
-echo "    systemctl --user enable --now caddy && tailscale serve --service=svc:gate --tcp=443 --proxy-protocol=2 tcp://127.0.0.1:4443 >/dev/null; tailscale serve drain svc:gate'"
+echo "  sudo -iu $user sh -c '~/dotfiles/install && ~/hex/.hex/bin/hex restore; systemctl --user enable --now systemd-tmpfiles-clean.timer'"
+echo "(hex restore sets up what ~/hex/services.json lists, Caddy included; its doctor says the hub waits, since the server holds hex), then drain svc:gate until standby advertises it:"
+echo "  sudo -iu $user sh -c 'tailscale serve --service=svc:gate --tcp=443 --proxy-protocol=2 tcp://127.0.0.1:4443 >/dev/null; tailscale serve drain svc:gate'"

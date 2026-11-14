@@ -1,7 +1,0 @@
-[Unit]
-Description=vault-push: commit the vault and push it to its private repo, so a copy lives off this machine
-
-[Service]
-Type=oneshot
-ExecCondition=%h/.local/bin/standby may-hold
-ExecStart=%h/.local/bin/vault-push
