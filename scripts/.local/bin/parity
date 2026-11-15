@@ -31,8 +31,6 @@ awk -v since="$since" '$1 >= since { sub(/^[^ ]+ /, ""); print }' "$record" | so
 if [ -n "$(find "$state/seen" -mmin -1440 2>/dev/null)" ] && [ -z "$(comm -13 "$state/seen" "$state/seen.new")" ]; then exit 0; fi
 shared=$(for f in $(syncthing cli config folders list); do syncthing cli config folders "$f" path get; done)
 
-in_shared() { printf '%s\n' "$shared" | while read -r dir; do case $1 in "$dir" | "$dir"/*) echo yes; break ;; esac; done; }
-
 # A home path's folder as a tool keeps it: ~/.codex, ~/.config/gcloud, ~/.local/share/gh.
 entry() {
   case ${1#"$HOME"/} in
@@ -44,20 +42,22 @@ entry() {
 # What hex ran, and the private files it read (logins), that still exist here, outside Syncthing's folders and what
 # makes itself again (temp, cache, state): "<kind> <path the twin needs> <its name, or for a file its folder>".
 used() {
+  tab=$(printf '\t')
   while read -r kind path; do
-    [ -e "$path" ] || continue
-    real=$(realpath "$path" 2>/dev/null) || continue
-    case $real in /tmp/* | /proc/* | /dev/* | /run/* | "$HOME"/.cache/* | "$HOME"/.local/state/*) continue ;; esac
-    [ -z "$(in_shared "$real")" ] || continue
-    if [ "$kind" = run ]; then
-      echo "run $path ${path##*/}"
-      # The kernel starts a script's interpreter unseen.
-      [ "$(head -c2 "$real")" != '#!' ] ||
-        head -1 "$real" | awk '{ sub(/^#! */, ""); if ($1 ~ /\/env$/) { if ($2 == "-S") $2 = $3; print "run /usr/bin/" $2 " " $2 } else print "run " $1 " " $1 }'
-    elif [ "$(stat -c %a "$real" | cut -c2-)" = 00 ]; then
-      echo "read $path $(entry "$path")"
-    fi
-  done <"$state/seen.new" | sort -u
+    real=$(realpath -e "$path" 2>/dev/null) && echo "$kind$tab$path$tab$real"
+  done <"$state/seen.new" | awk -F "$tab" -v home="$HOME" -v shared="$shared" '
+    BEGIN { n = split(shared "\n/tmp\n/proc\n/dev\n/run\n" home "/.cache\n" home "/.local/state", skip, "\n") }
+    { for (i = 1; i <= n; i++) if ($3 == skip[i] || index($3, skip[i] "/") == 1) next; print }' |
+    while IFS=$tab read -r kind path real; do
+      if [ "$kind" = run ]; then
+        echo "run $path ${path##*/}"
+        # The kernel starts a script's interpreter unseen.
+        [ "$(head -c2 "$real")" != '#!' ] ||
+          head -1 "$real" | awk '{ sub(/^#! */, ""); if ($1 ~ /\/env$/) { if ($2 == "-S") $2 = $3; print "run /usr/bin/" $2 " " $2 } else print "run " $1 " " $1 }'
+      elif [ "$(stat -c %a "$real" | cut -c2-)" = 00 ]; then
+        echo "read $path $(entry "$path")"
+      fi
+    done | sort -u
 }
 
 # How the twin gets one: "pacman <package>", "bun <package> <its global folder> <bin folder>" (where this machine has
