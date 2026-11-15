@@ -290,7 +290,8 @@ arrive() {
   [ "$ROLE" != twin ] || { holds=twin; hold twin; }
   rm -f "$ahead"
   echo "standby: hex goes here"
-  systemctl --user start hex-holder.target
+  # hex.service is active only once hex serves, which polling and serving check, so the start doesn't wait for it.
+  systemctl --user start --no-block hex-holder.target
   serve advertise
 }
 
