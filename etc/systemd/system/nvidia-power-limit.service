@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep the RTX 3080 driver loaded (persistence mode), at the card's own power limit
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-smi -pm 1
+
+[Install]
+WantedBy=multi-user.target
