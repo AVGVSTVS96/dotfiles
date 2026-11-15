@@ -1,0 +1,51 @@
+# What hex uses on the server that stays off the twin, for parity: a package, command or ~/folder, then why.
+# The twin has no screen: Xvfb stands in for one where a program needs it.
+niri             the server's desktop
+grim             screenshots of the server's own screen
+wtype            types into the server's desktop
+xdotool          types into a real X screen
+xclip            the desktop's clipboard
+weston           a desktop
+pipewire         desktop sound
+wireplumber      desktop sound
+electron44       desktop apps
+chatgpt-bin      a desktop app
+said             his dictation app, a desktop app
+nvidia-utils     the server's GPU; the twin has none
+snapper          snapshots of the server's own disk
+# Phone and app builds stay on the server: the iPhone is on its USB, and the toolchains would take
+# about 10 GB of a disk that sat at 24 GB free.
+libimobiledevice the iPhone over the server's USB
+libplist         the iPhone over the server's USB
+swift-bin        iPhone builds
+llvm             iPhone builds
+clang            iPhone builds
+jdk25-openjdk    Android builds
+# X signs @hexassistant in from a home address: on the twin its jobs use the Mac's Chrome
+# (hexassistant/x.sh), since a login from a data center looks like a stolen one.
+google-chrome    @hexassistant's Chrome; agent-browser brings its own for everything else
+~/.hexassistant-chrome  @hexassistant's X login
+~/.local/share/xfeed    X logins
+paru             the twin installs from Arch's own repositories
+# T3 Code runs on the server and the Mac; a copy on the twin would split its threads.
+t3               T3 Code
+~/.t3            T3 Code
+# The server runs Node from fnm, the twin Arch's nodejs.
+fnm              Node versions on the server
+~/.local/share/fnm  Node versions on the server
+# Sol runs in T3 Code on the server, and Codex's ChatGPT login refreshes itself: two machines sharing it
+# would sign each other out.
+codex            Sol, in T3 Code on the server
+~/.codex         Sol's login
+# The GCP twin is set up from the server; its resizes go through a GitHub workflow any machine can start.
+gcloud           the GCP twin's setup
+~/.local/google-cloud-sdk  the GCP twin's setup
+~/.config/gcloud the GCP twin's setup
+# oomph's install starts a watcher that wakes Bassim; the twin is meant to sit idle until hex moves there.
+oomph            alerts for the server
+~/.local/share/oomph  alerts for the server
+# Containers' images: podman pulls them again where it runs.
+~/.local/share/containers  podman's images
+# fish keeps its own variables on each machine, made on its first run.
+~/.config/fish/fish_variables  fish's own state
+oh-my-posh-bin   his terminal's prompt theme, from the AUR

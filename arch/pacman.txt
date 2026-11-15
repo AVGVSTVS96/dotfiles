@@ -2,6 +2,7 @@ age
 aria2
 bat
 bats
+bpftrace
 bun
 expect
 eza

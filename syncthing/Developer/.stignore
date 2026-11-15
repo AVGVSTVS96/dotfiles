@@ -26,3 +26,10 @@
 (?d)CacheStorage
 (?d)ScriptCache
 (?d)component_crx_cache
+// Public bulk downloads a project fetches again where it needs them, about 50 GB the twin's disk hasn't got:
+// antibody's FEC filings and lobbying reports, denoise's raw photo sets (each file's source is in its index).
+/antibody/data/fec
+/antibody/data/lobbying
+/denoise/eval/data/night-raw
+/denoise/eval/data/rawpairs
+/denoise/eval/data/raw-test

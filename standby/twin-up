@@ -9,11 +9,11 @@ set -eu
 user=bassim
 : "${TS_AUTHKEY:=}" "${SERVER_ID:?the Syncthing device id of the server}"
 
-# The server's packages, less its desktop.
+# What the twin needs to bring hex over and set it up; parity, run from the server, brings the rest of what hex uses
+# there. Xvfb is the twin's own: a screen for programs that want one.
 pacman-key --init && pacman-key --populate archlinux
-pacman -Syu --noconfirm --needed base-devel git openssh sudo tailscale syncthing jq sqlite stow fish zsh tmux \
-  bun nodejs npm pnpm uv rustup go ripgrep fd bat eza fzf git-delta git-lfs github-cli jujutsu neovim unzip zip rsync \
-  ffmpeg imagemagick shellcheck gitleaks sops age xorg-server-xvfb
+pacman -Syu --noconfirm --needed base-devel git openssh sudo tailscale syncthing jq stow fish zsh bun nodejs npm go \
+  python sops age unzip xorg-server-xvfb
 
 # Swap, so a burst on the small size doesn't kill Syncthing.
 [ -f /swapfile ] || { fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && echo '/swapfile none swap defaults 0 0' >> /etc/fstab; }
@@ -61,5 +61,6 @@ echo "twin's Syncthing id: $(st show system | jq -r .myID)"
 AS_USER
 echo "twin-up: done. Copy the server's ~/.ssh here (both machines ssh each other as bassim), add the twin's Syncthing id to the server, then once the first sync finishes (install puts each folder's Syncthing ignore file in place):"
 echo "  sudo -iu $user sh -c '~/dotfiles/install && ~/hex/.hex/bin/hex restore; systemctl --user enable --now systemd-tmpfiles-clean.timer'"
+echo "and on the server, \`parity\` gives the twin what hex uses there."
 echo "(hex restore sets up what ~/hex/services.json lists, Caddy included; its doctor says the hub waits, since the server holds hex), then drain svc:gate until standby advertises it:"
 echo "  sudo -iu $user sh -c 'tailscale serve --service=svc:gate --tcp=443 --proxy-protocol=2 tcp://127.0.0.1:4443 >/dev/null; tailscale serve drain svc:gate'"

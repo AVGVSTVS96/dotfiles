@@ -65,11 +65,17 @@ case "$(uname -s)" in
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl restart systemd-journald; }
     dot=etc/sysctl.d/60-inotify-watches.conf
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo sysctl -q -p "/$dot"; }
+    # What hex's work runs and reads, which parity gives the twin.
+    dot=etc/hex-uses.bt
+    cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl try-restart "hex-uses@$USER"; }
+    dot=etc/systemd/system/hex-uses@.service
+    cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl daemon-reload; }
+    sudo systemctl enable --now "hex-uses@$USER"
     ;;
 esac
 
 link
-[ "$(uname -s)" = Linux ] && systemctl --user enable --now netmuxd
+[ "$(uname -s)" = Linux ] && systemctl --user enable --now netmuxd parity.path
 
 case "$SHELL" in
   */zsh)
