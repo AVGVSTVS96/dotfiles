@@ -3,7 +3,9 @@
 # manager again when it exits. Safe to rerun; manager-guard/test shows both. Usage: manager-guard/install
 set -eu
 cd "$(dirname "$0")/.."
-pacman -T clang bpf libbpf >/dev/null || sudo pacman -Syu --needed clang bpf libbpf
+dot=etc/systemd/system/user@.service.d/restart.conf
+cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl daemon-reload; }
+grep -qw bpf /sys/kernel/security/lsm || { echo "manager-guard: this kernel runs no BPF security hooks (its lsm= list lacks bpf), so the guard isn't loaded" >&2; exit 0; }
 guard=$(mktemp)
 trap 'rm -f "$guard"' EXIT
 clang -O2 -g -target bpf -c manager-guard/guard.bpf.c -o "$guard"
@@ -15,5 +17,3 @@ cmp -s "$guard" /usr/local/lib/manager-guard.bpf.o && cmp -s "$dot" "/$dot" || {
   sudo systemctl enable manager-guard
   sudo systemctl restart manager-guard
 }
-dot=etc/systemd/system/user@.service.d/restart.conf
-cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl daemon-reload; }
