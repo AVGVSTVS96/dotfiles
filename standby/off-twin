@@ -46,6 +46,9 @@ oomph            alerts for the server
 ~/.local/share/oomph  alerts for the server
 # Containers' images: podman pulls them again where it runs.
 ~/.local/share/containers  podman's images
+# Each machine signs in to Sprites itself: the server's login is locked to its keyring, and hex restore makes the
+# twin's from the vault's token.
+~/.sprites       the server's Sprites login
 # fish keeps its own variables on each machine, made on its first run.
 ~/.config/fish/fish_variables  fish's own state
 oh-my-posh-bin   his terminal's prompt theme, from the AUR
