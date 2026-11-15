@@ -1,0 +1,10 @@
+{
+  "comets": {
+    "server": {
+      "url": "https://glkvm.local",
+      "address": "glkvm",
+      "password_command": ["enclave", "get", "glkvm.local", "password"],
+      "ca_file": "~/.config/comet-kvm/comet-ca.crt"
+    }
+  }
+}

@@ -47,7 +47,7 @@ case "$(uname -s)" in
     # systemd skips drop-in directories that are symlinks, so stow links the files into a real one.
     mkdir -p "$HOME/Pictures/Wallpapers" "$HOME/.config/systemd/user/app-com.t3tools.T3Code-.scope.d" "$HOME/.config/systemd/user/syncthing.service.d"
     set -- --ignore=authorized_keys --ignore='\.zshrc' "$@"
-    os="ghostty-linux niri noctalia systemd wallpapers zsh"
+    os="comet-kvm ghostty-linux niri noctalia systemd wallpapers zsh"
     # Syncthing's ignore rules for the folders it shares with the twin, as real files: a link a checkout left dangling
     # would sync everything, live hex.db included.
     [ $changing = no ] || (cd syncthing && find . -name .stignore -exec install -D -m 644 {} "$HOME/{}" \;)
