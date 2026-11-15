@@ -1,8 +1,0 @@
-[Unit]
-Description=Run parity when hex uses something new
-
-[Path]
-PathModified=/var/lib/hex-uses/%u
-
-[Install]
-WantedBy=default.target
