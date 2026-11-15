@@ -13,14 +13,15 @@ check() { if eval "$2"; then pass=$((pass + 1)); echo "  ok   $1"; else fail=$((
 
 # systemctl --user: hex-holder.target and hex.service start hex.service only where standby may-hold says so, as
 # ExecCondition does, and not at all on a machine with a file named broken; a start while hex-ahead is there is noted
-# in started. As they stop, the hub writes to hex.db's WAL and a session to its recent transcript, if there are those.
+# in started, and the pool's port notes in proxy whether the hub was still held back as it opened. As they stop, the hub writes to hex.db's WAL and a session to its recent transcript, if there are those.
 cat > "$bin/systemctl" <<'EOF'
 #!/usr/bin/env bash
 [ "$1" = --user ] && shift
 units=$HOME/units
 ahead=$HOME/.local/state/standby/hex-ahead
 case $1 in
-  start) case $2 in hex-holder.target | hex.service) ;; *) exit 0 ;; esac
+  start) case " $* " in *" cliproxyapi.socket "*) { [ -f "$ahead" ] && echo early || echo late; } >> "$HOME/proxy" ;; esac
+    case " $* " in *" hex-holder.target "* | *" hex.service "*) ;; *) exit 0 ;; esac
     [ ! -f "$HOME/broken" ] && "$HOME/.local/bin/standby" may-hold || exit
     grep -qx hex.service "$units" 2>/dev/null || { echo hex.service >> "$units"; [ ! -f "$ahead" ] || { echo ahead >> "$HOME/started"; [ -f "$HOME/hub-dies" ] || echo ready > "$ahead"; }; } ;;
   stop) case " $* " in *" hex-jobs.slice "*) sed -i '/^hex-jobs.slice$/d' "$units" 2>/dev/null ;; esac
@@ -60,6 +61,8 @@ case " $* " in
 esac
 EOF
 printf '#!/bin/sh\nexit 0\n' > "$bin/sqlite3"
+# litestream restore -o <file> file://<copy>: the server's streamed copy of hex.db, when the twin has one.
+printf '#!/bin/sh\n[ -d "${4#file://}" ] && echo "streamed data" > "$3"\n' > "$bin/litestream"
 cat > "$bin/tailscale" <<'EOF'
 #!/usr/bin/env bash
 [ "$1" = serve ] && echo "$2" >> "$HOME/names.$3"
@@ -122,6 +125,7 @@ mkdir -p "$root/server/.local/state/hex" && echo twin > "$root/server/.local/sta
 echo "SHRINK='touch $root/twin/shrunk'" >> "$root/twin/.config/standby.env"
 as twin "$standby" give >"$root/log" 2>&1
 check "the server runs hex" "active server"
+check "with the pool's port open before its hub goes" "grep -qx early '$root/server/proxy'"
 check "the twin doesn't" "! active twin"
 check "the server has the twin's hex.db" "grep -q 'twin data' '$root/server/hex/state/hex.db'"
 check "the server serves hex's names, bassim.run's among them" "names server advertise"
@@ -236,6 +240,24 @@ as twin timeout 3 "$standby" watch >/dev/null 2>&1
 check "the twin takes over a server that doesn't answer" "active twin"
 check "and tells its hex the server is gone, so the server's jobs carry on there" "[ \"\$(cat '$root/twin/.local/state/hex/gone' 2>/dev/null)\" = server ]"
 
+echo "outage whose growing restarts the twin"
+setup
+echo taking > "$root/twin/.local/state/standby/holder"
+rm "$root/twin/units"
+printf 'GRACE=0\nEVERY=0\n' >> "$root/twin/.config/standby.env"
+touch "$root/server/down"
+as twin systemctl --user start hex.service
+check "the twin's boot doesn't start hex before the server's copy is in" "! active twin"
+as twin timeout 3 "$standby" watch >/dev/null 2>&1
+check "the resumed take-over starts it" "active twin && [ \"\$(holder)\" = twin ]"
+check "from the server's streamed hex.db" "grep -q 'streamed data' '$root/twin/hex/state/hex.db'"
+setup
+echo taking > "$root/twin/.local/state/standby/holder"
+printf 'GRACE=0\nEVERY=0\n' >> "$root/twin/.config/standby.env"
+touch "$root/server/down"
+as twin timeout 3 "$standby" watch >/dev/null 2>&1
+check "a hex already running from the twin's old hex.db gets the streamed one" "active twin && grep -q 'streamed data' '$root/twin/hex/state/hex.db'"
+
 echo "drill"
 setup
 echo server > "$root/twin/.local/state/standby/holder"
@@ -269,6 +291,7 @@ check "from the server's hex.db" "grep -q 'server data' '$root/twin/hex/state/he
 check "and its WAL, with the hub's last write" "[ \"\$(cat '$root/twin/hex/state/hex.db-wal')\" = \"\$(printf 'server wal\\nlast write')\" ]"
 check "the twin's hex started ahead of the cut" "grep -qx ahead '$root/twin/started'"
 check "and goes now" "[ ! -e '$root/twin/.local/state/standby/hex-ahead' ]"
+check "once the pool's port is open" "grep -qx early '$root/twin/proxy'"
 check "the twin serves hex's names, bassim.run's among them" "names twin advertise"
 check "the server drained them" "names server drain"
 

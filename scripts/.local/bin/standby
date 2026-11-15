@@ -82,7 +82,9 @@ publish() {
 
 may_hold() {
   case $ROLE in
-    twin) case $(holder) in taking | twin) ;; *) exit 1 ;; esac ;;
+    # While the twin is still taking over, only a hex standby starts ahead of a cut may run: one that a boot starts
+    # mid-take (GROW restarts the twin) would run from the twin's old hex.db before the server's copy is in place.
+    twin) case $(holder) in twin) ;; taking) [ -e "$ahead" ] || exit 1 ;; *) exit 1 ;; esac ;;
     # A twin that can't be reached holds nothing the server can see: the server holds.
     # Bounded, so a twin that can't answer never keeps hex from starting.
     *) case $(twin_holds) in taking | twin) exit 1 ;; esac ;;
@@ -195,7 +197,8 @@ land() {
 ahead() {
   grep -q HEX_AHEAD "$HOME/hex/.hex/bin/hex" || { echo "standby: this hex can't start ahead yet" >&2; return 1; }
   ! systemctl --user is-active -q hex.service || { echo "standby: hex already runs here" >&2; return 1; }
-  : > "$ahead" && systemctl --user start hex.service || return
+  # The pool's port opens first, so what the hub asks of the pool waits for it instead of being refused.
+  : > "$ahead" && systemctl --user start cliproxyapi.socket hex.service || return
   # The hub writes ready into $ahead once it has loaded its code and opened Telegram's connection, with this machine's
   # settings, which a start that dies on them never gets past.
   local tries=0
@@ -241,7 +244,7 @@ stop_all() {
 # first, since its checkpoints write hex.db's main file. A reader kept open through the cut means the hub's close isn't
 # the last, which would checkpoint too.
 hand() {
-  local line keep landing_PID
+  local line keep landing_PID pid from to
   # Jobs stay only with a hex that reaches the machine it moved to from them, and leaves them be as it lands.
   [ "$jobs" != stay ] || grep -q hex/elsewhere "$HOME/hex/.hex/bin/job.ts" 2>/dev/null || local jobs=move
   systemctl --user stop hex-db.service || :
@@ -250,22 +253,25 @@ hand() {
   carry || :
   # Jobs that go with hex die here at the cut, so hex there carries them on even once this machine is off.
   [ "$jobs" = stay ] || on "$other" "mkdir -p ~/.local/state/hex && echo $(uname -n) > ~/.local/state/hex/gone" || :
+  # Bash forgets a coproc's pid and pipes once it ends, which a fast landing does before they're used: these copies stay.
   coproc landing { timeout 120 "${rsh[@]}" "$other" "\"\$HOME/.local/bin/standby\" $1 -"; }
-  while read -r line <&"${landing[0]}" && [ "$line" != ready ]; do :; done
-  [ "$line" = ready ] || { echo "standby: $other couldn't start hex ahead" >&2; wait "$landing_PID"; return 1; }
+  pid=$landing_PID
+  exec {from}<&"${landing[0]}" {to}>&"${landing[1]}"
+  while read -r line <&"$from" && [ "$line" != ready ]; do :; done
+  [ "$line" = ready ] || { echo "standby: $other couldn't start hex ahead" >&2; exec {from}<&- {to}>&-; wait "$pid"; return 1; }
   echo "standby: $other is ready"
-  sqlite3 -readonly "$db" 'select 1' '.shell sleep 60' >/dev/null 2>&1 &
+  sqlite3 -readonly "$db" 'select 1' '.shell sleep 60' >/dev/null 2>&1 {from}<&- {to}>&- &
   keep=$!
-  local to=${landing[1]} stopped
+  local stopped
   cut=$(now)
   stop_all
   stopped=$(since_s "$cut")
   if [ "$(sig)" = "$shipped" ] || ship; then { echo "$cut"; payload; } >&"$to"; fi
-  exec {to}>&-
+  exec {to}>&- {from}<&-
   echo "standby: cut sent in $(since_s "$cut")s (all stopped after ${stopped}s)"
   kill "$keep" 2>/dev/null || :
   claude daemon stop --any >/dev/null 2>&1 || :
-  wait "$landing_PID" || { echo "standby: hex isn't serving on $other, so it stays here" >&2; rest; return 1; }
+  wait "$pid" || { echo "standby: hex isn't serving on $other, so it stays here" >&2; rest; return 1; }
   echo "standby: hex serves on $other $(since_s "$cut")s after the cut"
   # The jobs that stay here reach hex there from now on: what they say can no longer land in a hex.db the cut replaces.
   [ "$jobs" != stay ] || echo "$other" > "$elsewhere"
@@ -273,11 +279,16 @@ hand() {
 }
 
 # arrive [db]: run hex here, from the hex.db a move or a restore put in $dir/in when told one came.
+# A hex already running here, not ahead of this move, runs from an older hex.db, so it stops for this one. On the twin,
+# the twin holds from the moment that hex.db is in place.
 arrive() {
-  if [ "${1:-}" = db ] && { [ -e "$ahead" ] || ! systemctl --user is-active -q hex.service; }; then
+  if [ "${1:-}" = db ]; then
+    [ -e "$ahead" ] || systemctl --user stop hex-holder.target || :
     mv "$dir/in/hex.db" "$db" && rm -f "$db-wal" "$db-shm" && { [ ! -f "$dir/in/hex.db-wal" ] || mv "$dir/in/hex.db-wal" "$db-wal"; }
   fi
-  rm -f "$dir/in/hex.db" "$dir/in/hex.db-wal" "$ahead" "$elsewhere"
+  rm -f "$dir/in/hex.db" "$dir/in/hex.db-wal" "$elsewhere"
+  [ "$ROLE" != twin ] || { holds=twin; hold twin; }
+  rm -f "$ahead"
   echo "standby: hex goes here"
   systemctl --user start hex-holder.target
   serve advertise
@@ -324,8 +335,6 @@ take() {
       arrive
     fi
   fi
-  holds=twin
-  hold twin
   [ ! -f "$dir/drill" ] || tell "Failover drill: the twin acts as if the server were gone. The server itself keeps running."
   if [ -n "$cut" ]; then
     note landed "$(since_s "$cut")"
@@ -418,6 +427,7 @@ guard() {
   rm -f "$dir/jumping" "$HOME/hex/state/moving"
   while :; do
     [ ! -f "$dir/jumping" ] || { sleep "$EVERY"; continue; }
+    fresh
     holds=$(twin_holds)
     publish "$holds"
     case $holds in
@@ -440,12 +450,18 @@ guard() {
   done
 }
 
+# A watch that runs on after its script changed would mix old code with the new one each standby that systemd or the
+# other machine starts runs, so between moves it restarts as the new one.
+stamp=$(stat -L -c %Y "$0")
+fresh() { [ -z "${INVOCATION_ID:-}" ] || [ "$(stat -L -c %Y "$0")" = "$stamp" ] || exec systemctl --user --no-block restart standby.service; }
+
 watch() {
   [ "$ROLE" = twin ] || { sense & guard; return; }
   # A move cut short by a restart finishes first.
   case $(holder) in taking) take ;; giving) give ;; esac
   local since=""
   while :; do
+    fresh
     holds=$(holder)
     case $holds in
       server)
