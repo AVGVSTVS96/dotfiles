@@ -65,6 +65,7 @@ case "$(uname -s)" in
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl restart systemd-journald; }
     dot=etc/sysctl.d/60-inotify-watches.conf
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo sysctl -q -p "/$dot"; }
+    manager-guard/install
     ;;
 esac
 

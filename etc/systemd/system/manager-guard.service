@@ -1,0 +1,12 @@
+[Unit]
+Description=manager-guard: only root can signal a user's service manager, so nothing it runs can end the session
+Before=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/bpftool prog load /usr/local/lib/manager-guard.bpf.o /sys/fs/bpf/manager-guard autoattach
+ExecStop=/usr/bin/rm /sys/fs/bpf/manager-guard
+
+[Install]
+WantedBy=multi-user.target

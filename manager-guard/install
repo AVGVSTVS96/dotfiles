@@ -1,0 +1,19 @@
+#!/bin/sh
+# manager-guard/install: on an Arch machine, loads the guard at every boot and has systemd start a user's service
+# manager again when it exits. Safe to rerun; manager-guard/test shows both. Usage: manager-guard/install
+set -eu
+cd "$(dirname "$0")/.."
+pacman -T clang bpf libbpf >/dev/null || sudo pacman -Syu --needed clang bpf libbpf
+guard=$(mktemp)
+trap 'rm -f "$guard"' EXIT
+clang -O2 -g -target bpf -c manager-guard/guard.bpf.c -o "$guard"
+dot=etc/systemd/system/manager-guard.service
+cmp -s "$guard" /usr/local/lib/manager-guard.bpf.o && cmp -s "$dot" "/$dot" || {
+  sudo install -Dm644 "$guard" /usr/local/lib/manager-guard.bpf.o
+  sudo install -Dm644 "$dot" "/$dot"
+  sudo systemctl daemon-reload
+  sudo systemctl enable manager-guard
+  sudo systemctl restart manager-guard
+}
+dot=etc/systemd/system/user@.service.d/restart.conf
+cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl daemon-reload; }
