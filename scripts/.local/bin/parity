@@ -63,7 +63,8 @@ used() {
 # How the twin gets one: "pacman <package>", "bun <package> <its global folder> <bin folder>" (where this machine has
 # them), "uv <tool>", or "by-hand <what to name>".
 source_of() {
-  real=$(realpath "$2")
+  # -m: a test container can be deleted between used and here, and its folder still names what off-twin keeps off
+  real=$(realpath -m "$2")
   case $2 in "$HOME"/.local/share/uv/tools/*) real=$2 ;; esac
   case $real in
     "$HOME"/*/node_modules/*) echo "$real" | sed -E "s#(.*)/node_modules/((@[^/]+/)?[^/]+)/.*#bun \2 \1 ${2%/*}#" ;;
