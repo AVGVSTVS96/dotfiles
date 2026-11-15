@@ -2,7 +2,9 @@ age
 aria2
 bat
 bats
+bpf
 bun
+clang
 expect
 eza
 fastfetch
@@ -26,6 +28,7 @@ inter-font
 jq
 jujutsu
 lazygit
+libbpf
 lsof
 lua-language-server
 neovim

@@ -1,0 +1,73 @@
+#!/bin/sh
+# manager-guard/test: replays the Nov 15 2026 outage on a throwaway user's service manager, never on a real session.
+# That day a cleanup loop killed each leftover check and its parent; the checks had outlived their shell, so the parent
+# was the user's service manager, and SIGTERM ended every service and job the user ran. Usage: sudo sh manager-guard/test
+set -u
+user=manager-guard-test
+home=/var/tmp/$user
+pass=0 fail=0
+check() { if eval "$2"; then pass=$((pass + 1)); echo "  ok   $1"; else fail=$((fail + 1)); echo "  FAIL $1"; fi; }
+
+useradd --system --create-home --home-dir "$home" --shell /bin/sh "$user" || exit
+uid=$(id -u "$user")
+unit=user@$uid.service
+trap 'loginctl disable-linger "$user"; systemctl stop "$unit"; userdel --remove "$user" 2>/dev/null' EXIT
+loginctl enable-linger "$user"
+
+as_the_user() { runuser -u "$user" -- env XDG_RUNTIME_DIR="/run/user/$uid" "$@"; }
+manager() { systemctl show --property=MainPID --value "$unit"; }
+a_running_manager() { systemctl start "$unit" && before=$(manager) && [ "$before" -gt 1 ]; }
+state() { systemctl show --property=ActiveState,MainPID "$unit" | sort | tr '\n' ' '; }
+still_runs() { [ "$(state)" = "ActiveState=active MainPID=$1 " ]; }
+back_as_another() {
+  for _ in $(seq 20); do
+    case $(state) in
+      "ActiveState=active MainPID=$1 " | "ActiveState=active MainPID=0 ") ;;
+      "ActiveState=active MainPID="*) return ;;
+    esac
+    sleep 1
+  done
+  return 1
+}
+
+cat > "$home/check" <<'EOF'
+sleep 300
+EOF
+cat > "$home/cleanup" <<EOF
+(sh $home/check &)
+sleep 1
+for p in \$(pgrep -u $uid -f $home/check); do pp=\$(ps -o ppid= -p \$p | tr -d ' '); echo "parent \$pp"; kill \$pp \$p; done
+EOF
+
+echo "the Nov 15 cleanup loop, run by a job of the user's own manager"
+a_running_manager || exit
+since=$(date '+%F %T')
+said=$(as_the_user systemd-run --user --wait --collect --quiet --pipe sh "$home/cleanup" 2>&1)
+sleep 5
+check "the leftover check's parent is the service manager, as it was on Nov 15" '[ "$(echo "$said" | sed -n "s/^parent //p")" = "$before" ]'
+check "the manager runs on after the loop" 'still_runs "$before"'
+check "its log has no \"Exit the Session\"" '! journalctl --quiet --since "$since" _PID="$before" --grep "Exit the Session" | grep .'
+check "the loop still killed the check it was after" '! pgrep -u "$uid" -f "$home/check" >/dev/null'
+
+echo "other signals from what the manager runs"
+a_running_manager || exit
+as_the_user kill -KILL "$before" 2>/dev/null
+sleep 2
+check "SIGKILL from the user leaves the manager running" 'still_runs "$before"'
+if [ -n "${SUDO_UID:-}" ] && [ "$SUDO_UID" != 0 ]; then
+  check "the manager of whoever ran this test refuses a probe (signal 0, which delivers nothing) from its own user" \
+    '! runuser -u "$SUDO_USER" -- kill -0 "$(systemctl show --property=MainPID --value "user@$SUDO_UID.service")" 2>/dev/null'
+fi
+
+echo "a manager that exits anyway"
+a_running_manager || exit
+as_the_user systemctl --user exit
+check "is started again within 20 seconds" 'back_as_another "$before"'
+
+echo "root keeps its say"
+a_running_manager || exit
+check "root's signal reaches the manager" 'kill -0 "$before"'
+check "systemctl stop ends it within 30 seconds, and it stays stopped" 'timeout 30 systemctl stop "$unit" && sleep 3 && ! systemctl is-active --quiet "$unit"'
+
+echo "$pass passed, $fail failed"
+[ "$fail" = 0 ]
