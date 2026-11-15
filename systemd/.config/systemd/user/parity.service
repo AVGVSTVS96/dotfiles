@@ -1,5 +1,6 @@
 [Unit]
 Description=Give the twin what hex used here, and tell hex what it couldn't
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
