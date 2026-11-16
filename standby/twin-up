@@ -3,7 +3,7 @@
 # with the server reachable over Tailscale:
 #   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> sh twin-up
 # It makes the server's user with the same home, joins the tailnet as `twin`, and has Syncthing bring over hex,
-# Claude Code's data, ~/Developer, hangar's builds, dotfiles, ~/.local/bin, the account pool's logins and the vault. Everything that
+# Claude Code's data, ~/Developer, hangar's builds, hex Exact's and iikb's install links, dotfiles, ~/.local/bin, the account pool's logins and the vault. Everything that
 # holds hex stays off until standby takes over.
 set -eu
 user=bassim
@@ -27,6 +27,18 @@ loginctl enable-linger "$user"
 
 systemctl enable --now tailscaled sshd
 tailscale status >/dev/null 2>&1 || tailscale up --auth-key="$TS_AUTHKEY" --hostname=twin
+# The tailnet names that follow hex, each path on it as on the server: hex-here.service advertises them on whichever
+# machine holds hex, so here they wait drained. A path needs root, which hex-here doesn't have.
+home=/home/$user
+tailscale serve --service=svc:hub --https=443 http://127.0.0.1:8790 >/dev/null
+tailscale serve --service=svc:hub --https=443 --set-path=/hex http://127.0.0.1:2593 >/dev/null
+tailscale serve --service=svc:pages --https=443 http://127.0.0.1:4800 >/dev/null
+tailscale serve --service=svc:updates --https=443 http://127.0.0.1:8791 >/dev/null
+tailscale serve --service=svc:updates --https=443 --set-path=/hangar http://127.0.0.1:8792 >/dev/null
+tailscale serve --service=svc:updates --https=443 --set-path=/hex-exact/ "$home/.local/share/hex-exact/link" >/dev/null
+tailscale serve --service=svc:updates --https=443 --set-path=/iikb-link/ "$home/.local/share/iikb/link" >/dev/null
+tailscale serve --service=svc:gate --tcp=443 --proxy-protocol=2 tcp://127.0.0.1:4443 >/dev/null
+for name in svc:hub svc:pages svc:updates svc:gate; do tailscale serve drain "$name"; done
 # Claude Code's settings, shared with the server, name the account pool at the server's tailnet address. Here the
 # machine's own managed settings, which win over them, name the twin's copy of the pool.
 mkdir -p /etc/claude-code
@@ -36,7 +48,7 @@ sudo -u "$user" -H sh -s "$SERVER_ID" <<'AS_USER'
 set -eu
 cd && server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar
+mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar ~/.local/share/hex-exact/link ~/.local/share/iikb/link
 echo ROLE=twin > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
 
@@ -52,7 +64,7 @@ st config options natenabled set false
 st config options uraccepted set -- -1
 st config options raw-listen-addresses 0 set "tcp://$(tailscale ip -4):22000"
 st config devices add --device-id "$server_id" --name server --addresses tcp://server:22000
-for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin proxy:.config/cliproxyapi enclave:.enclave voice:.local/share/hex-voice hangar:.local/share/hangar; do
+for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin proxy:.config/cliproxyapi enclave:.enclave voice:.local/share/hex-voice hangar:.local/share/hangar exact:.local/share/hex-exact/link iikb-link:.local/share/iikb/link; do
   st config folders add --id "${spec%%:*}" --label "${spec%%:*}" --path "$HOME/${spec#*:}"
   st config folders "${spec%%:*}" devices add --device-id "$server_id"
 done
@@ -60,5 +72,4 @@ echo "twin's Syncthing id: $(st show system | jq -r .myID)"
 AS_USER
 echo "twin-up: done. Copy the server's ~/.ssh here (both machines ssh each other as bassim), add the twin's Syncthing id to the server, then once the first sync finishes (install puts each folder's Syncthing ignore file in place):"
 echo "  sudo -iu $user sh -c '~/dotfiles/install && ~/hex/.hex/bin/hex restore; systemctl --user enable --now systemd-tmpfiles-clean.timer'"
-echo "(hex restore sets up what ~/hex/services.json lists, Caddy included; its doctor says the hub waits, since the server holds hex), then drain svc:gate until standby advertises it:"
-echo "  sudo -iu $user sh -c 'tailscale serve --service=svc:gate --tcp=443 --proxy-protocol=2 tcp://127.0.0.1:4443 >/dev/null; tailscale serve drain svc:gate'"
+echo "(hex restore sets up what ~/hex/services.json lists, Caddy included; its doctor says the hub waits, since the server holds hex)."
