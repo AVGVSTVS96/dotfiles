@@ -15,16 +15,36 @@ name=${0##*/}
 # Whether the machine has room for another simulator or build: macOS's memory pressure is normal, not warn or
 # critical, and a quarter of its CPU is idle, since simulators, builds and installs starting together on Nov 8 took
 # the Mac's load past 595, where loginwindow crashed and logged Bassim out. Free swap isn't a signal, since macOS
-# grows and shrinks swap as it goes. Always true where there's no such sysctl.
+# grows and shrinks swap as it goes.
 # A turn (roomy turn) also starts while pressure is at warn (2) if a third of memory is still free, never at critical
 # (4); a simulator boot needs normal. Nov 15: pressure sat at warn for hours with 44% free, and every build and check
 # waited.
+# On Linux: a quarter of memory available, a quarter of the CPU idle, and nothing waiting on memory or disk over a
+# fifth of the last minute (PSI, as hex's bin/room reads it). Nov 16 7:12 and 7:20: two Pipeline builds (~1.8 GB each)
+# started together on the 7.6 GB twin and were OOM-killed, since turn counted only slots there.
 roomy() {
+  if [ -r /proc/pressure/memory ]; then
+    [ "$(awk '/MemTotal/ { t = $2 } /MemAvailable/ { a = $2 } END { print int(100 * a / t) }' /proc/meminfo)" -ge 25 ] &&
+      [ "$(cat /proc/pressure/memory /proc/pressure/io | sed -n 's/^some .*avg60=\([0-9]*\).*/\1/p' | sort -n | tail -1)" -le 20 ] &&
+      [ "$(idle)" -ge 25 ]
+    return
+  fi
   level=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null) || return 0
   { [ "$level" = 1 ] || { [ "$level" = 2 ] && [ -n "${1:-}" ] &&
     [ "$(memory_pressure -Q 2>/dev/null | awk -F: '/free percentage/ { print int($2) }')" -ge 33 ]; }; } && [ "$(top -l 2 -n 0 -s 1 | awk '/CPU usage/ { idle = $7 } END { print int(idle) }')" -ge 25 ]
 }
-memory() { echo "memory pressure $(sysctl -n kern.memorystatus_vm_pressure_level) (1 is normal), $(sysctl -n vm.swapusage), $(top -l 1 -n 0 | grep "CPU usage"), $(pmset -g batt | head -1)"; }
+# The share of CPU time idle between two reads of /proc/stat a second apart, niced time counted as idle.
+idle() {
+  ticks() { awk '/^cpu / { print $3 + $5 + $6, $2 + $3 + $4 + $5 + $6 + $7 + $8 + $9 }' /proc/stat; }
+  before=$(ticks)
+  sleep 1
+  ticks | awk -v before="$before" '{ split(before, b, " "); print int(100 * ($1 - b[1]) / ($2 - b[2])) }'
+}
+memory() {
+  [ -r /proc/pressure/memory ] || { memory_mac; return; }
+  echo "$(awk '/MemTotal/ { t = $2 } /MemAvailable/ { a = $2 } END { print int(100 * a / t) }' /proc/meminfo)% of memory available, $(idle)% of CPU idle, waiting on memory $(sed -n 's/^some .*avg60=\([0-9.]*\).*/\1/p' /proc/pressure/memory)% and disk $(sed -n 's/^some .*avg60=\([0-9.]*\).*/\1/p' /proc/pressure/io)% of the last minute"
+}
+memory_mac() { echo "memory pressure $(sysctl -n kern.memorystatus_vm_pressure_level) (1 is normal), $(sysctl -n vm.swapusage), $(top -l 1 -n 0 | grep "CPU usage"), $(pmset -g batt | head -1)"; }
 if [ "$name" != turn ]; then
   shims=$(cd "${0%/*}" && pwd -P)
   real=
