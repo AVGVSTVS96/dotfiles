@@ -23,11 +23,9 @@
 (?d)CacheStorage
 (?d)ScriptCache
 (?d)component_crx_cache
-// Moves as a SQLite copy at hand-back (standby), never as a live file.
-/state/hex.db
-/state/hex.db-wal
-/state/hex.db-shm
-/state/hex.db.standby
+// hex.db and every file beside it (the tenure this disk ran, the warm copy) are this machine's own: standby moves the
+// database through the bucket.
+/state/hex.db*
 /state/.hex.db-litestream
 /state/hex.bell
 /state/hub.pid
