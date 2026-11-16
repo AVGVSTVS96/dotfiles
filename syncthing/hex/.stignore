@@ -34,3 +34,6 @@
 // Only the machine hex is leaving is moving.
 /state/moving
 /state/*.sock
+// The question check's lock holds a process id, which means nothing on the other machine.
+/state/voice/check/lock
+/state/voice/check/next
