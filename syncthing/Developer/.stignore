@@ -5,6 +5,7 @@
 (?d)node_modules
 (?d)target
 (?d).next
+(?d).next-*
 (?d).turbo
 (?d).venv
 (?d).cache
