@@ -1,5 +1,5 @@
 #!/bin/sh
-# twin-up: makes a fresh Arch Linux cloud machine the server's twin (scripts/.local/bin/standby). Run once as root,
+# twin-up: makes a fresh Arch Linux cloud machine the server's twin (standby: github.com/AVGVSTVS96/standby, set up by hex restore). Run once as root,
 # with the server reachable over Tailscale:
 #   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> GROW='...' SHRINK='...' sh twin-up
 # It makes the server's user with the same home, joins the tailnet as `twin`, and has Syncthing bring over hex,
@@ -38,7 +38,7 @@ set -eu
 cd && server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar
-printf 'ROLE=twin\nSERVER=server\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
+printf 'ROLE=twin\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
 
 # Syncthing: only over the tailnet, and only with the server.
