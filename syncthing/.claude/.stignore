@@ -9,8 +9,9 @@
 (?d).build
 *.sock
 .~lock*
-// What each machine's Claude Code keeps for itself.
-/jobs
+// What each machine's Claude Code keeps for itself, except each job's state, which hex's Tasks reads wherever hex runs.
+!/jobs/*/state.json
+/jobs/*/*
 /daemon*
 /shell-snapshots
 /telemetry
