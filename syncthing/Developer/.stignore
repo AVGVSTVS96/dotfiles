@@ -34,3 +34,5 @@
 /denoise/eval/data/night-raw
 /denoise/eval/data/rawpairs
 /denoise/eval/data/raw-test
+// The 3080 training dashboard's live data, rewritten every few seconds and only meaningful on the server.
+/pages/data/denoise-train.json
