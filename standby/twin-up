@@ -3,7 +3,7 @@
 # with the server reachable over Tailscale:
 #   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> sh twin-up
 # It makes the server's user with the same home, joins the tailnet as `twin`, and has Syncthing bring over hex,
-# Claude Code's data, ~/Developer, hangar's builds, hex Exact's and iikb's install links, dotfiles, ~/.local/bin, the account pool's logins and the vault. Everything that
+# Claude Code's data, ~/Developer, hangar's builds, hex Exact's and iikb's install links, dotfiles, ~/.local/bin, the account pool's logins and the vault, and git-peer brings each repo's history by git. Everything that
 # holds hex stays off until standby takes over.
 set -eu
 user=bassim

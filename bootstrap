@@ -74,7 +74,7 @@ case "$(uname -s)" in
 esac
 
 link
-[ "$(uname -s)" = Linux ] && systemctl --user enable --now netmuxd
+[ "$(uname -s)" = Linux ] && systemctl --user enable --now netmuxd git-peer.timer
 
 case "$SHELL" in
   */zsh)

@@ -1,3 +1,5 @@
+// git carries every repo's history between the machines (git-peer); Syncthing only the files around it.
+(?d).git
 // Agents' worktrees and scratch install their own packages. hex runs from the rest on either machine (both Linux x86-64).
 (?d)**/worktrees/**/node_modules
 (?d)/scratch/**/node_modules
