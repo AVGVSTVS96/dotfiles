@@ -1,7 +1,7 @@
 #!/bin/sh
 # twin-up: makes a fresh Arch Linux cloud machine the server's twin (standby: github.com/AVGVSTVS96/standby, set up by hex restore). Run once as root,
 # with the server reachable over Tailscale:
-#   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> GROW='...' SHRINK='...' sh twin-up
+#   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> sh twin-up
 # It makes the server's user with the same home, joins the tailnet as `twin`, and has Syncthing bring over hex,
 # Claude Code's data, ~/Developer, hangar's builds, dotfiles, ~/.local/bin, the account pool's logins and the vault. Everything that
 # holds hex stays off until standby takes over.
@@ -13,11 +13,11 @@ user=bassim
 # ~/hex/services.json. Xvfb is the twin's own: a screen for programs that want one.
 pacman-key --init && pacman-key --populate archlinux
 pacman -Syu --noconfirm --needed base-devel git openssh sudo tailscale syncthing jq stow fish zsh bun nodejs npm go \
-  python sops age unzip xorg-server-xvfb
+  python sops age unzip xorg-server-xvfb zram-generator
 
-# Swap, so a burst on the small size doesn't kill Syncthing.
-[ -f /swapfile ] || { fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && echo '/swapfile none swap defaults 0 0' >> /etc/fstab; }
-swapon -a || :
+# Compressed swap in memory, so the sessions hex keeps idle fit beside its work at the twin's size.
+printf '[zram0]\nzram-size = ram / 2\ncompression-algorithm = zstd\n' > /etc/systemd/zram-generator.conf
+systemctl daemon-reload && systemctl start dev-zram0.swap
 # Syncthing watches every folder it keeps.
 echo 'fs.inotify.max_user_watches=1048576' > /etc/sysctl.d/90-syncthing.conf && sysctl --system >/dev/null
 
@@ -32,13 +32,12 @@ tailscale status >/dev/null 2>&1 || tailscale up --auth-key="$TS_AUTHKEY" --host
 mkdir -p /etc/claude-code
 echo '{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:8317"}}' > /etc/claude-code/managed-settings.json
 
-# Not a login shell: fish would drop the empty arguments.
-sudo -u "$user" -H sh -s "$SERVER_ID" "${GROW:-}" "${SHRINK:-}" <<'AS_USER'
+sudo -u "$user" -H sh -s "$SERVER_ID" <<'AS_USER'
 set -eu
 cd && server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar
-printf 'ROLE=twin\nGROW=%s\nSHRINK=%s\n' "'$2'" "'$3'" > ~/.config/standby.env
+echo ROLE=twin > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
 
 # Syncthing: only over the tailnet, and only with the server.

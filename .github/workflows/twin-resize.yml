@@ -1,5 +1,5 @@
-# Resizes the standby twin on Hetzner Cloud (standby's GROW and SHRINK). Hetzner changes a machine's type only while
-# it's off, so this runs here rather than on the twin itself, which carries on as it boots.
+# Resizes the standby twin on Hetzner Cloud, by hand: the twin keeps one size, since a resize turns it off. It runs
+# here rather than on the twin itself, which carries on as it boots.
 name: twin-resize
 on:
   workflow_dispatch:
