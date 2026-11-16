@@ -16,9 +16,13 @@ name=${0##*/}
 # critical, and a quarter of its CPU is idle, since simulators, builds and installs starting together on Nov 8 took
 # the Mac's load past 595, where loginwindow crashed and logged Bassim out. Free swap isn't a signal, since macOS
 # grows and shrinks swap as it goes. Always true where there's no such sysctl.
+# A turn (roomy turn) also starts while pressure is at warn (2) if a third of memory is still free, never at critical
+# (4); a simulator boot needs normal. Nov 15: pressure sat at warn for hours with 44% free, and every build and check
+# waited.
 roomy() {
   level=$(sysctl -n kern.memorystatus_vm_pressure_level 2>/dev/null) || return 0
-  [ "$level" = 1 ] && [ "$(top -l 2 -n 0 -s 1 | awk '/CPU usage/ { idle = $7 } END { print int(idle) }')" -ge 25 ]
+  { [ "$level" = 1 ] || { [ "$level" = 2 ] && [ -n "${1:-}" ] &&
+    [ "$(memory_pressure -Q 2>/dev/null | awk -F: '/free percentage/ { print int($2) }')" -ge 33 ]; }; } && [ "$(top -l 2 -n 0 -s 1 | awk '/CPU usage/ { idle = $7 } END { print int(idle) }')" -ge 25 ]
 }
 memory() { echo "memory pressure $(sysctl -n kern.memorystatus_vm_pressure_level) (1 is normal), $(sysctl -n vm.swapusage), $(top -l 1 -n 0 | grep "CPU usage"), $(pmset -g batt | head -1)"; }
 if [ "$name" != turn ]; then
@@ -166,7 +170,7 @@ while :; do
   # Turns start 20 seconds apart in every pool, so roomy sees the last start's load before the next one: on Nov 8 at
   # 9:25 a queue that found room all started at once, and Bassim had to force-restart the Mac.
   last=/tmp/turn-$(id -u)/last-start
-  if [ "$pool" != reviews ] && { ! roomy || { [ -e "$last" ] && [ $(($(date +%s) - $(stat -c %Y "$last" 2>/dev/null || stat -f %m "$last"))) -lt 20 ]; }; }; then
+  if [ "$pool" != reviews ] && { ! roomy turn || { [ -e "$last" ] && [ $(($(date +%s) - $(stat -c %Y "$last" 2>/dev/null || stat -f %m "$last"))) -lt 20 ]; }; }; then
     [ "$told" = memory ] || { echo "turn: the next $pool turn waits for room: $(memory)" >&2; told=memory; }
     sleep 5
     continue
