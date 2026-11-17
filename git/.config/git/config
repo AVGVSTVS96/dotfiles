@@ -65,8 +65,3 @@
 [credential "https://gist.github.com"]
 	helper = 
 	helper = !gh auth git-credential
-
-# git-peer carries every repo to the other machine (server and its twin) the moment a branch moves.
-[hook "peer"]
-	event = reference-transaction
-	command = [ ! -x ~/.local/bin/git-peer ] || ~/.local/bin/git-peer hook
