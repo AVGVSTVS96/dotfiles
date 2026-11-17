@@ -215,7 +215,7 @@ case ${1:-} in
   receive-pack)
     mkdir -p "$2" && cd "$2"
     [[ -f .git/HEAD ]] || git init -q
-    exec git -c receive.denyCurrentBranch=ignore -c receive.denyDeleteCurrent=ignore receive-pack "$2"
+    exec git -c receive.denyCurrentBranch=ignore -c receive.denyDeleteCurrent=ignore -c receive.shallowUpdate=true receive-pack "$2"
     ;;
   receive) receive "$2" ;;
   *) sed -n '2,10s/^# \{0,1\}//p' "$0" >&2; exit 2 ;;
