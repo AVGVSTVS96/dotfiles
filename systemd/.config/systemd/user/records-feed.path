@@ -1,8 +1,7 @@
 [Unit]
-Description=pages: watch hex's records for the records page
+Description=pages: watch hex's schedules and projects for the records page
 
 [Path]
-PathChanged=%h/hex/state/hex.bell
 PathChanged=%h/hex/schedules.json
 PathChanged=%h/hex/projects
 

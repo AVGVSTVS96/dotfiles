@@ -1,0 +1,11 @@
+[Unit]
+Description=pages: rebuild the records page's data each time hex's records change
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/bin/sh -c '"$HOME/hex/.hex/bin/hex" watch | while read -r _; do systemctl --user start records-feed.service; done'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
