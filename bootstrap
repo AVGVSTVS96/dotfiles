@@ -65,6 +65,8 @@ case "$(uname -s)" in
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl restart systemd-journald; }
     dot=etc/sysctl.d/60-inotify-watches.conf
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo sysctl -q -p "/$dot"; }
+    dot=etc/snapper/configs/root
+    [ ! -d /etc/snapper/configs ] || cmp -s "$dot" "/$dot" || sudo install -m644 "$dot" "/$dot"
     dot=etc/systemd/user-environment-generators/50-secrets
     cmp -s "$dot" "/$dot" || sudo install -Dm755 "$dot" "/$dot"
     dot=etc/sddm.conf.d/autologin.conf

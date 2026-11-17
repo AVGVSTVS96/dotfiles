@@ -36,6 +36,7 @@ niri
 noctalia
 opencode
 pnpm
+restic
 ripgrep
 ruby
 rust-analyzer
