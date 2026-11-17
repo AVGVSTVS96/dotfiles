@@ -21,7 +21,7 @@ zero=0000000000000000000000000000000000000000
 on_peer() { $GIT_SSH_COMMAND "$peer" "~/.local/bin/git-peer $1 '${2:-}'"; }
 
 folders() {
-  rg -o '<folder id="([^"]*)" label="[^"]*" path="([^"]*)"' -r '$1 $2' "$HOME/.local/state/syncthing/config.xml"
+  rg -o '<folder id="([^"]*)" label="[^"]*" path="([^"]*)"' -r '$1 $2' "$HOME/.local/state/syncthing/config.xml" | rg '^\S+ /'
 }
 
 # The Syncthing folder holding <path>, as "<id> <folder path>".
@@ -47,7 +47,7 @@ carried() {
       */*) ;;
       *) [[ $rel == */"$line"/* ]] && return 1 ;;
     esac
-  done <"$folder/.stignore"
+  done < <(cat "$folder/.stignore" 2>/dev/null)
   return 0
 }
 
@@ -55,20 +55,37 @@ worktrees() {
   git worktree list --porcelain | awk '/^worktree /{p=substr($0,10)} /^HEAD /{h=$2} /^branch /{b=$2} /^$/{print p "\t" h "\t" b; b=""}'
 }
 
-# send <repo> <worktrees> [<old> <ref>]... : moves each <ref> on the other machine from <old> to its value here,
-# points the HEADs of <worktrees> (one path a line) where they are here, and adds the worktrees it lacks.
-# Fails when a <ref> there no longer points at <old>.
+# Whether the other machine's <commit> at <ref> is only an older state of this machine's <ref>: a commit it builds on,
+# or one this machine's <ref> pointed at before (its reflog), as after an amend, rebase or reset.
+behind() {
+  git merge-base --is-ancestor "$2" "$1" 2>/dev/null || [[ $'\n'$(git reflog show --format=%H "$1" -- 2>/dev/null)$'\n' == *$'\n'$2$'\n'* ]]
+}
+
+# send <repo> <worktrees> <ref>... : moves each <ref> on the other machine to its value here (deleting it if it's gone
+# here) unless the other machine made commits there this machine lacks, points the HEADs of <worktrees> (one path a
+# line) where they are here, and adds the worktrees it lacks. Fails when a <ref> moved there while sending.
 send() {
-  local repo=$1 point=$'\n'$2$'\n' ref old new flag line path head branch refused=0 pushed=() args=() refs=()
+  local repo=$1 point=$'\n'$2$'\n' ref new theirs flag line path head branch refused=0 pushed=() args=() refs=()
+  local -A there=()
   shift 2
   cd "$repo"
-  while (($#)); do
-    old=$1 ref=$2
-    shift 2
+  on_peer ensure "$repo" </dev/null | while read -r theirs ref; do there[$ref]=$theirs; done
+  for ref; do
+    theirs=${there[$ref]:-$zero}
     new=$(git rev-parse -q --verify "$ref^{object}" || echo $zero)
-    [[ $new == "$old" ]] && continue
-    args+=("--force-with-lease=$ref:${old#$zero}")
-    if [[ $new == "$zero" ]]; then refs+=(":$ref"); else refs+=("$new:$ref"); fi
+    if [[ $new == "$theirs" ]]; then
+      continue
+    elif [[ $new == "$zero" ]]; then
+      git cat-file -e "$theirs" 2>/dev/null || continue
+      refs+=(":$ref")
+    elif [[ $theirs == "$zero" ]] || { [[ $ref == refs/heads/* ]] && behind "$ref" "$theirs"; }; then
+      refs+=("$new:$ref")
+    else
+      [[ -v catching_up || $ref != refs/heads/* ]] || behind "$theirs" "$new" ||
+        echo "git-peer: $repo ${ref#refs/heads/} moved on both machines; each keeps its own" >&2
+      continue
+    fi
+    args+=("--force-with-lease=$ref:${theirs#$zero}")
   done
   if ((${#refs[@]})); then
     git push --porcelain --receive-pack="~/.local/bin/git-peer receive-pack" "${args[@]}" "$peer:$repo" "${refs[@]}" 2>/dev/null | while IFS=$'\t' read -r flag line _; do
@@ -99,45 +116,41 @@ locked() (
 # The ref changes git just made, queued for the unit that sends them; HEAD stands for this worktree's HEAD.
 queue() {
   local repo=$1 old new ref
-  while read -r old new ref; do
-    case $ref in
-      refs/heads/* | refs/tags/*) printf '%s %s\n' "$old" "$ref" ;;
-      HEAD) printf 'head %s\n' "$(git rev-parse --show-toplevel)" ;;
-    esac
-  done >>"$repo/.git/peer-queue"
+  {
+    flock 9
+    while read -r old new ref; do
+      case $ref in
+        refs/heads/* | refs/tags/*) printf 'ref %s\n' "$ref" ;;
+        HEAD) printf 'head %s\n' "$(git rev-parse --show-toplevel)" ;;
+      esac
+    done >>"$repo/.git/peer-queue"
+  } 9>"$repo/.git/peer-queue.lock"
 }
 
 # Sends what's queued until nothing new arrives, so a burst of ref changes, like a rebase, goes as one or two sends.
 drain() {
-  local repo=$1 old ref pending heads
-  local -A first
-  while [[ -s $repo/.git/peer-queue ]]; do
-    mv "$repo/.git/peer-queue" "$repo/.git/peer-sending"
-    first=() pending=() heads=
-    while read -r old ref; do
-      if [[ $old == head ]]; then heads+=$ref$'\n'; elif [[ ! -v first[$ref] ]]; then first[$ref]=$old; fi
-    done <"$repo/.git/peer-sending"
-    for ref in "${!first[@]}"; do pending+=("${first[$ref]}" "$ref"); done
-    locked send "$repo" "$heads" "${pending[@]}" || locked catch_up "$repo"
-    rm -f "$repo/.git/peer-sending"
+  local repo=$1 batch kind ref heads
+  local -A refs
+  while :; do
+    {
+      flock 9
+      batch=$(cat "$repo/.git/peer-queue" 2>/dev/null) || true
+      rm -f "$repo/.git/peer-queue"
+    } 9>"$repo/.git/peer-queue.lock"
+    [[ -n $batch ]] || return 0
+    refs=() heads=
+    while read -r kind ref; do
+      if [[ $kind == head ]]; then heads+=$ref$'\n'; else refs[$ref]=1; fi
+    done <<<"$batch"
+    locked send "$repo" "$heads" "${!refs[@]}" || locked send "$repo" "$heads" "${!refs[@]}" || true
   done
 }
 
-# Every branch the other machine lacks or has at an older commit, and every tag it lacks.
+# Every branch and tag, wherever the other machine only lags behind this one.
 catch_up() {
-  local repo=$1 tip name theirs moves=()
-  local -A there=()
-  cd "$repo"
-  on_peer ensure "$repo" | while read -r tip name; do there[$name]=$tip; done
-  git for-each-ref --format='%(objectname) %(refname)' refs/heads refs/tags | while read -r tip name; do
-    theirs=${there[$name]:-$zero}
-    if [[ $theirs == "$zero" ]] || { [[ $theirs != "$tip" && $name == refs/heads/* ]] && git merge-base --is-ancestor "$theirs" "$tip" 2>/dev/null; }; then
-      moves+=("$theirs" "$name")
-    elif [[ $theirs != "$tip" && $name == refs/heads/* ]] && git cat-file -e "$theirs^{commit}" 2>/dev/null && ! git merge-base --is-ancestor "$tip" "$theirs"; then
-      echo "git-peer: $repo ${name#refs/heads/} has commits on both machines the other lacks; it stays as it is on each" >&2
-    fi
-  done
-  send "$repo" "" "${moves[@]}" || true
+  local catching_up=1
+  cd "$1"
+  send "$1" "" $(git for-each-ref --format='%(refname)' refs/heads refs/tags) || true
 }
 
 receive() {
@@ -152,7 +165,7 @@ receive() {
       worktree | known)
         git cat-file -e "$head^{commit}" 2>/dev/null || continue
         git rev-parse -q --verify HEAD >/dev/null || kind=worktree
-        if [[ $path != "$repo" ]] && ! git worktree list --porcelain | rg -qxF "worktree $path"; then
+        if [[ $path != "$repo" && $'\n'$(git worktree list --porcelain)$'\n' != *$'\n'"worktree $path"$'\n'* ]]; then
           tmp=$(mktemp -d)
           git worktree add -q --no-checkout --detach "$tmp/${path##*/}" "$head"
           mkdir -p "$path"
@@ -188,20 +201,20 @@ case ${1:-} in
   drain) drain "$2" ;;
   sync)
     folders | while read -r id folder; do
-      fd -H -I -t d -g .git --prune -E node_modules . "$folder" | while read -r git; do
-        if carried "${git%/.git/}"; then locked catch_up "${git%/.git/}" || echo "git-peer: ${git%/.git/} not caught up" >&2; fi
+      fd -H -I -t d -g .git --prune -E node_modules "$folder" | while read -r git; do
+        if [[ -f $git/HEAD ]] && carried "${git%/.git/}"; then locked catch_up "${git%/.git/}" </dev/null || echo "git-peer: ${git%/.git/} not caught up" >&2; fi
       done
     done
     [[ ${2:-} == asked ]] || exec $GIT_SSH_COMMAND "$peer" "~/.local/bin/git-peer sync asked"
     ;;
   ensure)
     mkdir -p "$2" && cd "$2"
-    [[ -d .git ]] || git init -q
+    [[ -f .git/HEAD ]] || git init -q
     git for-each-ref --format='%(objectname) %(refname)' refs/heads refs/tags
     ;;
   receive-pack)
     mkdir -p "$2" && cd "$2"
-    [[ -d .git ]] || git init -q
+    [[ -f .git/HEAD ]] || git init -q
     exec git -c receive.denyCurrentBranch=ignore -c receive.denyDeleteCurrent=ignore receive-pack "$2"
     ;;
   receive) receive "$2" ;;
