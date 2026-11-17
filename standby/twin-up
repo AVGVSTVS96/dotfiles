@@ -27,22 +27,9 @@ loginctl enable-linger "$user"
 
 systemctl enable --now tailscaled sshd
 tailscale status >/dev/null 2>&1 || tailscale up --auth-key="$TS_AUTHKEY" --hostname=twin
-# The tailnet names that follow hex, each path on it as on the server: hex-here.service advertises them on whichever
-# machine holds hex, so here they wait drained. A path needs root, which hex-here doesn't have.
-home=/home/$user
-tailscale serve --service=svc:hub --https=443 http://127.0.0.1:8790 >/dev/null
-tailscale serve --service=svc:hub --https=443 --set-path=/hex http://127.0.0.1:2593 >/dev/null
-tailscale serve --service=svc:pages --https=443 http://127.0.0.1:4800 >/dev/null
-tailscale serve --service=svc:updates --https=443 http://127.0.0.1:8791 >/dev/null
-tailscale serve --service=svc:updates --https=443 --set-path=/hangar http://127.0.0.1:8792 >/dev/null
-tailscale serve --service=svc:updates --https=443 --set-path=/hex-exact/ "$home/.local/share/hex-exact/link" >/dev/null
-tailscale serve --service=svc:updates --https=443 --set-path=/iikb-link/ "$home/.local/share/iikb/link" >/dev/null
-tailscale serve --service=svc:gate --tcp=443 --proxy-protocol=2 tcp://127.0.0.1:4443 >/dev/null
-for name in svc:hub svc:pages svc:updates svc:gate; do tailscale serve drain "$name"; done
-# Claude Code's settings, shared with the server, name the account pool at the server's tailnet address. Here the
-# machine's own managed settings, which win over them, name the twin's copy of the pool.
-mkdir -p /etc/claude-code
-echo '{"env":{"ANTHROPIC_BASE_URL":"http://127.0.0.1:8317"}}' > /etc/claude-code/managed-settings.json
+# The tailnet names that follow hex are hex's own: hex-here.service sets them on whichever machine holds it
+# (~/hex/services/routes), as this user.
+tailscale set --operator="$user"
 
 sudo -u "$user" -H sh -s "$SERVER_ID" <<'AS_USER'
 set -eu
