@@ -59,7 +59,7 @@
       "effortLevel": "medium"
     }
   },
-  "autoCompactWindow": 800000,
+  "autoCompactWindow": 600000,
   "fastModePerSessionOptIn": true,
   "showClearContextOnPlanAccept": true,
   "askUserQuestionTimeout": "10m",
