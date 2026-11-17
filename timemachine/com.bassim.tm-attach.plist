@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.bassim.tm-attach</string>
+  <key>ProgramArguments</key>
+  <array><string>/usr/local/sbin/tm-attach</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>WatchPaths</key>
+  <array><string>/Library/Preferences/SystemConfiguration</string><string>/Users/Shared/.tm-attach-kick</string></array>
+  <key>StandardOutPath</key><string>/var/log/tm-attach.log</string>
+  <key>StandardErrorPath</key><string>/var/log/tm-attach.log</string>
+</dict>
+</plist>

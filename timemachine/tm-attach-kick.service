@@ -1,0 +1,15 @@
+[Unit]
+Description=Mark that Samba (re)started and tell the Mac to re-attach its Time Machine disk
+After=smb.service network-online.target
+Wants=network-online.target
+PartOf=smb.service
+RequiresMountsFor=/srv/sn850x
+
+[Service]
+Type=oneshot
+User=bassim
+ExecStart=/usr/bin/touch /srv/sn850x/timemachine/.samba-started
+ExecStart=-/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=20 mac 'date > /Users/Shared/.tm-attach-kick'
+
+[Install]
+WantedBy=smb.service

@@ -1,0 +1,22 @@
+#!/bin/sh
+# The server hosts the Mac's Time Machine disk as a sparse bundle on Samba; the Mac attaches it as its
+# usual local, encrypted backup disk. Secrets stay out: the Samba password (internet password "server")
+# and the disk password (service tm-volume) go in the Mac's System keychain by hand.
+set -e
+cd "$(dirname "$0")"
+case $(uname -s) in
+Darwin)
+  sudo install -m755 tm-attach /usr/local/sbin/tm-attach
+  sudo install -m644 com.bassim.tm-attach.plist /Library/LaunchDaemons/
+  touch /Users/Shared/.tm-attach-kick
+  sudo launchctl bootout system/com.bassim.tm-attach 2>/dev/null || true
+  sudo launchctl bootstrap system /Library/LaunchDaemons/com.bassim.tm-attach.plist
+  ;;
+Linux)
+  [ "$(uname -n)" = server ]
+  sudo install -m644 smb.conf /etc/samba/smb.conf
+  sudo install -m644 tm-attach-kick.service /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now smb tm-attach-kick
+  ;;
+esac

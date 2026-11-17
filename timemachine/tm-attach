@@ -1,0 +1,56 @@
+#!/bin/bash
+# Attach the server-hosted Time Machine disk so TM sees its usual local destination.
+# Runs as root from launchd at boot, on every network change (wake, Wi-Fi, Tailscale), and when the
+# server's Samba starts (it writes /Users/Shared/.tm-attach-kick over ssh).
+# Root attaches and unlocks it (password in the System keychain), so it mounts system-owned and
+# works with the screen locked or nobody logged in, which the login keychain's APFSUserAgent doesn't.
+set -u
+VOL=DF33FD77-B67B-4FB9-9DFB-772C1FBC181B
+MNT=/Volumes/TMServer
+BUNDLE=$MNT/TimeMachine.sparsebundle
+MARK=$MNT/.samba-started
+SEEN=/var/run/tm-attach.samba-started
+log() { echo "$(date '+%F %T') $*"; }
+image_disk() { hdiutil info | awk -v b="$BUNDLE" '$0 ~ "image-path *: "b {f=1} f && /^\/dev\/disk[0-9]+\t/ {print $1; exit}'; }
+mount_volume() {
+  if diskutil info "$VOL" | grep -q 'Locked: *Yes'; then
+    security find-generic-password -s tm-volume -a "$VOL" -w /Library/Keychains/System.keychain |
+      diskutil apfs unlockVolume "$VOL" -stdinpassphrase >/dev/null 2>&1
+  elif diskutil info "$VOL" | grep -q 'Mounted: *No'; then
+    diskutil mount "$VOL" >/dev/null 2>&1
+  fi
+  diskutil info "$VOL" | grep -q 'Mounted: *Yes' && log "mounted" || log "unlock or mount failed"
+}
+
+nc -z -G 3 server 445 2>/dev/null || { log "server unreachable"; exit 0; }
+
+d=$(image_disk)
+if [ -n "$d" ]; then
+  # A Samba restart leaves the image attached but every read failing until it's re-attached. The server
+  # touches $MARK whenever Samba starts. (Probing the disk instead fails: TCC denies this script raw reads.)
+  if [ "$(stat -f %m "$MARK" 2>/dev/null)" = "$(cat "$SEEN" 2>/dev/null)" ]; then
+    diskutil info "$VOL" | grep -q 'Mounted: *Yes' || mount_volume
+    exit 0
+  fi
+  log "server restarted since attach, re-attaching"
+  { diskutil unmountDisk force "$d"; hdiutil detach -force "$d"; umount -f "$MNT"; } >/dev/null 2>&1
+  [ -z "$(image_disk)" ] || { log "detach failed"; exit 1; }
+fi
+
+if mount | grep -q " on $MNT " && ! ls "$BUNDLE/Info.plist" >/dev/null 2>&1; then
+  log "stale share mount, dropping it"
+  umount -f "$MNT"
+fi
+if ! mount | grep -q " on $MNT "; then
+  mkdir -p "$MNT"
+  PW=$(security find-internet-password -s server -r "smb " -a bassim -w /Library/Keychains/System.keychain |
+    perl -pe 'chomp; s/([^\w.~-])/sprintf("%%%02X",ord $1)/ge')
+  mount_smbfs -o nobrowse "//bassim:$PW@server/timemachine" "$MNT" 2>&1 | sed 's#//bassim:[^@]*@#//bassim@#'
+  mount | grep -q " on $MNT " || { log "share mount failed"; exit 1; }
+fi
+stat -f %m "$MARK" >"$SEEN" 2>/dev/null
+# hdiutil, not `diskutil image attach`: that one opens the bundle itself, and TCC denies a launchd
+# script (responsible: /bin/bash) access to network volumes.
+hdiutil attach -nomount -readwrite -noverify -noautofsck "$BUNDLE" >/dev/null 2>&1
+diskutil info "$VOL" >/dev/null 2>&1 && log "attached" || { log "attach failed"; exit 1; }
+mount_volume
