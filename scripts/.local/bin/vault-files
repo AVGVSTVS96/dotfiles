@@ -15,8 +15,14 @@ if [ $# -gt 0 ]; then
 fi
 umask 077
 "$enclave" list "$item" | sed -n "s/^$item: //p" | sed 's/, /\n/g' | while IFS= read -r field; do
-  [ -e "$HOME/$field" ] && continue
+  [ -s "$HOME/$field" ] && continue
   mkdir -p "$(dirname "$HOME/$field")"
-  "$enclave" get "$item" "$field" </dev/null >"$HOME/$field"
-  echo "restored ~/$field"
+  # Written beside it and moved in whole, so a read the vault fails leaves no empty file that later counts as there.
+  if "$enclave" get "$item" "$field" </dev/null >"$HOME/$field.part" && [ -s "$HOME/$field.part" ]; then
+    mv "$HOME/$field.part" "$HOME/$field"
+    echo "restored ~/$field"
+  else
+    rm -f "$HOME/$field.part"
+    echo "vault-files: the vault didn't give $item's ~/$field" >&2
+  fi
 done
