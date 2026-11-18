@@ -71,6 +71,8 @@ case "$(uname -s)" in
     cmp -s "$dot" "/$dot" || sudo install -Dm755 "$dot" "/$dot"
     dot=etc/sddm.conf.d/autologin.conf
     [ "$(uname -n)" != server ] || cmp -s "$dot" "/$dot" || sudo install -Dm644 "$dot" "/$dot"
+    dot=etc/systemd/system/tailscaled.service.d/prefer-lax.conf
+    [ "$(uname -n)" != server ] || cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl daemon-reload; }
     manager-guard/install
     ;;
 esac
