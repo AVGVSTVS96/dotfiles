@@ -3,7 +3,7 @@
 # with the server reachable over Tailscale:
 #   TS_AUTHKEY=tskey-... SERVER_ID=<server's Syncthing id> sh twin-up
 # It makes the server's user with the same home, joins the tailnet as `twin`, and has Syncthing bring over hex,
-# Claude Code's data, ~/Developer, hangar's builds, hex Exact's and iikb's install links, dotfiles, ~/.local/bin, the account pool's logins and the vault, and git-peer brings each repo's history by git. Everything that
+# Claude Code's data, ~/Developer, hangar's builds, hex Exact's and iikb's install links, dotfiles, ~/.local/bin and the vault, and git-peer brings each repo's history by git. Everything that
 # holds hex stays off until standby takes over.
 set -eu
 user=bassim
@@ -35,7 +35,7 @@ sudo -u "$user" -H sh -s "$SERVER_ID" <<'AS_USER'
 set -eu
 cd && server_id=$1
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.config/cliproxyapi ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar ~/.local/share/hex-exact/link ~/.local/share/iikb/link
+mkdir -p ~/hex ~/.claude ~/Developer ~/dotfiles ~/.local/bin ~/.enclave ~/.local/share/hex-voice ~/.local/share/hangar ~/.local/share/hex-exact/link ~/.local/share/iikb/link
 echo ROLE=twin > ~/.config/standby.env
 curl -fsSL https://claude.ai/install.sh | bash
 
@@ -53,7 +53,7 @@ st config options raw-listen-addresses 0 set "tcp://$(tailscale ip -4):22000"
 # One connection: with several, a loaded machine drops some, the two ends disagree on which is primary, and each
 # drops the other's updates in a loop (the twin and server synced nothing from 4:27 to 6:04am on Nov 16, 2026).
 st config devices add --device-id "$server_id" --name server --addresses tcp://server:22000 --raw-num-connections 1
-for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin proxy:.config/cliproxyapi enclave:.enclave voice:.local/share/hex-voice hangar:.local/share/hangar exact:.local/share/hex-exact/link iikb-link:.local/share/iikb/link; do
+for spec in hex:hex claude:.claude dev:Developer dotfiles:dotfiles bin:.local/bin enclave:.enclave voice:.local/share/hex-voice hangar:.local/share/hangar exact:.local/share/hex-exact/link iikb-link:.local/share/iikb/link; do
   st config folders add --id "${spec%%:*}" --label "${spec%%:*}" --path "$HOME/${spec#*:}"
   st config folders "${spec%%:*}" devices add --device-id "$server_id"
 done
