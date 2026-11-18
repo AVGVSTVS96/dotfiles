@@ -1,5 +1,7 @@
 [Unit]
 Description=iikb: screenshots the keyboard on the real iPhone Duo each time hangar opens a new build there, and reports changes no commit explains
+# Only on the server: it screenshots the real iPhone Duo, which only the home network reaches.
+ConditionHost=server
 After=hangar.service
 
 [Service]

@@ -1,5 +1,7 @@
 [Unit]
 Description=pages: live data for the denoise training dashboard, read from the 3080 and the run's log
+# Only on the server: it reads the training run off this machine's RTX 3080.
+ConditionHost=server
 After=pages.service
 
 [Service]

@@ -1,5 +1,7 @@
 [Unit]
 Description=iikb: the record source, a log of what you send and type on the phone (behind tailscale serve /record)
+# Only on the server: the phone posts to this machine's own name (/record), and the record stays on its disk.
+ConditionHost=server
 
 [Service]
 WorkingDirectory=%h/Developer/iikb

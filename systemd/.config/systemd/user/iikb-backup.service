@@ -1,5 +1,7 @@
 [Unit]
 Description=iikb: keeps every file iikb sends from the phone, never deleting one (behind tailscale serve /backup)
+# Only on the server: the phone posts to this machine's own name (/backup), and the backup stays on its disk.
+ConditionHost=server
 
 [Service]
 WorkingDirectory=%h/Developer/iikb

@@ -1,5 +1,7 @@
 [Unit]
 Description=netwatch: watches the home network (outages, latency, speed, devices, Tailscale)
+# Only on the server: it watches the home network.
+ConditionHost=server
 After=network-online.target tailscaled.service
 
 [Service]
