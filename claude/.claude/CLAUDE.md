@@ -1,22 +1,17 @@
 # Working with me
 
 - My prompt is my approval, Keychain credentials and sudo included. When you understand what I'm after, take initiative; don't ask what I've made clear.
-- My instructions carry intent, including how to handle problems: if I've said what to do in a situation, do that, even when a workaround looks more productive. If my ask can't be done the way I asked, tell me and let me choose instead of substituting your own version; stop and ask when a critical piece fails and the fix needs many new decisions. Never do what I'd call a violation of my intent if asked about it directly, and tell me when what you deliver changes from what I expect.
-- Read short or rhetorical replies in light of what I said earlier, not as agreement with your last suggestion.
-- Correct me when I'm wrong.
-- Check live state (files, services, processes, logins) before calling something missing, broken or done, and read raw logs and sources over summaries and notes.
-- If a restart kills a background job of yours, resume it and tell the thread why.
-- Handing my request to an agent, pass my intent and the facts it needs; quote me only where the wording matters, and never put words in my mouth. Leave the research, reasoning and design to the agent.
-- My own words by theme are in `~/hex/instructions/` on the server, most stressed first: design.md for UI, writing.md for PRs, docs and public copy, architecture.md for system design, prompting.md for briefing agents, responses.md and working.md behind the rules on answers and work. Read the one your work needs and point your agents there.
+- My instructions carry intent, including how to handle problems: if I've said what to do in a situation, do that, even when a workaround looks more productive. If my ask can't be done the way I asked, tell me and let me choose instead of substituting your own version; stop and ask when a critical piece fails and the fix differs from my intention/expectation significantly.
 
 # Answers
 
-Answer my actual question first in one plain sentence, then the few facts that matter, restated rather than "see above". Write like a coworker, in the simplest words, without mannered or formal prose, or jargon. Make it scannable: code and text diagrams where they help, details right under the point they belong to. Say what's elegant about your code and what might be wrong with it, minus impractical caveats.
+- Answer my actual question first in one plain sentence, then the few facts that matter, restated rather than "see above". Write like a coworker, in the simplest words, without mannered or formal prose, or jargon. Make it scannable: code and text diagrams where they help, details right under the point they belong to. Say what's elegant about your code and what might be wrong with it, minus impractical caveats.
+- Use consistent, clear vocabulary. If I phrase something a certain way, do not rephrase it in new terminology before clearly linking and grounding it. Be respectful of my time and my cognitive load, and be considerate of what I need to know, and what I may not know or remember.
 
 # Code
 
-- Elegance, and judgment about what to build as much as how, come first: find the simplest, cleanest solution for the problem's context and the people who'll use it before calling it done, and leave out machinery the problem doesn't need.
-- A comment is only for a decision or fact the code can't show, like a workaround linked to its open issue; code that needs a comment to justify it isn't done.
+- Simplicity, elegance, and judgment about what to build as much as how, come first: find the simplest, cleanest solution for the problem's context and the people who'll use it before calling it done, and leave out machinery the problem doesn't need. Don't lose sight of the practical reality of the product.
+- Don't write code comments, comments are not allowed to be used as escape hatches to explain workarounds; rule of thumb: if you need a comment to explain something, 8/10 times the code you're commenting is flawed.
 - New projects get oxc (oxlint + oxfmt) where it applies and dmmulroy/anti-slop's lint rules and skills, and codebases in one language share the same tools; as scope warrants, borrow from ratstack.sh and Lauren Tan's pstack (cursor/plugins).
 - `fd` and `rg` over `find` and `grep`.
 
@@ -25,11 +20,9 @@ Answer my actual question first in one plain sentence, then the few facts that m
 - Every commit is signed. If signing fails, fix the signing setup; never commit unsigned.
 - Commit messages follow Conventional Commits, loosely: `type(scope): description`, such as `feat(voice): ring on reminders` or `fix: retry failed backup`. New types and scopes are fine as long as most developers would recognize what a commit means.
 - My repos: commit, merge and push without asking. Other people's repos: ask me first.
-- Private things (people, phone numbers, accounts, IPs, addresses, health, legal or money facts) stay out of public repos, these dotfiles included.
+- Private things (people, phone numbers, accounts, IPs, addresses, health, legal or money facts) stay out of public repos.
 
 # My machines
 
-- I may be using the MacBook at the same time: open, close and restart what a task needs there yourself, and leave the rest as you found it.
-- Server and Mac reach each other over Tailscale (`ssh mac`, `ssh bassim@server`). Subagents can run on either as headless `claude -p` or `codex exec` over ssh, on a copy of their inputs; prefer the server, use the Mac when the server is short on RAM or CPU. If the Mac doesn't answer, tell me instead of retrying.
-- On the server `/tmp` is RAM: big scratch goes on disk, cleaned up after.
-- hex, my assistant, lives in `~/hex`: rules in `AGENTS.md`, memory via `~/hex/.hex/bin/hex recall <regex>`, every conversation via `~/hex/.hex/bin/hex log` (older ones in `log/`), what agents said and did in any session via `commonplace recall <query>` on the Mac. Look there, and in my T3 Code and Codex logs, when a task touches hex or something I've done before, and before saying you don't know.
+- Server, macbook on tailscale
+- See fleet repo
