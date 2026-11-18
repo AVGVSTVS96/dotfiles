@@ -1,5 +1,5 @@
 {
-  "cleanupPeriodDays": 2000,
+  "cleanupPeriodDays": 20000,
   "env": {
     "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": "1",
     "DISABLE_ZOXIDE": "1",
@@ -21,7 +21,6 @@
     "defaultMode": "bypassPermissions",
     "disableAutoMode": "disable"
   },
-  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
@@ -50,18 +49,14 @@
       "autoUpdate": true
     }
   },
-  "outputStyle": "visual",
   "feedbackDrafts": "off",
-  "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
   "modelSettings": {
     "claude-opus-5-5": {
       "effortLevel": "medium"
     }
   },
-  "autoCompactWindow": 600000,
+  "autoCompactWindow": 650000,
   "fastModePerSessionOptIn": true,
-  "showClearContextOnPlanAccept": true,
   "askUserQuestionTimeout": "10m",
   "pluginConfigs": {
     "agents-md@builtin": {
