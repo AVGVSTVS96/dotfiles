@@ -50,6 +50,7 @@
     }
   },
   "feedbackDrafts": "off",
+  "subagentPromptCacheTtl": "1h",
   "modelSettings": {
     "claude-opus-5-5": {
       "effortLevel": "medium"
