@@ -1,0 +1,13 @@
+[Unit]
+Description=Unlock the login keyring after a boot with no desktop login
+After=gnome-keyring-daemon.socket
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin
+ExecStart=%h/.local/bin/keyring-unlock
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

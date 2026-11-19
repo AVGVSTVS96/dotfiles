@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+import subprocess
+
+from gi.repository import Gio, GLib
+
+SERVICE = "org.freedesktop.secrets"
+ROOT = "/org/freedesktop/secrets"
+LOGIN = "/org/freedesktop/secrets/collection/login"
+
+bus = Gio.bus_get_sync(Gio.BusType.SESSION)
+
+
+def call(path, interface, method, args):
+    return bus.call_sync(SERVICE, path, interface, method, args, None, 0, -1).unpack()
+
+
+(locked,) = call(LOGIN, "org.freedesktop.DBus.Properties", "Get",
+                 GLib.Variant("(ss)", ("org.freedesktop.Secret.Collection", "Locked")))
+
+if locked:
+    password = subprocess.run(["enclave", "get", "machines", "password"],
+                              capture_output=True, check=True).stdout.rstrip(b"\n")
+    _, session = call(ROOT, "org.freedesktop.Secret.Service", "OpenSession",
+                      GLib.Variant("(sv)", ("plain", GLib.Variant("s", ""))))
+    call(ROOT, "org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface", "UnlockWithMasterPassword",
+         GLib.Variant("(o(oayays))", (LOGIN, (session, b"", password, "text/plain"))))
