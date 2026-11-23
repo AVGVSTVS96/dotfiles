@@ -96,5 +96,10 @@
         ]
       }
     ]
-  }
+  },
+  "model": "opus",
+  "outputStyle": "visual",
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "medium",
+  "theme": "dark"
 }
