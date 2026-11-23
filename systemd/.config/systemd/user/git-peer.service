@@ -1,6 +1,0 @@
-[Unit]
-Description=Catch up the server's and the twin's repos both ways (git-peer sync), for changes sent while one was away
-
-[Service]
-Type=oneshot
-ExecStart=%h/.local/bin/git-peer sync

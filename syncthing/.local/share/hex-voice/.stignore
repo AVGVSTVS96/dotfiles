@@ -1,6 +1,0 @@
-// git carries every repo's history between the machines (git-peer); Syncthing only the files around it.
-(?d).git
-// The voice app update server (hex-voice-updates) and what it serves; the rest is build scratch.
-!/release
-!/updates
-*
