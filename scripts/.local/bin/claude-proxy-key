@@ -1,0 +1,4 @@
+#!/bin/sh
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export SOPS_AGE_KEY_FILE="$HOME/.config/sops/age/key.txt"
+sops -d "$HOME/dotfiles/zsh/secrets.env" | sed -n 's/^export CLAUDE_PROXY_KEY=//p'

@@ -51,14 +51,6 @@ case "$(uname -s)" in
     ensure pass-cli https://proton.me/download/pass-cli/install.sh bash
     have vercel || bun add -g vercel
     have netmuxd || curl -fsSL "https://github.com/jkcoxson/netmuxd/releases/download/v0.4.3/netmuxd-$(uname -m)-unknown-linux-gnu.tar.gz" | tar xz --one-top-level="$HOME/.local/bin" netmuxd
-    # xtool from the fork, which signs apps with their own bundle and group IDs (upstream copies them under XTL-) and gives free teams App Groups.
-    if ! have xtool; then
-      [ -d "$HOME/Developer/xtool" ] || git clone https://github.com/AVGVSTVS96/xtool.git "$HOME/Developer/xtool"
-      swift build --package-path "$HOME/Developer/xtool" -c release --product xtool
-      ln -sf "$HOME/Developer/xtool/.build/release/xtool" "$HOME/.local/bin/xtool"
-    fi
-    # swift reads SDKs from ~/.swiftpm once that folder exists, which hides xtool's Darwin SDK in ~/.config/swiftpm
-    mkdir -p "$HOME/.swiftpm" && ln -sfn "$HOME/.config/swiftpm/swift-sdks" "$HOME/.swiftpm/swift-sdks"
     dot=etc/systemd/resolved.conf.d/dns-over-tls.conf
     cmp -s "$dot" "/$dot" || { sudo install -Dm644 "$dot" "/$dot" && sudo systemctl restart systemd-resolved; }
     dot=etc/systemd/journald.conf.d/size.conf
@@ -106,11 +98,6 @@ herdr plugin list | grep -q '^- drovr ' || herdr plugin install --yes AVGVSTVS96
 
 if [ -r "$HOME/.config/sops/age/key.txt" ]; then
   scripts/.local/bin/restore-secrets
-  [ -d "$HOME/Developer/fleet" ] || git clone git@github.com:AVGVSTVS96/fleet.git "$HOME/Developer/fleet"
-  "$HOME/Developer/fleet/scripts/install-skill.sh"
-  [ -d "$HOME/Developer/microscope" ] || git clone git@github.com:AVGVSTVS96/microscope.git "$HOME/Developer/microscope"
-  (cd "$HOME/Developer/microscope" && bun install --frozen-lockfile)
-  ln -sf "$HOME/Developer/microscope/src/cli.ts" "$HOME/.bun/bin/microscope"
 else
   echo "Copy the existing age key to ~/.config/sops/age/key.txt, then rerun ./bootstrap"
 fi

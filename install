@@ -1,58 +1,20 @@
 #!/bin/sh
-# Stow the shared packages plus this OS's packages into $HOME.
-# Stow flags pass through: ./install -nv previews, -R restows, -D unlinks.
 set -eu
 cd "$(dirname "$0")"
 
-# Real directories, so stow links into them instead of folding the writes of
-# installers, herdr's runtime state and restore-secrets into this repo.
 mkdir -p "$HOME/.local/bin" "$HOME/.config/herdr"
 [ -d "$HOME/.ssh" ] || mkdir -m 700 "$HOME/.ssh"
-
-changing=yes
-for flag; do
-  case $flag in --no | --si* | --del*) changing=no ;; --*) ;; -*[nD]*) changing=no ;; esac
-done
-
-# What a machine already put where a link goes stops stow: fish's stock config, an installer's copy, a link made by
-# hand or synced from another machine. A dangling link or the same content gives way; anything else stays as .orig.
-# Only when those are all of a stow's conflicts, so a stow that would still abort changes nothing.
-yields="existing target is not owned by stow: |existing target is neither a link nor a directory: |over existing target .* since neither"
-place() {
-  conflicts=$(stow -n --target="$HOME" "$@" 2>&1 | grep '^  \* ' || true)
-  if [ $changing = yes ] && [ -n "$conflicts" ] && ! printf '%s\n' "$conflicts" | grep -qvE "$yields"; then
-    printf '%s\n' "$conflicts" |
-      sed -n 's/.*existing target is not owned by stow: //p; s/.*existing target is neither a link nor a directory: //p
-        s/.*over existing target \(.*\) since neither.*/\1/p' |
-      while IFS= read -r target; do
-        for package; do [ -e "$package/$target" ] || [ -L "$package/$target" ] && break; done
-        if [ ! -e "$HOME/$target" ] || diff -r "$HOME/$target" "$package/$target" >/dev/null 2>&1; then
-          rm -rf "$HOME/$target"
-        else
-          kept=$target.orig n=1
-          while [ -e "$HOME/$kept" ] || [ -L "$HOME/$kept" ]; do kept=$target.orig$n n=$((n + 1)); done
-          mv "$HOME/$target" "$HOME/$kept"
-          echo "install: kept the $target that was there as $kept"
-        fi
-      done
-  fi
-  stow --target="$HOME" "$@"
-}
 
 case "$(uname -s)" in
   Darwin) os="brew completions ghostty launchd nushell pi zed zsh" ;;
   Linux)
-    # Wallpaper downloads stay out of the repo; the machine's SSH access list stays its own.
-    # Fish is the login shell, so zsh only gets .zshenv: agents' shell commands run in zsh.
-    # systemd skips drop-in directories that are symlinks, so stow links the files into a real one.
     mkdir -p "$HOME/Pictures/Wallpapers" "$HOME/.config/systemd/user/app-com.t3tools.T3Code-.scope.d"
     set -- --ignore=authorized_keys --ignore='\.zshrc' "$@"
     os="comet-kvm ghostty-linux niri noctalia systemd wallpapers zsh"
     ;;
 esac
 
-place --ignore='secrets\.env' "$@" $os \
+stow --target="$HOME" --ignore='secrets\.env' "$@" $os \
   agent-browser bat fastfetch fish gh gh-dash git graphite herdr \
   lazygit nvim oh-my-posh scripts sops ssh tmux wezterm yazi
-# Agent homes fill with sessions and installed skills, so only files are linked into them.
-place --no-folding "$@" agent-skills claude codex
+stow --target="$HOME" --no-folding "$@" agent-skills claude codex

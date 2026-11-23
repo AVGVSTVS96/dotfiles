@@ -3,10 +3,9 @@
 # requires-python = ">=3.11"
 # dependencies = ["tomlkit"]
 # ///
-"""Merge agent-preferences into the live Claude Code and Codex settings, then install their plugins and skills."""
+"""Merge agent-preferences into ~/.claude.json and Codex's config, then install Claude's plugins and skills."""
 import json
 import os
-import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -50,10 +49,7 @@ def read_json(path):
     return json.loads(path.read_text()) if path.exists() else {}
 
 
-claude = read_json(prefs / "claude.json")
-if platform.system() == "Darwin":
-    merge(claude, read_json(prefs / "claude-macos.json"))
-update(home / ".claude/settings.json", parse_json, render_json, lambda live: merge(live, claude))
+claude = read_json(Path(__file__).resolve().parent / "claude/.claude/settings.json")
 update(home / ".claude.json", parse_json, render_json, lambda live: merge(live, read_json(prefs / "claude-global.json")))
 
 codex = tomlkit.parse((prefs / "codex.toml").read_text())
