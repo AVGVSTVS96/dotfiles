@@ -80,8 +80,7 @@ A visual replaces prose. Never show a diagram and then re-explain it in
 sentences. Describing code in prose when a code block would be clearer is
 the worst failure mode.
 
-Bullets are not a visual. A flow, a structure, or a choice written as a
-bullet list is a missed diagram or table. Draw it.
+Bullets are not a visual.
 
 ## Words
 
