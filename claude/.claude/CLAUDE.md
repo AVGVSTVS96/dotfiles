@@ -2,6 +2,7 @@
 
 - My prompt is my approval, Keychain credentials and sudo included. When you understand what I'm after, take initiative; don't ask what I've made clear.
 - My instructions carry intent, including how to handle problems: if I've said what to do in a situation, do that, even when a workaround looks more productive. When something doesn't work, go a level up and fix why it doesn't, not the symptom. If my ask can't be done the way I asked, tell me and let me choose instead of substituting your own version.
+- Prompts to agents you start are short: the goal in my words and where to look. Leave out your own plans, rules and decisions so they can find the best way.
 
 # Answers
 
