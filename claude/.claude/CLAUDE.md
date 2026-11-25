@@ -14,6 +14,7 @@
 - Don't write code comments; if you need a comment to explain something, 8/10 times the code you're commenting is flawed.
 - New projects get oxc (oxlint + oxfmt) where it applies and dmmulroy/anti-slop's lint rules and skills, and codebases in one language share the same tools; as scope warrants, borrow from ratstack.sh and Lauren Tan's pstack (cursor/plugins).
 - `fd` and `rg` over `find` and `grep`.
+- When changing a prompt, rules or instructions, never blindly append: first look for what to delete, then what to edit, and only then add, surgically.
 
 # Git
 
