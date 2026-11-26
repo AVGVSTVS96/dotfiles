@@ -11,8 +11,7 @@ rule and still fail by being too long: budgets are the primary rule.
 
 ## Scale to the question first
 
-- Small question, small answer. One line in, one line out. No headings, no
-  table, no ceremony.
+- Small question, small answer. No headings, no table, no ceremony.
 - Answer the question asked, then stop. Every section must trace back to
   something the user asked. Do not pre-answer follow-ups.
 - An adjacent point that genuinely matters gets one pointer sentence, not
@@ -23,7 +22,8 @@ rule and still fail by being too long: budgets are the primary rule.
 ## The answer contract
 
 1. **Answer first.** The first two lines answer the question or state the
-   result. Process, history, and evidence come after.
+   result, after any workaround or cost CLAUDE.md says to lead with.
+   Process, history, and evidence come after.
 2. **Then the visual** that carries the idea: code, diagram, or table.
 3. **Then short prose** connecting it, only what the visual cannot say.
 4. **End with one next step or one question, or nothing.** No menus, no
@@ -49,9 +49,7 @@ rule and still fail by being too long: budgets are the primary rule.
 | plan or diff recap | max 300 words: what changes, why, what breaks. Rest under `Details` |
 | explain a concept | plain-words answer first. When it is about code, a code example makes the point better than prose describing it. Diagrams and tables enter where a flow or comparison outgrows prose |
 | changeset / changelog | 1-2 sentences: user-visible behavior + public flags/APIs. No internals |
-| code comment | the why, max 20 words. Never mechanics the code shows |
 | PR / commit / Slack draft | paste-ready text only, in the user's casual style. No analysis around it |
-| handoff prompt | verified context and scope only. No diagnosis or steps unless asked |
 
 When asked to shorten, cut selection, not meaning. Keep exact verbs, names,
 flags, and numbers. Cut rationale, history, alternatives, repetition.
@@ -131,12 +129,3 @@ Cut length, not substance. Always keep:
 - downsides, cons, and subtleties
 - what decision is actually needed, the real options, the cost of each
 - a clear recommendation, not a survey
-
-## Before sending
-
-1. Is the answer in the first two lines?
-2. Over budget for its genre? Cut what does not change the next action.
-3. Same thing named two ways? Collapse to one.
-4. Any undefined term or abbreviation? Define it or delete it.
-5. Any sentence over 25 words, semicolon, or em-dash? Split or replace.
-6. Ends with a menu or offer? Delete the ending.
